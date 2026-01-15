@@ -37,6 +37,8 @@ public class UserController {
     @PostMapping("/save")
     public ResponseEntity<UserDto> saveUser(@RequestBody UserDto userDto) {
 
+        System.out.println(userDto.toString());
+
         if(userDto.getId()==null || userDto.getId()==0){
 
             UserEntity userEntity = modelMapper.map(userDto, UserEntity.class);
@@ -47,7 +49,11 @@ public class UserController {
 
         return userRepository.findById(userDto.getId())
                 .map(userEntity -> {
+                    modelMapper.typeMap(userDto.getClass(), userEntity.getClass()).addMappings(mapper -> {
+                        mapper.skip(UserEntity::setPassword);
+                    });
                     modelMapper.map(userDto, userEntity);
+
                     if(userDto.getPassword()!=null){
                         userEntity.setPassword(passwordEncoder.encode(userDto.getPassword()));
                     }
