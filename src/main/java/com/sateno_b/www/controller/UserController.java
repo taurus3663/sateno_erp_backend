@@ -37,8 +37,6 @@ public class UserController {
     @PostMapping("/save")
     public ResponseEntity<UserDto> saveUser(@RequestBody UserDto userDto) {
 
-        System.out.println(userDto.toString());
-
         if(userDto.getId()==null || userDto.getId()==0){
 
             UserEntity userEntity = modelMapper.map(userDto, UserEntity.class);
