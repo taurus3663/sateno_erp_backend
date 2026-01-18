@@ -29,7 +29,14 @@ public class SiteEntity extends BaseEntity{
     @JoinColumn(name = "currency_id")
     private CurrencyEntity currency;
 
+    @ManyToOne
+    @JoinColumn(name = "language_id")
+    private LanguageEntity language;
+
     @Column(nullable = false)
-    private boolean isActive = false;
+    private boolean active = false;
+
+//    @Column()
+//    private
 
 }
