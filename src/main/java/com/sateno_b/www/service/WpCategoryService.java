@@ -2,11 +2,9 @@ package com.sateno_b.www.service;
 
 import com.sateno_b.www.model.dto.CategoryNodeDto;
 import com.sateno_b.www.model.dto.WpCategoryResponseDto;
+import com.sateno_b.www.model.dto.WpCategoryTranslationRequest;
 import com.sateno_b.www.model.entity.*;
-import com.sateno_b.www.model.repository.SiteRepository;
-import com.sateno_b.www.model.repository.WpCategoryRepository;
-import com.sateno_b.www.model.repository.WpCategorySiteMappingRepository;
-import com.sateno_b.www.model.repository.WpCategoryTranslationRepository;
+import com.sateno_b.www.model.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
@@ -15,9 +13,8 @@ import org.springframework.web.client.RestClient;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,8 +24,8 @@ public class WpCategoryService {
     private final RestClient restClient;
     private final WpCategoryRepository wpCategoryRepository;
     private final WpCategoryTranslationRepository wpCategoryTranslationRepository;
-    // Трябва да инжектираш и Mapping репозиторито
     private final WpCategorySiteMappingRepository wpCategorySiteMappingRepository;
+    private final LanguageRepository languageRepository;
 
     @Transactional
     public void syncCategoriesToDatabase(Long siteId) {
@@ -126,31 +123,62 @@ public class WpCategoryService {
     }
 
     public List<CategoryNodeDto> getChildrenNodes(Long parentId) {
-        // 1. Взимаме децата директно по ID-то на родителя
+        // 1. Взимаме децата
         List<WpCategoryEntity> children = wpCategoryRepository.findByParentId(parentId);
+
+        // 2. Оптимизация за Leaf флага: Взимаме ID-тата на всички деца,
+        // за да проверим с една заявка кои от тях имат свои дечица
+        List<Long> childIds = children.stream().map(WpCategoryEntity::getId).toList();
+        Set<Long> idsWithChildren = childIds.isEmpty() ? Collections.emptySet()
+                : wpCategoryRepository.findIdsWithChildren(childIds);
 
         return children.stream().map(category -> {
             CategoryNodeDto node = new CategoryNodeDto();
 
-            // 2. Взимаме името (защитаваме се от празен списък с преводи)
-            String name = category.getTranslations().stream()
-                    .findFirst()
+            // 3. Комбинираме имената с " | " (двуезично/многоезично)
+            // Благодарение на @BatchSize(size=30) в Entity-то, това няма да бави
+            String combinedNames = category.getTranslations().stream()
                     .map(WpCategoryTranslationEntity::getName)
-                    .orElse("No Name");
+                    .filter(name -> name != null && !name.isEmpty())
+                    .collect(Collectors.joining(" | "));
 
-            // 3. Подготвяме данните за реда в таблицата
             node.setData(new CategoryNodeDto.NodeData(
                     category.getId(),
-                    name,
+                    combinedNames.isEmpty() ? "No Name" : combinedNames,
                     category.getSlug()
             ));
 
-            // 4. Проверка за стрелката (Leaf флаг)
-            // Ако има деца, leaf е false (показва стрелката ">")
-            boolean hasChildren = wpCategoryRepository.existsByParentId(category.getId());
-            node.setLeaf(!hasChildren);
+            // 4. Проверка за стрелката чрез Set-а от стъпка 2
+            node.setLeaf(!idsWithChildren.contains(category.getId()));
 
             return node;
         }).toList();
+    }
+
+    public String getTranslationName(Long categoryId, Long languageId) {
+        return wpCategoryTranslationRepository
+                .findByWpCategoryIdAndLanguageId(categoryId, languageId)
+                .map(WpCategoryTranslationEntity::getName)
+                .orElse(""); // Ако няма превод, връщаме празен текст
+    }
+
+    @Transactional
+    public void updateCategoryTranslation(WpCategoryTranslationRequest request) {
+        // 1. Търсим съществуващ превод
+        WpCategoryTranslationEntity translation = wpCategoryTranslationRepository
+                .findByWpCategoryIdAndLanguageId(request.getCategoryId(), request.getLanguageId())
+                .orElse(new WpCategoryTranslationEntity());
+
+        // 2. Ако е нов, попълваме връзките
+        if (translation.getId() == null) {
+            translation.setWpCategory(wpCategoryRepository.getReferenceById(request.getCategoryId()));
+            translation.setLanguage(languageRepository.getReferenceById(request.getLanguageId()));
+        }
+
+        // 3. Обновяваме името
+        translation.setName(request.getName());
+
+        // 4. Записваме
+        wpCategoryTranslationRepository.save(translation);
     }
 }

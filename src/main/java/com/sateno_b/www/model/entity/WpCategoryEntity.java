@@ -2,6 +2,7 @@ package com.sateno_b.www.model.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +27,7 @@ public class WpCategoryEntity extends BaseEntity {
     @JoinColumn(name = "parent_id")
     private WpCategoryEntity parent;
 
+    @BatchSize(size = 30) // Изключително важно за производителността!
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "wp_category_id")
     private List<WpCategoryTranslationEntity> translations = new ArrayList<>();

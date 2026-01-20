@@ -19,4 +19,8 @@ public class WpCategoryTranslationEntity extends BaseEntity {
 
     @Column
     private String name;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "wp_category_id")
+    private WpCategoryEntity wpCategory; // Това е полето, към което сочи mappedBy
 }
