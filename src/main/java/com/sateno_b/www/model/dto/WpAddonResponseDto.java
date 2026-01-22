@@ -11,4 +11,5 @@ public class WpAddonResponseDto {
     private String slug;
     // Map: "bg" -> "Цвят", "en" -> "Color"
     private Map<String, String> translations;
+    private String names;
 }

@@ -42,6 +42,8 @@ public class WpAddonController {
                             WpAddonTranslationEntity::getName
                     ));
             wpAddonResponseDto.setTranslations(transMap);
+            String namesPipeline = String.join(" | ", transMap.values());
+            wpAddonResponseDto.setNames(namesPipeline);
 
             return wpAddonResponseDto;
         });
