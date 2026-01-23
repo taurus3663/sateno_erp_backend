@@ -1,6 +1,7 @@
 package com.sateno_b.www.service;
 
 import com.sateno_b.www.model.dto.CategoryNodeDto;
+import com.sateno_b.www.model.dto.WpCategoryDetailDto;
 import com.sateno_b.www.model.dto.WpCategoryResponseDto;
 import com.sateno_b.www.model.dto.WpCategoryTranslationRequest;
 import com.sateno_b.www.model.entity.*;
@@ -126,6 +127,11 @@ public class WpCategoryService {
         // 1. Взимаме децата
         List<WpCategoryEntity> children = wpCategoryRepository.findByParentId(parentId);
 
+        // Вземаме имената на родителя веднъж, за да не ги преизчисляваме в цикъла
+        WpCategoryEntity parent = wpCategoryRepository.findById(parentId).orElse(null);
+        String parentCombinedNames = (parent != null) ? parent.getTranslations().stream()
+                .map(WpCategoryTranslationEntity::getName)
+                .collect(Collectors.joining(" | ")) : "";
         // 2. Оптимизация за Leaf флага: Взимаме ID-тата на всички деца,
         // за да проверим с една заявка кои от тях имат свои дечица
         List<Long> childIds = children.stream().map(WpCategoryEntity::getId).toList();
@@ -145,7 +151,9 @@ public class WpCategoryService {
             node.setData(new CategoryNodeDto.NodeData(
                     category.getId(),
                     combinedNames.isEmpty() ? "No Name" : combinedNames,
-                    category.getSlug()
+                    category.getSlug(),
+                    parentId,
+                    parentCombinedNames
             ));
 
             // 4. Проверка за стрелката чрез Set-а от стъпка 2

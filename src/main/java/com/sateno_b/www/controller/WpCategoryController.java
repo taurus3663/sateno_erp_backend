@@ -1,6 +1,7 @@
 package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.CategoryNodeDto;
+import com.sateno_b.www.model.dto.WpCategoryDetailDto;
 import com.sateno_b.www.model.dto.WpCategoryTranslationRequest;
 import com.sateno_b.www.model.entity.WpCategoryEntity;
 import com.sateno_b.www.model.entity.WpCategorySiteMappingEntity;
@@ -38,8 +39,8 @@ public class WpCategoryController {
                 wpCategoryService.syncCategoriesToDatabase(siteId);
     }
 
+
     @GetMapping("/list")
-    // В WpCategoryService
     public Page<CategoryNodeDto> getRootNodes(Pageable pageable) {
         Page<WpCategoryEntity> roots = wpCategoryRepository.findByParentIsNull(pageable);
 
@@ -49,19 +50,21 @@ public class WpCategoryController {
         return roots.map(category -> {
             CategoryNodeDto node = new CategoryNodeDto();
 
-            // ВАЖНО: Тук Hibernate ще направи втората заявка (Batch),
-            // защото докосваме .getTranslations()
             String combinedNames = category.getTranslations().stream()
                     .map(WpCategoryTranslationEntity::getName)
                     .filter(Objects::nonNull)
                     .collect(Collectors.joining(" | "));
 
-            node.setData(new CategoryNodeDto.NodeData(
+            // Подаваме 5 параметъра: id, name, slug, parentId, parentName
+            CategoryNodeDto.NodeData data = new CategoryNodeDto.NodeData(
                     category.getId(),
                     combinedNames.isEmpty() ? "No Name" : combinedNames,
-                    category.getSlug()
-            ));
+                    category.getSlug(),
+                    null, // parentId (няма, защото е root)
+                    null  // parentName (няма, защото е root)
+            );
 
+            node.setData(data);
             node.setLeaf(!parentIds.contains(category.getId()));
             return node;
         });
