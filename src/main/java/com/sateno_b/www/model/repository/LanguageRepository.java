@@ -6,4 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface LanguageRepository extends JpaRepository<LanguageEntity, Long> {
+
+    // Spring автоматично ще разбере, че трябва да търси по колоната "code"
+    LanguageEntity findByCode(String code);
 }
