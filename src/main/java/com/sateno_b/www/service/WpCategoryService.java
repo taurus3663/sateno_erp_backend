@@ -164,21 +164,40 @@ public class WpCategoryService {
 
     @Transactional
     public void updateCategoryTranslation(WpCategoryTranslationRequest request) {
-        // 1. Търсим съществуващ превод
-        WpCategoryTranslationEntity translation = wpCategoryTranslationRepository
-                .findByWpCategoryIdAndLanguageId(request.getCategoryId(), request.getLanguageId())
-                .orElse(new WpCategoryTranslationEntity());
+        // 1. Намираме основната категория (за да променим родителя)
+        WpCategoryEntity category = wpCategoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        // 2. Ако е нов, попълваме връзките
-        if (translation.getId() == null) {
-            translation.setWpCategory(wpCategoryRepository.getReferenceById(request.getCategoryId()));
-            translation.setLanguage(languageRepository.getReferenceById(request.getLanguageId()));
+        // 2. ОБНОВЯВАНЕ НА РОДИТЕЛЯ
+        // Проверяваме дали категорията не се опитва да стане родител на самата себе си
+        if (request.getParentId() != null) {
+            if (request.getParentId().equals(category.getId())) {
+                throw new RuntimeException("Category cannot be its own parent");
+            }
+
+            WpCategoryEntity parent = wpCategoryRepository.findById(request.getParentId())
+                    .orElseThrow(() -> new RuntimeException("Parent category not found"));
+            category.setParent(parent);
+        } else {
+            // Ако parentId е null (или изчистен в UI), тя става главна категория
+            category.setParent(null);
         }
 
-        // 3. Обновяваме името
-        translation.setName(request.getName());
+        // Записваме промяната в родителя
+        wpCategoryRepository.save(category);
 
-        // 4. Записваме
+        // 3. Търсим съществуващ превод или създаваме нов
+        WpCategoryTranslationEntity translation = wpCategoryTranslationRepository
+                .findByWpCategoryIdAndLanguageId(request.getCategoryId(), request.getLanguageId())
+                .orElseGet(() -> {
+                    WpCategoryTranslationEntity t = new WpCategoryTranslationEntity();
+                    t.setWpCategory(category);
+                    t.setLanguage(languageRepository.getReferenceById(request.getLanguageId()));
+                    return t;
+                });
+
+        // 4. Обновяваме името и записваме превода
+        translation.setName(request.getName());
         wpCategoryTranslationRepository.save(translation);
     }
 }

@@ -7,4 +7,5 @@ public class WpCategoryTranslationRequest {
     private Long categoryId;
     private Long languageId;
     private String name;
+    private Long parentId;
 }
