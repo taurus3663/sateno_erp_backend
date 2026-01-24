@@ -17,7 +17,7 @@ public class WpProductImageSiteMappingEntity extends BaseEntity {
     private WpProductImageEntity productImage;
 
     @ManyToOne
-    @JoinColumn("site_id")
+    @JoinColumn(name = "site_id")
     private SiteEntity site;
 
     @Column
