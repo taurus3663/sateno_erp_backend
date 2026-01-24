@@ -29,11 +29,11 @@ public class WpProductEntity extends BaseEntity {
     private BigDecimal buyPrice;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-    List<WpProductTranslationEntity> translations;
+    List<WpProductTranslationEntity> translations = new ArrayList<>();
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
-    List<WpProductImageEntity> images;
+    List<WpProductImageEntity> images = new ArrayList<>();
 
     @ManyToMany
     @JoinTable(

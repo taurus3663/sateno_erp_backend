@@ -3,6 +3,7 @@ package com.sateno_b.www.model.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
@@ -23,5 +24,5 @@ public class WpProductImageEntity extends BaseEntity {
     private WpProductEntity product;
 
     @OneToMany(mappedBy = "productImage", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<WpProductImageSiteMappingEntity> siteMappings;
+    private List<WpProductImageSiteMappingEntity> siteMappings = new ArrayList<>();
 }
