@@ -34,9 +34,10 @@ public class WpCategoryController {
     private final ModelMapper modelMapper;
     private final WpCategoryService wpCategoryService;
 
-    @PostMapping("/sync")
-    public void syncWpCategory(@RequestParam Long siteId) {
+    @PostMapping("/sync/{siteId}")
+    public boolean syncWpCategory(@PathVariable Long siteId) {
                 wpCategoryService.syncCategoriesToDatabase(siteId);
+                return true;
     }
 
 

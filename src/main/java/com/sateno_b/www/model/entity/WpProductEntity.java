@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.entity;
 
+import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.enums.ProductUnit;
 import jakarta.persistence.*;
 import lombok.*;
@@ -24,10 +25,11 @@ public class WpProductEntity extends BaseEntity {
     private Integer stockQuantity;
 
     @Enumerated(EnumType.ORDINAL)
-    private ProductUnit unit;
-
     @Column
-    private boolean status;
+    private ProductStatus status;
+
+    @Enumerated(EnumType.ORDINAL)
+    private ProductUnit unit;
 
     @Column
     private String weight;

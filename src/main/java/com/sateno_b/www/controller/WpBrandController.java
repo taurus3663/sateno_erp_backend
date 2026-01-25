@@ -2,8 +2,10 @@ package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.WpBrandDto;
 import com.sateno_b.www.model.entity.WpBrandEntity;
+import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.WpBrandRepository;
 import com.sateno_b.www.model.repository.WpBrandWpIdRepository;
+import com.sateno_b.www.service.WpBrandService;
 import com.sateno_b.www.shared.SlugTool;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -20,6 +22,7 @@ public class WpBrandController {
     private final WpBrandWpIdRepository wpBrandWpIdRepository;
     private final WpBrandRepository wpBrandRepository;
     private final ModelMapper modelMapper;
+    private final WpBrandService wpBrandService;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpBrandDto>> getList(Pageable pageable){
@@ -42,5 +45,10 @@ public class WpBrandController {
                     modelMapper.map(wpBrandDto, entity);
                     return ResponseEntity.ok(modelMapper.map(wpBrandRepository.save(entity), WpBrandDto.class));
                 }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/sync/{siteId}")
+    public void syncWpBrand(@PathVariable Long siteId){
+        wpBrandService.syncBrandsToDB(siteId);
     }
 }

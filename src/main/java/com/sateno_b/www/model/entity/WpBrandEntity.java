@@ -28,7 +28,7 @@ public class WpBrandEntity extends BaseEntity {
     private String imageUrl;
 
     @OneToMany(mappedBy = "brand", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<WpBrandWpIdEntity> wpId;
+    private List<WpBrandWpIdEntity> wpIdList;
 
     @OneToMany(mappedBy = "brand")
     private List<WpProductEntity> products;

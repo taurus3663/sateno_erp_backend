@@ -19,6 +19,9 @@ public class WpProductImageEntity extends BaseEntity {
     @Column
     private String localSrc;
 
+    @Column
+    private String name;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")
     private WpProductEntity product;
