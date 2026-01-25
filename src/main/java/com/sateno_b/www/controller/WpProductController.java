@@ -8,9 +8,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,5 +25,11 @@ public class WpProductController {
         Page<WpProductDto> dtos = dtoPage.map(entity -> modelMapper.map(entity, WpProductDto.class));
 
         return ResponseEntity.ok(dtos);
+    }
+
+
+    @PostMapping("/sync/{siteId}")
+    public void syncWpProducts(@PathVariable Long siteId) {
+
     }
 }

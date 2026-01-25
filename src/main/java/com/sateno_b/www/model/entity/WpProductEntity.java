@@ -35,6 +35,10 @@ public class WpProductEntity extends BaseEntity {
     @Column
     private BigDecimal buyPrice;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "brand_id")
+    private WpBrandEntity brand;
+
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     List<WpProductTranslationEntity> translations = new ArrayList<>();
 

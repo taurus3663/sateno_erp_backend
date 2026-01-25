@@ -3,6 +3,7 @@ package com.sateno_b.www.controller;
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.repository.*;
+import com.sateno_b.www.shared.SlugTool;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -11,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -61,7 +61,7 @@ public class WpAddonController {
 
         // Генерираме slug само ако липсва (за нови записи)
         if (entity.getSlug() == null || entity.getSlug().isBlank()) {
-            entity.setSlug(generateSlug(dto.getName()));
+            entity.setSlug(SlugTool.generateSlug(dto.getName()));
         }
 
         // 2. ManyToMany връзката - Hibernate автоматично ще обслужи Join таблицата
@@ -127,7 +127,7 @@ public class WpAddonController {
         // Създаваме стойността
         WpAddonValueEntity value = new WpAddonValueEntity();
         // Тук добави транслитерация или просто генерирай slug
-        value.setSlug(generateSlug(label));
+        value.setSlug(SlugTool.generateSlug(label));
 
         // Първо записваме основната стойност
         WpAddonValueEntity savedValue = wpAddonValueRepository.save(value);
@@ -179,34 +179,34 @@ public class WpAddonController {
     }
 
     // Помощен метод за slug, за да не е на кирилица
-    private String generateSlug(String label) {
-        Map<Character, String> cyrillicToLatin = new HashMap<>();
-        cyrillicToLatin.put('а', "a"); cyrillicToLatin.put('б', "b"); cyrillicToLatin.put('в', "v");
-        cyrillicToLatin.put('г', "g"); cyrillicToLatin.put('д', "d"); cyrillicToLatin.put('е', "e");
-        cyrillicToLatin.put('ж', "zh"); cyrillicToLatin.put('з', "z"); cyrillicToLatin.put('и', "i");
-        cyrillicToLatin.put('й', "y"); cyrillicToLatin.put('к', "k"); cyrillicToLatin.put('л', "l");
-        cyrillicToLatin.put('м', "m"); cyrillicToLatin.put('н', "n"); cyrillicToLatin.put('о', "o");
-        cyrillicToLatin.put('п', "p"); cyrillicToLatin.put('р', "r"); cyrillicToLatin.put('с', "s");
-        cyrillicToLatin.put('т', "t"); cyrillicToLatin.put('у', "u"); cyrillicToLatin.put('ф', "f");
-        cyrillicToLatin.put('х', "h"); cyrillicToLatin.put('ц', "ts"); cyrillicToLatin.put('ч', "ch");
-        cyrillicToLatin.put('ш', "sh"); cyrillicToLatin.put('щ', "sht"); cyrillicToLatin.put('ъ', "u");
-        cyrillicToLatin.put('ь', "y"); cyrillicToLatin.put('ю', "yu"); cyrillicToLatin.put('я', "ya");
-
-        StringBuilder slug = new StringBuilder();
-        String input = label.toLowerCase().trim();
-
-        for (char c : input.toCharArray()) {
-            if (cyrillicToLatin.containsKey(c)) {
-                slug.append(cyrillicToLatin.get(c));
-            } else if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
-                slug.append(c);
-            } else if (c == ' ') {
-                slug.append("-");
-            }
-        }
-
-        String result = slug.toString().replaceAll("-+", "-");
-        return result.isEmpty() ? "val-" + System.currentTimeMillis() : result;
-    }
+//    private String generateSlug(String label) {
+//        Map<Character, String> cyrillicToLatin = new HashMap<>();
+//        cyrillicToLatin.put('а', "a"); cyrillicToLatin.put('б', "b"); cyrillicToLatin.put('в', "v");
+//        cyrillicToLatin.put('г', "g"); cyrillicToLatin.put('д', "d"); cyrillicToLatin.put('е', "e");
+//        cyrillicToLatin.put('ж', "zh"); cyrillicToLatin.put('з', "z"); cyrillicToLatin.put('и', "i");
+//        cyrillicToLatin.put('й', "y"); cyrillicToLatin.put('к', "k"); cyrillicToLatin.put('л', "l");
+//        cyrillicToLatin.put('м', "m"); cyrillicToLatin.put('н', "n"); cyrillicToLatin.put('о', "o");
+//        cyrillicToLatin.put('п', "p"); cyrillicToLatin.put('р', "r"); cyrillicToLatin.put('с', "s");
+//        cyrillicToLatin.put('т', "t"); cyrillicToLatin.put('у', "u"); cyrillicToLatin.put('ф', "f");
+//        cyrillicToLatin.put('х', "h"); cyrillicToLatin.put('ц', "ts"); cyrillicToLatin.put('ч', "ch");
+//        cyrillicToLatin.put('ш', "sh"); cyrillicToLatin.put('щ', "sht"); cyrillicToLatin.put('ъ', "u");
+//        cyrillicToLatin.put('ь', "y"); cyrillicToLatin.put('ю', "yu"); cyrillicToLatin.put('я', "ya");
+//
+//        StringBuilder slug = new StringBuilder();
+//        String input = label.toLowerCase().trim();
+//
+//        for (char c : input.toCharArray()) {
+//            if (cyrillicToLatin.containsKey(c)) {
+//                slug.append(cyrillicToLatin.get(c));
+//            } else if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+//                slug.append(c);
+//            } else if (c == ' ') {
+//                slug.append("-");
+//            }
+//        }
+//
+//        String result = slug.toString().replaceAll("-+", "-");
+//        return result.isEmpty() ? "val-" + System.currentTimeMillis() : result;
+//    }
 
 }

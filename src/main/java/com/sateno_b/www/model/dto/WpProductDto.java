@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.dto;
 
+import com.sateno_b.www.model.entity.WpBrandEntity;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -12,6 +13,8 @@ public class WpProductDto {
     private Integer stockQuantity;
     private String weight;
     private BigDecimal buyPrice;
+
+    private WpBrandEntity brand;
 
     private List<WpProductTranslationDto> translations = new ArrayList<>();
 
