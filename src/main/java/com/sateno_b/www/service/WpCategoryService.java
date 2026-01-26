@@ -6,6 +6,7 @@ import com.sateno_b.www.model.dto.WpCategoryResponseDto;
 import com.sateno_b.www.model.dto.WpCategoryTranslationRequest;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.repository.*;
+import com.sateno_b.www.shared.AuthTool;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
@@ -28,10 +29,12 @@ public class WpCategoryService {
     private final WpCategorySiteMappingRepository wpCategorySiteMappingRepository;
     private final LanguageRepository languageRepository;
 
+    private static String CATEGORY_URL = "/wp-json/wc/v3/products/categories";
+
     @Transactional
     public void syncCategoriesToDatabase(Long siteId) {
         SiteEntity site = siteRepository.findById(siteId).orElseThrow();
-        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+        String auth = AuthTool.getAuth(site.getConsumerKey(), site.getConsumerSecret());
 
         // 1. Изтегляме всички страници
         List<WpCategoryResponseDto> allCats = fetchAllCategories(site, auth);
@@ -103,7 +106,7 @@ public class WpCategoryService {
 
         do {
             var response = restClient.get()
-                    .uri(site.getUrl() + "/wp-json/wc/v3/products/categories?per_page=100&page=" + currentPage + "&orderby=id&order=asc")
+                    .uri(site.getUrl() + CATEGORY_URL +"?per_page=100&page=" + currentPage + "&orderby=id&order=asc")
                     .header("Authorization", "Basic " + auth)
                     .retrieve()
                     .toEntity(new ParameterizedTypeReference<List<WpCategoryResponseDto>>() {});

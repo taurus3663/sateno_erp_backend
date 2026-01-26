@@ -32,7 +32,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/erp/auth/login",
-                                "/error"
+                                "/error",
+                                "/media/**"
                         ).permitAll()
                         .anyRequest().authenticated());
 
