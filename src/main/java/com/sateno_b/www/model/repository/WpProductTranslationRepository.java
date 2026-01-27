@@ -13,9 +13,8 @@ import java.util.Optional;
 public interface WpProductTranslationRepository extends JpaRepository<WpProductTranslationEntity, Long> {
 
     // Spring Data JPA автоматично разбира, че трябва да филтрира по трите обекта
-    Optional<WpProductTranslationEntity> findByProductAndSiteAndLanguage(
+    Optional<WpProductTranslationEntity> findByProductAndLanguage(
             WpProductEntity product,
-            SiteEntity site,
             LanguageEntity language
     );
 }

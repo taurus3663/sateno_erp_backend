@@ -1,6 +1,5 @@
 package com.sateno_b.www.model.dto;
 
-import com.sateno_b.www.model.entity.WooAddonOptionsDto;
 import lombok.Data;
 
 import java.util.List;
@@ -9,5 +8,6 @@ import java.util.List;
 public class WooAddonDto {
 
     private String name;
+    private String type;
     private List<WooAddonOptionsDto> options;
 }

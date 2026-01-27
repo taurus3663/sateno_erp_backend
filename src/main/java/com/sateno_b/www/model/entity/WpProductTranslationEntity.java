@@ -16,9 +16,6 @@ import java.math.BigDecimal;
 public class WpProductTranslationEntity extends BaseEntity {
 
     @Column
-    private Long wpProductId;
-
-    @Column
     private String name;
 
     @Column(columnDefinition = "TEXT")
@@ -26,21 +23,6 @@ public class WpProductTranslationEntity extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String shortDescription;
-
-    @Column
-    private String sku;
-
-    @Column
-    private BigDecimal price;
-    @Column
-    private BigDecimal regularPrice;
-    @Column
-    private String slug;
-
-
-    @ManyToOne
-    @JoinColumn(name = "site_id")
-    private SiteEntity site;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")

@@ -16,7 +16,7 @@ public class WpProductDto {
     private String weight;
     private BigDecimal buyPrice;
 
-    private WpBrandEntity brand;
+    private WpBrandDto brand;
 
     private List<WpProductTranslationDto> translations = new ArrayList<>();
 

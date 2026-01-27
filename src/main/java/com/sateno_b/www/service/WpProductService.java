@@ -29,13 +29,15 @@ public class WpProductService {
     private final WpProductRepository wpProductRepository;
     private final WpProductImageRepository wpProductImageRepository;
     private final WpProductAddonConfigRepository wpProductAddonConfigRepository;
-    private final WpProductAddonValuePriceRepository wpProductAddonValuePriceRepository;
     private final WpProductImageSiteMappingRepository wpProductImageSiteMappingRepository;
     private final WpProductTranslationRepository wpProductTranslationRepository;
     private final WpBrandRepository wpBrandRepository;
-    private final WpBrandWpIdRepository wpBrandWpIdRepository;
     private final WpCategoryRepository wpCategoryRepository;
     private final WpAddonRepository wpAddonRepository;
+    private final WpAddonValueRepository wpAddonValueRepository;
+    private final WpAddonTranslationRepository wpAddonTranslationRepository;
+    private final WpAddonValueTranslationRepository wpAddonValueTranslationRepository;
+    private final WpProductSiteConfigRepository wpProductSiteConfigRepository;
 
     private static final String PRODUCTS_URL = "/wp-json/wc/v3/products";
 
@@ -70,7 +72,8 @@ public class WpProductService {
 
         do {
             var response = restClient.get()
-                    .uri(site.getUrl() + PRODUCTS_URL + "?per_page=100&page=" + currentPage + "&orderby=id&order=asc")
+//                    .uri(site.getUrl() + PRODUCTS_URL + "?per_page=100&page=" + currentPage + "&orderby=id&order=asc")
+                    .uri(site.getUrl() + PRODUCTS_URL + "?per_page=100&page=" + currentPage + "&orderby=id&order=asc&sku=a1000")
                     .header("Authorization", "Basic " + auth)
                     .retrieve()
                     .toEntity(new ParameterizedTypeReference<List<WooProductDto>>() {});
@@ -92,14 +95,6 @@ public class WpProductService {
 
     private void processSingleProduct(WooProductDto dto, SiteEntity site, LanguageEntity lang) {
 
-
-//        for (WooBrandDto brand : dto.getBrands()) {
-//            syncBrandForProduct(brand, site);
-//        }
-//
-//        for (WooProductCategoryDto category : dto.getCategories()) {
-//            syncCategoriesForProduct(category, site);
-//        }
 
 // 1. Намираме или създаваме Глобалния продукт по SKU
         WpProductEntity product = wpProductRepository.findBySkuAndSite(dto.getSku(), site.getId())
@@ -130,11 +125,14 @@ public class WpProductService {
         // 5. ЗАПИС НА ЦЕНИ И ТЕКСТОВЕ (Translation)
         updateTranslation(product, dto, site, lang);
 
+        // 5a запис на цени
+        updateSiteConfig(product, dto, site);
+
         // 6. СНИМКИ (Локално сваляне)
         syncImagesForProduct(product, dto.getImages(), site);
 
         // 7. АДОНИ (Специфични за продукта и сайта)
-//        syncAddonsForProduct(product, dto.getAddons(), site, lang);
+        syncAddonsForProduct(product, dto.getAddons(), site, lang);
 
 
 
@@ -143,27 +141,46 @@ public class WpProductService {
     private void updateTranslation(WpProductEntity product, WooProductDto dto, SiteEntity site, LanguageEntity lang) {
         // Търсим съществуващ превод за този продукт на този сайт и език
         WpProductTranslationEntity translation = wpProductTranslationRepository
-                .findByProductAndSiteAndLanguage(product, site, lang)
+                .findByProductAndLanguage(product, lang)
                 .orElse(new WpProductTranslationEntity());
 
         translation.setProduct(product);
-        translation.setSite(site);
+//        translation.setSite(site);
         translation.setLanguage(lang);
 
         // Данни от WooCommerce
-        translation.setWpProductId(dto.getId());
+//        translation.setWpProductId(dto.getId());
         translation.setName(dto.getName());
-        translation.setSku(dto.getSku());
-        translation.setSlug(SlugTool.decodeSlug(dto.getSlug()));
+//        translation.setSku(dto.getSku());
+//        translation.setSlug(SlugTool.decodeSlug(dto.getSlug()));
 
         // Преобразуваме цените (ако са празни в WP, слагаме 0)
-        translation.setPrice(parsePrice(dto.getPrice()));
-        translation.setRegularPrice(parsePrice(dto.getRegular_price()));
+//        translation.setPrice(parsePrice(dto.getPrice()));
+//        translation.setRegularPrice(parsePrice(dto.getRegular_price()));
 
         translation.setDescription(dto.getDescription());
         translation.setShortDescription(dto.getShort_description());
 
         wpProductTranslationRepository.save(translation);
+    }
+
+    private void updateSiteConfig(WpProductEntity product, WooProductDto dto, SiteEntity site) {
+        // Търсим конфигурация за този продукт и този сайт
+        WpProductSiteConfigEntity config = wpProductSiteConfigRepository
+                .findByProductAndSite(product, site)
+                .orElse(new WpProductSiteConfigEntity());
+
+        config.setProduct(product);
+        config.setSite(site);
+
+        // Специфични данни за сайта от WooCommerce
+        config.setPrice(parsePrice(dto.getPrice()));
+        config.setRegularPrice(parsePrice(dto.getRegular_price()));
+        config.setSku(dto.getSku()); // SKU-то от този конкретен сайт
+        config.setSlug(SlugTool.decodeSlug(dto.getSlug()));
+        config.setWpProductId(dto.getId());
+
+        wpProductSiteConfigRepository.save(config);
     }
 
     private void syncImagesForProduct(WpProductEntity product, List<WooProductImageDto> wooImages, SiteEntity site) {
@@ -206,39 +223,71 @@ public class WpProductService {
         }
     }
 
-//    private void syncAddonsForProduct(WpProductEntity product, List<WooAddonDto> wooAddons, SiteEntity site, LanguageEntity lang) {
-//        if (wooAddons == null) return;
-//
-//        for (WooAddonDto wooAddon : wooAddons) {
-//            // 1. Намираме или създаваме Глобалния Адон (напр. "Размер на чаршаф")
-//            WpAddonEntity addon = wpAddonRepository.findByNameAndLanguage(wooAddon.getName(), lang)
-//                    .orElseGet(() -> wpAddonRepository.save(new WpAddonEntity(wooAddon.getName(), wooAddon.getType())));
-//
-//            // Добавяме го към продукта, ако го няма (Set се грижи за уникалността)
-//            product.getAddons().add(addon);
-//
-//            for (WooAddonOptionsDto opt : wooAddon.getOptions()) {
-//                // 2. Намираме или създаваме Глобалната Стойност (напр. "С ластик 120х200")
-//                WpAddonValueEntity val = wpAddonValueRepository.findByNameAndAddon(opt.getLabel(), addon)
-//                        .orElseGet(() -> wpAddonValueRepository.save(new WpAddonValueEntity(opt.getLabel(), addon)));
-//
-//                product.getAddonValues().add(val);
-//
-//                // 3. Записваме специфичната надценка в Config таблицата
-//                WpProductAddonConfigEntity config = wpProductAddonConfigRepository
-//                        .findByProductAndAddonValueAndSite(product, val, site)
-//                        .orElse(new WpProductAddonConfigEntity());
-//
-//                config.setProduct(product); // Увери се, че си сменил Long productId на Entity в класа
-//                config.setAddonValue(val);
-//                config.setSite(site);
-//                config.setPriceModifier(parsePrice(opt.getPrice()));
-//                config.setActive(true);
-//
-//                wpProductAddonConfigRepository.save(config);
-//            }
-//        }
-//    }
+    private void syncAddonsForProduct(WpProductEntity product, List<WooAddonDto> wooAddons, SiteEntity site, LanguageEntity lang) {
+        if (wooAddons == null) return;
+
+        for (WooAddonDto wooAddon : wooAddons) {
+            // 1. Намираме или създаваме Глобалния Адон (Групата) чрез търсене в преводите
+            WpAddonEntity addonGroup = wpAddonRepository.findByNameAndLanguage(wooAddon.getName(), lang)
+                    .orElseGet(() -> {
+                        // Създаваме новия базов адон
+                        WpAddonEntity newAddon = new WpAddonEntity();
+                        newAddon.setSlug(SlugTool.generateSlug(wooAddon.getName()));
+                        newAddon = wpAddonRepository.save(newAddon);
+
+                        // Създаваме превода му за текущия език
+                        WpAddonTranslationEntity trans = new WpAddonTranslationEntity();
+                        trans.setGroup(newAddon);
+                        trans.setLanguage(lang);
+                        trans.setName(wooAddon.getName());
+                        wpAddonTranslationRepository.save(trans);
+
+                        return newAddon;
+                    });
+
+            // Свързваме групата с продукта (ManyToMany)
+            product.getAddons().add(addonGroup);
+
+            // 2. Обработка на опциите вътре в адона
+            for (WooAddonOptionsDto optDto : wooAddon.getOptions()) {
+                // Намираме или създаваме Глобалната Стойност (Value) чрез търсене в нейните преводи
+                WpAddonValueEntity valEntity = wpAddonValueRepository.findByLabelAndLanguage(optDto.getLabel(), lang)
+                        .orElseGet(() -> {
+                            WpAddonValueEntity newVal = new WpAddonValueEntity();
+                            newVal.setSlug(SlugTool.generateSlug(optDto.getLabel()));
+                            newVal = wpAddonValueRepository.save(newVal);
+
+                            WpAddonValueTranslationEntity vTrans = new WpAddonValueTranslationEntity();
+                            vTrans.setAddonValue(newVal);
+                            vTrans.setLanguage(lang);
+                            vTrans.setLabel(optDto.getLabel());
+                            wpAddonValueTranslationRepository.save(vTrans);
+
+                            return newVal;
+                        });
+
+                // Уверяваме се, че тази стойност е част от групата (в таблицата wp_addon_addon_values)
+                if (!addonGroup.getValues().contains(valEntity)) {
+                    addonGroup.getValues().add(valEntity);
+                    wpAddonRepository.save(addonGroup);
+                }
+
+                // 3. Записваме специфичната цена за този продукт и този сайт (Config)
+                // Тук използваме твоята WpProductAddonConfigEntity
+                WpProductAddonConfigEntity config = wpProductAddonConfigRepository
+                        .findByProductAndAddonValueAndSite(product, valEntity, site)
+                        .orElse(new WpProductAddonConfigEntity());
+
+                config.setProduct(product);
+                config.setAddonValue(valEntity);
+                config.setSite(site);
+                config.setPriceModifier(parsePrice(optDto.getPrice()));
+                config.setActive(true);
+
+                wpProductAddonConfigRepository.save(config);
+            }
+        }
+    }
 
     // Помощна функция за парсване на цена
     private java.math.BigDecimal parsePrice(String price) {

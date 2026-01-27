@@ -75,4 +75,7 @@ public class WpProductEntity extends BaseEntity {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WpProductAddonValuePriceEntity> addonValuePrices = new ArrayList<>();
 
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<WpProductSiteConfigEntity> siteConfigs = new ArrayList<>();
+
 }

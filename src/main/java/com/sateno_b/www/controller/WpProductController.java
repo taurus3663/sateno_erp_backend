@@ -1,10 +1,12 @@
 package com.sateno_b.www.controller;
 
-import com.sateno_b.www.model.dto.WpProductDto;
-import com.sateno_b.www.model.dto.WpProductTranslationDto;
+import com.sateno_b.www.model.dto.*;
+import com.sateno_b.www.model.entity.WpProductAddonConfigEntity;
 import com.sateno_b.www.model.entity.WpProductEntity;
 import com.sateno_b.www.model.entity.WpProductImageEntity;
 import com.sateno_b.www.model.entity.WpProductTranslationEntity;
+import com.sateno_b.www.model.enums.ProductStatus;
+import com.sateno_b.www.model.repository.WpProductAddonConfigRepository;
 import com.sateno_b.www.model.repository.WpProductRepository;
 import com.sateno_b.www.model.repository.WpProductTranslationRepository;
 import com.sateno_b.www.service.WpProductService;
@@ -15,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
@@ -26,6 +29,7 @@ public class WpProductController {
     private final ModelMapper modelMapper;
     private final WpProductService wpProductService;
     private final WpProductTranslationRepository wpProductTranslationRepository;
+    private final WpProductAddonConfigRepository wpProductAddonConfigRepository;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpProductDto>> getWpProducts(Pageable pageable) {
@@ -73,6 +77,24 @@ public class WpProductController {
         });
 
         return ResponseEntity.ok(dtos);
+    }
+
+    @GetMapping("/detail/{id}")
+    public ResponseEntity<WpProductDto> getWpProduct(@PathVariable Long id) {
+        // 1. Взимаме продукта от базата
+        WpProductEntity entity = wpProductRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        // 2. Създаваме DTO-то
+        WpProductDto dto = new WpProductDto();
+        dto.setId(entity.getId());
+        dto.setStockQuantity(entity.getStockQuantity());
+        dto.setWeight(entity.getWeight());
+        dto.setBrand(modelMapper.map(entity.getBrand(), WpBrandDto.class)); // Тук ще върне обекта на бранда
+        dto.setStatus_p(ProductStatus.valueOf(entity.getStatus().getValue().toUpperCase()));
+
+
+        return ResponseEntity.ok(dto);
     }
 
 

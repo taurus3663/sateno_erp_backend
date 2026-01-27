@@ -15,8 +15,9 @@ import java.math.BigDecimal;
 @Table(name = "wp_product_addon_config")
 public class WpProductAddonConfigEntity extends BaseEntity {
 
-    @Column
-    private Long productId; // тука трябва да се сложи таблицата.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id")
+    private WpProductEntity product; // тука трябва да се сложи таблицата.
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "value_id")

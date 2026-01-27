@@ -1,4 +1,4 @@
-package com.sateno_b.www.model.entity;
+package com.sateno_b.www.model.dto;
 
 import lombok.Data;
 
