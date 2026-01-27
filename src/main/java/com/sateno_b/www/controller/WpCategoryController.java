@@ -92,4 +92,10 @@ public class WpCategoryController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/all")
+    public List<CategoryNodeDto> getAllNodes() {
+        // Връщаме абсолютно всички категории в плосък списък
+        return wpCategoryService.getAllNodesFlat();
+    }
+
 }

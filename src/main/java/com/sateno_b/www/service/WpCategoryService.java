@@ -211,4 +211,33 @@ public class WpCategoryService {
         translation.setName(request.getName());
         wpCategoryTranslationRepository.save(translation);
     }
+
+    public List<CategoryNodeDto> getAllNodesFlat() {
+        List<WpCategoryEntity> allCategories = wpCategoryRepository.findAll();
+
+        return allCategories.stream().map(category -> {
+            CategoryNodeDto node = new CategoryNodeDto();
+
+            // Комбинираме имената за показване (напр. "Clothes | Дрехи")
+            String combinedNames = category.getTranslations().stream()
+                    .map(WpCategoryTranslationEntity::getName)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.joining(" | "));
+
+            // За TreeSelect ни трябва ID на родителя, за да си построим дървото във фронтенда
+            Long parentId = (category.getParent() != null) ? category.getParent().getId() : null;
+
+            CategoryNodeDto.NodeData data = new CategoryNodeDto.NodeData(
+                    category.getId(),
+                    combinedNames.isEmpty() ? "No Name" : combinedNames,
+                    category.getSlug(),
+                    parentId,
+                    null // Няма нужда от името на родителя тук
+            );
+
+            node.setData(data);
+            // Тук не ни трябва логика за leaf, Angular ще реши това според наличието на деца
+            return node;
+        }).collect(Collectors.toList());
+    }
 }
