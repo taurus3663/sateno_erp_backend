@@ -10,6 +10,7 @@ import com.sateno_b.www.shared.SlugTool;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.modelmapper.ModelMapper;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -38,6 +39,9 @@ public class WpProductService {
     private final WpAddonTranslationRepository wpAddonTranslationRepository;
     private final WpAddonValueTranslationRepository wpAddonValueTranslationRepository;
     private final WpProductSiteConfigRepository wpProductSiteConfigRepository;
+    private final ModelMapper modelMapper;
+    private final FileStorageService fileStorageService;
+    private final LanguageRepository languageRepository;
 
     private static final String PRODUCTS_URL = "/wp-json/wc/v3/products";
 
@@ -298,4 +302,97 @@ public class WpProductService {
             return java.math.BigDecimal.ZERO;
         }
     }
+
+    @Transactional
+    public WpProductDto saveProductWithImages(WpProductDto dto) {
+        WpProductEntity entity;
+        if (dto.getId() != null && dto.getId() > 0) {
+            entity = wpProductRepository.findById(dto.getId()).orElseThrow();
+        } else {
+            entity = new WpProductEntity();
+        }
+
+        entity.setUnit(dto.getUnit());
+        entity.setStockQuantity(dto.getStockQuantity());
+        entity.setWeight(dto.getWeight());
+
+//         BRAND -----
+        Optional<WpBrandEntity> brand = wpBrandRepository.findBySlug(dto.getBrand().getSlug());
+        if(brand.isPresent()) {entity.setBrand(brand.get());}
+
+//        CATEGORY -----
+        if(!dto.getCategories().isEmpty()) entity.getCategories().clear();
+        for (WpCategoryDetailDto category : dto.getCategories()) {
+            WpCategoryEntity catory = wpCategoryRepository.getReferenceById(category.getId());
+            entity.getCategories().add(catory);
+        }
+
+//        TRANSLATION
+        // Вътре в saveProductWithImages метода:
+
+        if (dto.getTranslations() != null) {
+            // 1. Изчистваме старите преводи (Hibernate ще ги изтрие заради orphanRemoval = true)
+            entity.getTranslations().clear();
+
+            for (WpProductTranslationDto tDto : dto.getTranslations()) {
+                WpProductTranslationEntity tEntity = new WpProductTranslationEntity();
+                tEntity.setName(tDto.getName());
+                tEntity.setDescription(tDto.getDescription());
+                tEntity.setShortDescription(tDto.getShortDescription());
+
+                // Важно: Свързваме с продукта
+                tEntity.setProduct(entity);
+
+                // Важно: Свързваме с езика
+                if (tDto.getLanguage() != null && tDto.getLanguage().getId() != null) {
+                    LanguageEntity lang = languageRepository.getReferenceById(tDto.getLanguage().getId());
+                    tEntity.setLanguage(lang);
+                }
+
+                entity.getTranslations().add(tEntity);
+            }
+        }
+
+
+        entity = wpProductRepository.save(entity);
+
+
+        // 1. СИНХРОНИЗАЦИЯ НА СНИМКИТЕ (Изтриване на липсващите)
+        // Гледаме кои ID-та идват от Angular
+        List<Long> incomingIds = dto.getImages().stream()
+                .map(WpProductImageDto::getId)
+                .filter(id -> id != null && id > 0)
+                .toList();
+
+        // Намираме кои снимки от БД липсват в пратката от Angular
+        List<WpProductImageEntity> imagesToDelete = entity.getImages().stream()
+                .filter(img -> !incomingIds.contains(img.getId()))
+                .toList();
+
+        // 2. ФИЗИЧЕСКО ИЗТРИВАНЕ ОТ ПАПКАТА
+        for (WpProductImageEntity img : imagesToDelete) {
+            fileStorageService.deleteProductImage(img.getLocalSrc());
+        }
+
+        // Премахваме от entity-то тези снимки, които не са в изпратения списък
+        // Благодарение на orphanRemoval = true, Hibernate ще изтрие тези редове от БД
+        entity.getImages().removeIf(img -> !incomingIds.contains(img.getId()));
+
+        if (!dto.getImages().isEmpty()) {
+            for (WpProductImageDto imgDto : dto.getImages()) {
+                if (imgDto.isTemp()) {
+                    String finalPath = fileStorageService.moveTempImageToProductDir(imgDto.getTempName(), entity.getId());
+                    if (finalPath != null) {
+                        WpProductImageEntity imageEntity = new WpProductImageEntity();
+                        imageEntity.setProduct(entity);
+                        imageEntity.setLocalSrc(finalPath);
+                        wpProductImageRepository.save(imageEntity);
+                    }
+                }
+            }
+        }
+
+        return modelMapper.map(entity, WpProductDto.class);
+    }
+
 }

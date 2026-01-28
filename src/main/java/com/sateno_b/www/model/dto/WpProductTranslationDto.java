@@ -11,9 +11,9 @@ public class WpProductTranslationDto {
     private String name;
     private String description;
     private String shortDescription;
-    private String sku;
-    private BigDecimal price;
-    private BigDecimal regularPrice;
-    private String slug;
+//    private String sku;
+//    private BigDecimal price;
+//    private BigDecimal regularPrice;
+//    private String slug;
     private LanguageDto language;
 }

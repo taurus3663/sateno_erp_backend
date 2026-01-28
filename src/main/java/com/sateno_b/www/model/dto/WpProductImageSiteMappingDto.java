@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class WpProductImageSiteMappingDto {
 
+    private Long id;
     private Long wpMediaId;
     private String wpUrl;
 }

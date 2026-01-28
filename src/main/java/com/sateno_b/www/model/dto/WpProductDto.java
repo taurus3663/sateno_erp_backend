@@ -2,6 +2,9 @@ package com.sateno_b.www.model.dto;
 
 import com.sateno_b.www.model.entity.WpBrandEntity;
 import com.sateno_b.www.model.enums.ProductStatus;
+import com.sateno_b.www.model.enums.ProductUnit;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -19,10 +22,13 @@ public class WpProductDto {
     private WpBrandDto brand;
 
     private List<WpProductTranslationDto> translations = new ArrayList<>();
-
     private List<WpProductAddonValuePriceDto> addonValuePrices = new ArrayList<>();
+    private List<WpCategoryDetailDto> categories = new ArrayList<>();
 
     private String names; // its for all language names only;
     private ProductStatus status_p;
     private String m_image;
+    private List<WpProductImageDto> images = new ArrayList<>();
+
+    private ProductUnit unit;
 }
