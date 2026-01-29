@@ -6,9 +6,9 @@ import lombok.Getter;
 
 @Getter
 public enum ProductStatus {
-    DRAFT("draft"),
-    PUBLISHED("publish"),
-    PRIVATE("private"); // Добре е да го имаш за всеки случай
+    DRAFT("draft"),      // Индекс 0
+    PUBLISHED("publish"), // Индекс 1
+    PRIVATE("private");   // Индекс 2
 
     private final String value;
 
@@ -16,18 +16,18 @@ public enum ProductStatus {
         this.value = value;
     }
 
-    @JsonValue // Това казва на Jackson: "В JSON-а ще виждаш 'draft' или 'publish'"
-    public String getValue() {
-        return value;
+    @JsonValue // Слагаме го тук, за да връща 0, 1 или 2 в JSON
+    public int getOrdinal() {
+        return this.ordinal();
     }
 
-    @JsonCreator // Това казва на Jackson: "Ето как да превърнеш стринга в Enum"
-    public static ProductStatus fromString(String text) {
+    @JsonCreator // Jackson ще получи число и ще го превърне в Enum
+    public static ProductStatus fromInt(int index) {
         for (ProductStatus status : ProductStatus.values()) {
-            if (status.value.equalsIgnoreCase(text)) {
+            if (status.ordinal() == index) {
                 return status;
             }
         }
-        return DRAFT;
+        return DRAFT; // Default стойност
     }
 }

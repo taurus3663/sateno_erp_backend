@@ -25,6 +25,8 @@ public class WpProductDto {
     private List<WpProductAddonValuePriceDto> addonValuePrices = new ArrayList<>();
     private List<WpCategoryDetailDto> categories = new ArrayList<>();
 
+    private ProductStatus status;
+
     private String names; // its for all language names only;
     private ProductStatus status_p;
     private String m_image;

@@ -315,6 +315,7 @@ public class WpProductService {
         entity.setUnit(dto.getUnit());
         entity.setStockQuantity(dto.getStockQuantity());
         entity.setWeight(dto.getWeight());
+        entity.setStatus(dto.getStatus());
 
 //         BRAND -----
         Optional<WpBrandEntity> brand = wpBrandRepository.findBySlug(dto.getBrand().getSlug());
