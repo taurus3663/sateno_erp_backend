@@ -65,6 +65,7 @@ public class WpProductController {
             wpProductDto.setWeight(entity.getWeight());
             wpProductDto.setStockQuantity(entity.getStockQuantity());
             wpProductDto.setId(entity.getId());
+            wpProductDto.setUnit(entity.getUnit());
 
             String names = entity.getTranslations()
                     .stream()
