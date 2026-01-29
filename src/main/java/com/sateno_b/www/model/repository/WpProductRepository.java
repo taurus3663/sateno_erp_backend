@@ -24,7 +24,7 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
                 "LEFT JOIN FETCH p.translations " +
                 "LEFT JOIN FETCH p.siteConfigs " + // Зареждаме и цените/ску за всички сайтове
                 "LEFT JOIN FETCH p.images " +
-                "LEFT JOIN FETCH p.addons " +
+                "LEFT JOIN FETCH p.addonConfig " +
                 "WHERE p.id = :id")
         Optional<WpProductEntity> findByIdWithDetails(@Param("id") Long id);
     }

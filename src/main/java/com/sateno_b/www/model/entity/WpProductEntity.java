@@ -56,24 +56,9 @@ public class WpProductEntity extends BaseEntity {
     )
     private Set<WpCategoryEntity> categories = new HashSet<>();
 
-    @ManyToMany
-    @JoinTable(
-            name = "wp_product_addon_mapping",
-            joinColumns = @JoinColumn(name = "product_id"),
-            inverseJoinColumns = @JoinColumn(name = "addon_id")
-    )
-    private Set<WpAddonEntity> addons = new HashSet<>();
-
-    @ManyToMany
-    @JoinTable(
-            name = "wp_product_addon_value_mapping",
-            joinColumns = @JoinColumn(name = "product_id"),
-            inverseJoinColumns = @JoinColumn(name = "addon_value_id")
-    )
-    private Set<WpAddonValueEntity> addonValues = new HashSet<>();
-
+    // В WpProductEntity.java
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<WpProductAddonValuePriceEntity> addonValuePrices = new ArrayList<>();
+    private List<WpProductAddonConfigEntity> addonConfig = new ArrayList<>();
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WpProductSiteConfigEntity> siteConfigs = new ArrayList<>();
