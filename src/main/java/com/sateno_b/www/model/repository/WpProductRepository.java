@@ -21,10 +21,8 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
 
         // 3. Зареждане на пълния обект за Angular DTO-то (добавяме и siteConfigs)
         @Query("SELECT p FROM WpProductEntity p " +
-                "LEFT JOIN FETCH p.translations " +
-                "LEFT JOIN FETCH p.siteConfigs " + // Зареждаме и цените/ску за всички сайтове
-                "LEFT JOIN FETCH p.images " +
-                "LEFT JOIN FETCH p.addonConfig " +
+                "LEFT JOIN FETCH p.addonConfig ac " +
+                "LEFT JOIN FETCH ac.site s " +
                 "WHERE p.id = :id")
         Optional<WpProductEntity> findByIdWithDetails(@Param("id") Long id);
     }

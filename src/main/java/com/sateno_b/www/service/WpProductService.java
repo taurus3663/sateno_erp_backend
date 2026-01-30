@@ -15,10 +15,8 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -422,6 +420,52 @@ public class WpProductService {
 
                 entity.getTranslations().add(tEntity);
             }
+        }
+
+//      ADDONS
+// ADDONS - Синхронизация само по ID
+        if (dto.getAddonConfigs() != null) {
+            List<WpProductAddonConfigEntity> currentConfigs = entity.getAddonConfig();
+
+            // 1. Създаваме Set от ключове (SiteID + ValueID) от Angular
+            Set<String> incomingKeys = dto.getAddonConfigs().stream()
+                    .map(c -> c.getSite().getId() + "-" + c.getAddonValue().getId())
+                    .collect(Collectors.toSet());
+
+            // 2. ИЗТРИВАНЕ: Махаме всичко от базата, което липсва в новия списък
+            currentConfigs.removeIf(existing -> {
+                String key = existing.getSite().getId() + "-" + existing.getAddonValue().getId();
+                return !incomingKeys.contains(key);
+            });
+
+            // 3. ДОБАВЯНЕ / ОБНОВЯВАНЕ
+            for (WpProductAddonConfigDto aDto : dto.getAddonConfigs()) {
+                String key = aDto.getSite().getId() + "-" + aDto.getAddonValue().getId();
+
+                // Проверяваме дали тази връзка вече съществува
+                Optional<WpProductAddonConfigEntity> existingOpt = currentConfigs.stream()
+                        .filter(e -> (e.getSite().getId() + "-" + e.getAddonValue().getId()).equals(key))
+                        .findFirst();
+
+                if (existingOpt.isPresent()) {
+                    // Вече съществува -> само обновяваме цената
+                    existingOpt.get().setPriceModifier(aDto.getPriceModifier());
+                } else {
+                    // НОВ ЗАПИС: Трябват ни само ID-тата
+                    WpProductAddonConfigEntity newConfig = new WpProductAddonConfigEntity();
+                    newConfig.setProduct(entity);
+                    newConfig.setPriceModifier(aDto.getPriceModifier());
+                    newConfig.setActive(true);
+
+                    // Тук е важната част: ползваме само ID-тата за връзка
+                    newConfig.setSite(siteRepository.getReferenceById(aDto.getSite().getId()));
+                    newConfig.setAddonValue(wpAddonValueRepository.getReferenceById(aDto.getAddonValue().getId()));
+
+                    currentConfigs.add(newConfig);
+                }
+            }
+        } else {
+            entity.getAddonConfig().clear();
         }
 
 

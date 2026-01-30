@@ -22,7 +22,7 @@ public class WpProductDto {
     private WpBrandDto brand;
 
     private List<WpProductTranslationDto> translations = new ArrayList<>();
-    private List<WpProductAddonValuePriceDto> addonValuePrices = new ArrayList<>();
+    private List<WpProductAddonConfigDto> addonConfigs = new ArrayList<>();
     private List<WpCategoryDetailDto> categories = new ArrayList<>();
 
     private ProductStatus status;

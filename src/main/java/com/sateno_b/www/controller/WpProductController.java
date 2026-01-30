@@ -1,11 +1,9 @@
 package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.*;
-import com.sateno_b.www.model.entity.WpProductAddonConfigEntity;
-import com.sateno_b.www.model.entity.WpProductEntity;
-import com.sateno_b.www.model.entity.WpProductImageEntity;
-import com.sateno_b.www.model.entity.WpProductTranslationEntity;
+import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.enums.ProductStatus;
+import com.sateno_b.www.model.repository.WpAddonRepository;
 import com.sateno_b.www.model.repository.WpProductAddonConfigRepository;
 import com.sateno_b.www.model.repository.WpProductRepository;
 import com.sateno_b.www.model.repository.WpProductTranslationRepository;
@@ -43,6 +41,7 @@ public class WpProductController {
     private final WpProductService wpProductService;
     private final WpProductTranslationRepository wpProductTranslationRepository;
     private final WpProductAddonConfigRepository wpProductAddonConfigRepository;
+    private final WpAddonRepository wpAddonRepository;
 
 
     @PostMapping("/save")
@@ -99,7 +98,7 @@ public class WpProductController {
     @GetMapping("/detail/{id}")
     public ResponseEntity<WpProductDto> getWpProduct(@PathVariable Long id) {
         // 1. Взимаме продукта от базата
-        WpProductEntity entity = wpProductRepository.findById(id)
+        WpProductEntity entity = wpProductRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         // 2. Създаваме DTO-то
@@ -127,6 +126,24 @@ public class WpProductController {
                 imgDto.setTemp(false); // Заредени от БД не са временни
                 return imgDto;
             }).toList());
+        }
+
+        // ADDON CONFIG
+        if (entity.getAddonConfig() != null) {
+            dto.setAddonConfigs(entity.getAddonConfig().stream()
+                    .map(config -> {
+                        WpProductAddonConfigDto configDto = new WpProductAddonConfigDto();
+                        configDto.setId(config.getId());
+                        configDto.setPriceModifier(config.getPriceModifier());
+
+                        // Мапваме целия Сайт
+                        configDto.setSite(modelMapper.map(config.getSite(), SiteDto.class));
+
+                        // Мапваме цялото AddonValue (за да имаш преводите в Angular)
+                        configDto.setAddonValue(modelMapper.map(config.getAddonValue(), WpAddonValueDto2.class));
+
+                        return configDto;
+                    }).toList()); // Не забравяй .toList() накрая
         }
 
         return ResponseEntity.ok(dto);
@@ -164,5 +181,37 @@ public class WpProductController {
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    @GetMapping("/get_addon_values/{id}")
+    public WpAddonDetailDto getAddonValues(@PathVariable Long id) {
+        WpAddonEntity entity = wpAddonRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Addon group not found"));
+
+        WpAddonDetailDto dto = new WpAddonDetailDto();
+        dto.setId(entity.getId());
+        dto.setSlug(entity.getSlug());
+
+        dto.setSelectedValues(entity.getValues().stream()
+                .map(this::mapToValueDto).collect(Collectors.toList()));
+
+        return dto;
+    }
+
+    private WpAddonValueDto mapToValueDto(WpAddonValueEntity entity) {
+        WpAddonValueDto dto = new WpAddonValueDto();
+        dto.setId(entity.getId());
+        dto.setSlug(entity.getSlug());
+
+        // Превръщаме List<TranslationEntity> в Map<String, Map<String, String>>
+        // Резултат: { "bg": { "label": "Червен" }, "en": { "label": "Red" } }
+        Map<String, Object> transMap = entity.getTranslations().stream()
+                .collect(Collectors.toMap(
+                        t -> t.getLanguage().getCode(), // Ключ: "bg", "en"
+                        t -> Map.of("label", t.getLabel()) // Стойност: { "label": "..." }
+                ));
+
+        dto.setTranslations(transMap);
+        return dto;
     }
 }
