@@ -468,6 +468,24 @@ public class WpProductService {
             entity.getAddonConfig().clear();
         }
 
+//        siteConfig
+        if(dto.getSiteConfig() != null && !dto.getSiteConfig().isEmpty()) {
+            for (WpProductSiteConfigDto wpProductSiteConfigDto : dto.getSiteConfig()) {
+                WpProductSiteConfigEntity siteConfig =
+                        wpProductSiteConfigRepository.findById(wpProductSiteConfigDto.getId())
+                        .orElse(new WpProductSiteConfigEntity());
+                SiteEntity site = siteRepository.getReferenceById(wpProductSiteConfigDto.getSite().getId());
+
+
+
+                siteConfig.setPrice(wpProductSiteConfigDto.getPrice());
+                siteConfig.setRegularPrice(wpProductSiteConfigDto.getRegularPrice());
+                siteConfig.setSite(site);
+                siteConfig.setProduct(entity);
+                wpProductSiteConfigRepository.save(siteConfig);
+            }
+        }
+
 
         entity = wpProductRepository.save(entity);
 

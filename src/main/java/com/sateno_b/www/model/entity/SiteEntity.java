@@ -36,7 +36,8 @@ public class SiteEntity extends BaseEntity{
     @Column(nullable = false)
     private boolean active = false;
 
-//    @Column()
-//    private
+    @Column()
+    private String orderCreateApiKey;
+
 
 }

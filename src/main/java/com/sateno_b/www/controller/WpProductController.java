@@ -2,7 +2,6 @@ package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
-import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.repository.WpAddonRepository;
 import com.sateno_b.www.model.repository.WpProductAddonConfigRepository;
 import com.sateno_b.www.model.repository.WpProductRepository;
@@ -25,7 +24,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -114,6 +112,7 @@ public class WpProductController {
                 .map(wpCategoryEntity ->
                         modelMapper.map(wpCategoryEntity, WpCategoryDetailDto.class)).toList());
         dto.setTranslations(entity.getTranslations().stream().map(wpProductTranslationEntity -> modelMapper.map(wpProductTranslationEntity, WpProductTranslationDto.class)).toList());
+        dto.setSiteConfig(entity.getSiteConfigs().stream().map(en -> modelMapper.map(en, WpProductSiteConfigDto.class)).collect(Collectors.toList()));
 
 
         //IMAGES

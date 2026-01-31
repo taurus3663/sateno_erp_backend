@@ -1,10 +1,7 @@
 package com.sateno_b.www.model.dto;
 
-import com.sateno_b.www.model.entity.WpBrandEntity;
 import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.enums.ProductUnit;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -24,6 +21,7 @@ public class WpProductDto {
     private List<WpProductTranslationDto> translations = new ArrayList<>();
     private List<WpProductAddonConfigDto> addonConfigs = new ArrayList<>();
     private List<WpCategoryDetailDto> categories = new ArrayList<>();
+    private List<WpProductSiteConfigDto> siteConfig = new ArrayList<>();
 
     private ProductStatus status;
 
