@@ -1,0 +1,331 @@
+[
+    {
+        "id": 28974,
+        "parent_id": 0,
+        "status": "processing",
+        "currency": "EUR",
+        "version": "10.1.3",
+        "prices_include_tax": false,
+        "date_created": "2026-01-31T21:44:07",
+        "date_modified": "2026-01-31T21:44:12",
+        "discount_total": "0.00",
+        "discount_tax": "0.00",
+        "shipping_total": "0.00",
+        "shipping_tax": "0.00",
+        "cart_tax": "0.00",
+        "total": "268.18",
+        "total_tax": "0.00",
+        "customer_id": 0,
+        "order_key": "wc_order_DYA9Z18mAmVzv",
+        "billing": {
+            "first_name": "Белла",
+            "last_name": "Йорданова",
+            "company": "",
+            "address_1": "До офис speedy[20]: ВРАЦА - СКЛАД бул. МИТО ОРОЗОВ No 32",
+            "address_2": "",
+            "city": "ВРАЦА",
+            "state": "",
+            "postcode": "3000",
+            "country": "BG",
+            "email": "bella.dunovska@gmail.com",
+            "phone": "+359883438318"
+        },
+        "shipping": {
+            "first_name": "Белла",
+            "last_name": "Йорданова",
+            "company": "",
+            "address_1": "До офис speedy[20]: ВРАЦА - СКЛАД бул. МИТО ОРОЗОВ No 32",
+            "address_2": "",
+            "city": "ВРАЦА",
+            "state": "",
+            "postcode": "3000",
+            "country": "BG",
+            "phone": ""
+        },
+        "payment_method": "cod",
+        "payment_method_title": "Наложен платеж",
+        "transaction_id": "",
+        "customer_ip_address": "78.90.238.8",
+        "customer_user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "created_via": "checkout",
+        "customer_note": "",
+        "date_completed": null,
+        "date_paid": null,
+        "cart_hash": "2273a9c2d79b8fbe36d166b8dbaeaec7",
+        "number": "28974",
+        "meta_data": [
+            {
+                "id": 92575,
+                "key": "_ga_tracked",
+                "value": "1"
+            },
+            {
+                "id": 92570,
+                "key": "_wc_order_attribution_device_type",
+                "value": "Desktop"
+            },
+            {
+                "id": 92559,
+                "key": "_wc_order_attribution_referrer",
+                "value": "https://www.google.com/"
+            },
+            {
+                "id": 92568,
+                "key": "_wc_order_attribution_session_count",
+                "value": "2"
+            },
+            {
+                "id": 92565,
+                "key": "_wc_order_attribution_session_entry",
+                "value": "https://sateno.bg/?utm_id=22906310120&utm_medium=cpc&utm_source=google&utm_campaign=[mm] - Generic Bedding&utm_ad_id=769936619513&utm_term=Generic Bedding&utm_adgroup_id=182393357685&gad_source=1&gad_campaignid=22906310120&gbraid=0AAAABBHDrIo-qw_PLeDsmvvaDw7ESROSK&gclid=Cj0KCQiAhOfLBhCCARIsAJPiopPNluyFYDiW9BIaX-6S3rvFS045G4HYYCnemup-3lMxaRUSggdDefEaArQYEALw_wcB"
+            },
+            {
+                "id": 92567,
+                "key": "_wc_order_attribution_session_pages",
+                "value": "9"
+            },
+            {
+                "id": 92566,
+                "key": "_wc_order_attribution_session_start_time",
+                "value": "2026-01-29 05:09:54"
+            },
+            {
+                "id": 92558,
+                "key": "_wc_order_attribution_source_type",
+                "value": "utm"
+            },
+            {
+                "id": 92569,
+                "key": "_wc_order_attribution_user_agent",
+                "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+            },
+            {
+                "id": 92560,
+                "key": "_wc_order_attribution_utm_campaign",
+                "value": "[mm] - Generic Bedding"
+            },
+            {
+                "id": 92563,
+                "key": "_wc_order_attribution_utm_id",
+                "value": "22906310120"
+            },
+            {
+                "id": 92562,
+                "key": "_wc_order_attribution_utm_medium",
+                "value": "cpc"
+            },
+            {
+                "id": 92561,
+                "key": "_wc_order_attribution_utm_source",
+                "value": "google"
+            },
+            {
+                "id": 92564,
+                "key": "_wc_order_attribution_utm_term",
+                "value": "Generic Bedding"
+            },
+            {
+                "id": 92572,
+                "key": "_woo_ml_cart_hash",
+                "value": "t_bbf7c1fde976b63e1e7a481e39eca1"
+            },
+            {
+                "id": 92571,
+                "key": "_woo_ml_language",
+                "value": "bg_BG"
+            },
+            {
+                "id": 92573,
+                "key": "_woo_ml_order_data_submitted",
+                "value": "1"
+            },
+            {
+                "id": 92574,
+                "key": "_woo_ml_order_tracked",
+                "value": "1"
+            },
+            {
+                "id": 92555,
+                "key": "is_vat_exempt",
+                "value": "no"
+            }
+        ],
+        "line_items": [
+            {
+                "id": 8374,
+                "name": "„Linum Beige“ комплект Перкал с покривало Муселин – 7части",
+                "product_id": 26405,
+                "variation_id": 0,
+                "quantity": 1,
+                "tax_class": "",
+                "subtotal": "121.18",
+                "subtotal_tax": "0.00",
+                "total": "121.18",
+                "total_tax": "0.00",
+                "taxes": [],
+                "meta_data": [
+                    {
+                        "id": 70657,
+                        "key": "_reduced_stock",
+                        "value": "1",
+                        "display_key": "_reduced_stock",
+                        "display_value": "1"
+                    }
+                ],
+                "sku": "a1547",
+                "global_unique_id": "",
+                "price": 121.18,
+                "image": {
+                    "id": "26406",
+                    "src": "https://sateno.bg/wp-content/uploads/2025/11/Camel-SET-scaled.jpg"
+                },
+                "parent_name": null
+            },
+            {
+                "id": 8375,
+                "name": "Завивка 100% Памук Ранфорс – 195x215 см –  за двойно легло",
+                "product_id": 27924,
+                "variation_id": 0,
+                "quantity": 1,
+                "tax_class": "",
+                "subtotal": "59.00",
+                "subtotal_tax": "0.00",
+                "total": "59.00",
+                "total_tax": "0.00",
+                "taxes": [],
+                "meta_data": [
+                    {
+                        "id": 70658,
+                        "key": "_reduced_stock",
+                        "value": "1",
+                        "display_key": "_reduced_stock",
+                        "display_value": "1"
+                    }
+                ],
+                "sku": "a1606",
+                "global_unique_id": "",
+                "price": 59,
+                "image": {
+                    "id": "27239",
+                    "src": "https://sateno.bg/wp-content/uploads/2025/11/yorgan.png"
+                },
+                "parent_name": null
+            },
+            {
+                "id": 8376,
+                "name": "Спално бельо „Luster-Beige“ Cotton box - 6 части",
+                "product_id": 24236,
+                "variation_id": 0,
+                "quantity": 1,
+                "tax_class": "",
+                "subtotal": "88.00",
+                "subtotal_tax": "0.00",
+                "total": "88.00",
+                "total_tax": "0.00",
+                "taxes": [],
+                "meta_data": [
+                    {
+                        "id": 70649,
+                        "key": "Моля, изберете размер на долния чаршаф",
+                        "value": "Без ластик 240 х 260 см",
+                        "display_key": "Моля, изберете размер на долния чаршаф",
+                        "display_value": "Без ластик 240 х 260 см"
+                    },
+                    {
+                        "id": 70650,
+                        "key": "_pao_ids",
+                        "value": [
+                            {
+                                "key": "Моля, изберете размер на долния чаршаф",
+                                "value": "Без ластик 240 х 260 см",
+                                "id": "1761254380",
+                                "raw_value": "Без ластик 240 х 260 см",
+                                "raw_price": 0,
+                                "price_type": "flat_fee"
+                            }
+                        ],
+                        "display_key": "_pao_ids",
+                        "display_value": [
+                            {
+                                "key": "Моля, изберете размер на долния чаршаф",
+                                "value": "Без ластик 240 х 260 см",
+                                "id": "1761254380",
+                                "raw_value": "Без ластик 240 х 260 см",
+                                "raw_price": 0,
+                                "price_type": "flat_fee"
+                            }
+                        ]
+                    },
+                    {
+                        "id": 70651,
+                        "key": "_pao_total",
+                        "value": "0",
+                        "display_key": "_pao_total",
+                        "display_value": "0"
+                    }
+                ],
+                "sku": "a1335",
+                "global_unique_id": "",
+                "price": 88,
+                "image": {
+                    "id": "24238",
+                    "src": "https://sateno.bg/wp-content/uploads/2025/09/1-15.png"
+                },
+                "parent_name": null
+            }
+        ],
+        "tax_lines": [],
+        "shipping_lines": [
+            {
+                "id": 8377,
+                "method_title": "До офис speedy",
+                "method_id": "flat_rate",
+                "instance_id": "14",
+                "total": "0.00",
+                "total_tax": "0.00",
+                "taxes": [],
+                "tax_status": "taxable",
+                "meta_data": []
+            }
+        ],
+        "fee_lines": [],
+        "coupon_lines": [],
+        "refunds": [],
+        "payment_url": "https://sateno.bg/checkout/order-pay/28974/?pay_for_order=true&key=wc_order_DYA9Z18mAmVzv",
+        "is_editable": false,
+        "needs_payment": false,
+        "needs_processing": true,
+        "date_created_gmt": "2026-01-31T19:44:07",
+        "date_modified_gmt": "2026-01-31T19:44:12",
+        "date_completed_gmt": null,
+        "date_paid_gmt": null,
+        "currency_symbol": "€",
+        "_links": {
+            "self": [
+                {
+                    "href": "https://sateno.bg/wp-json/wc/v3/orders/28974",
+                    "targetHints": {
+                        "allow": [
+                            "GET",
+                            "POST",
+                            "PUT",
+                            "PATCH",
+                            "DELETE"
+                        ]
+                    }
+                }
+            ],
+            "collection": [
+                {
+                    "href": "https://sateno.bg/wp-json/wc/v3/orders"
+                }
+            ],
+            "email_templates": [
+                {
+                    "embeddable": true,
+                    "href": "https://sateno.bg/wp-json/wc/v3/orders/28974/actions/email_templates"
+                }
+            ]
+        }
+    }
+]

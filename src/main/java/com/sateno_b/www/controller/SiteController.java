@@ -52,6 +52,7 @@ public class SiteController {
             siteEntity.setConsumerKey(siteDto.getConsumerKey());
             siteEntity.setConsumerSecret(siteDto.getConsumerSecret());
             siteEntity.setActive(siteDto.isActive());
+            siteEntity.setOrderCreateApiKey(siteDto.getOrderCreateApiKey());
 
             // ВАЖНО: Сетваме валутата само ако е изпратена
             if (siteDto.getCurrency() != null && siteDto.getCurrency().getId() != null) {

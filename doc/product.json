@@ -1,0 +1,671 @@
+//https://sateno.bg/wp-json/wc/v3/orders?per_page=1&orderby=id&order=desc
+[
+  {
+    "id": 17270,
+    "name": "\"Жълта Загадка\"   – 3 части",
+    "slug": "%d1%81%d0%bf%d0%b0%d0%bb%d0%b5%d0%bd-%d0%ba%d0%be%d0%bc%d0%bf%d0%bb%d0%b5%d0%ba%d1%82-%d0%bf%d0%b0%d0%bc%d1%83%d0%ba-%d1%80%d0%b0%d0%bd%d1%84%d0%be%d1%80%d1%81-3-%d1%87%d0%b0%d1%81%d1%82-22",
+    "permalink": "https://sateno.bg/?post_type=product&p=17270",
+    "date_created": "2024-11-14T16:01:20",
+    "date_created_gmt": "2024-11-14T14:01:20",
+    "date_modified": "2026-01-09T16:54:42",
+    "date_modified_gmt": "2026-01-09T14:54:42",
+    "type": "simple",
+    "status": "draft",
+    "featured": false,
+    "catalog_visibility": "visible",
+    "description": "<h2><strong>❗</strong><strong>ЗНАЕТЕ ЛИ, ЧЕ ПРЕКАРВАТЕ 30 ГОДИНИ ОТ ЖИВОТА СИ В СЪН?</strong><strong>❗</strong></h2>\n<p>Да, буквално една трета от живота ви преминава под завивките. И сега си задайте въпроса:<br />\nЗаслужавате ли да прекарате тези 30 години в евтина, запарваща и вредна материя?</p>\n<p>Истината е ясна:<br />\nСпокойният сън = повече енергия, по-добро настроение, здрава имунна система и ясна мисъл.<br />\nХората, които спят добре, постигат повече, мислят по-ясно и са по-здрави – както физически, така и психически.</p>\n<p>&nbsp;</p>\n<p><strong>Предимства &amp; Решени проблеми:</strong></p>\n<p>⛔ Край на изпотяването през нощта<br />\n⛔ Край на запарванията<br />\n⛔ Край на пързалящите се чаршафи<br />\n⛔ Край на чаршафите, събрани на топка в средата на леглото</p>\n<p>✅ Нашите комплекти са изработени от 100% сертифицирана памучна материя – дишаща, мека и устойчива.<br />\n✅ Без токсични бои. Без синтетика. Само чистота, комфорт и здрав сън.<br />\n✅ Гаранция за произход и качество – 100% сигурност за вас и вашето семейство.</p>\n<p>&nbsp;</p>\n<p><strong>Грижа и поддръжка:</strong></p>\n<p><strong>Памукът е изключително лесен за поддръжка – забравете за ръчно пране и безкрайно гладене. Просто го поставете в пералнята на 30–40°C (препоръчително 30°C за по-дълга издръжливост). За най-добра хигиена – изпирайте преди първа употреба.</strong></p>\n<p><strong>– Пране: автоматично, до 40°C (свиваемост 1–2%)<br />\n– Без избелване: не използвайте химически избелители<br />\n– Гладене: до 130°C<br />\n– Не смесвайте с други текстилни изделия при пране</strong></p>\n<p><strong>Създайте си спалня, в която с удоволствие ще се връщате всяка вечер. Изберете естествена мекота и стил, който говори вместо вас – поръчайте сега и се насладете на сън, който заслужавате! </strong></p>\n",
+    "short_description": "<p>Ползи</p>\n<ul>\n<li>Позволява на тялото ви да диша през нощта.</li>\n<li>Памукът е естествен, което означава, че прави спалното бельо дишащо.</li>\n<li>Вече няма да се събуждате от нужда от свеж въздух, тъй като ще имате постоянен достъп до него.</li>\n<li>Проучванията показват, че всеки човек се поти малко всяка вечер.</li>\n<li>За щастие, памукът абсорбира топлината, оставяйки ви сухи и свежи.</li>\n<li>Работи по обратния начин през зимата, когато памукът задържа топлината и ви затопля.</li>\n</ul>\n<p>Грижа</p>\n<ul>\n<li>Колкото и сложен да изглежда този материал, памукът е изключително лесен за грижа.</li>\n<li>Забравете за ръчното пране и безкрайното гладене.</li>\n<li>Просто влиза в пералнята на 30 градуса, без да се смесва с други текстилни изделия</li>\n</ul>\n<p><strong>Технически детайли:</strong></p>\n<p>– Материал: 100% памук ранфорс<br />\n– Плик за завивка:  1 бр.  160×220 см<br />\n– Долен чаршаф: по избор<br />\n– Калъфки: 1 бр.  50×70 см</p>\n",
+    "sku": "a1000",
+    "price": "0",
+    "regular_price": "0",
+    "sale_price": "",
+    "date_on_sale_from": null,
+    "date_on_sale_from_gmt": null,
+    "date_on_sale_to": null,
+    "date_on_sale_to_gmt": null,
+    "on_sale": false,
+    "purchasable": true,
+    "total_sales": 6,
+    "virtual": false,
+    "downloadable": false,
+    "downloads": [],
+    "download_limit": 0,
+    "download_expiry": 0,
+    "external_url": "",
+    "button_text": "",
+    "tax_status": "taxable",
+    "tax_class": "",
+    "manage_stock": true,
+    "stock_quantity": 0,
+    "backorders": "no",
+    "backorders_allowed": false,
+    "backordered": false,
+    "low_stock_amount": null,
+    "sold_individually": false,
+    "weight": "2",
+    "dimensions": {
+      "length": "",
+      "width": "",
+      "height": ""
+    },
+    "shipping_required": true,
+    "shipping_taxable": true,
+    "shipping_class": "",
+    "shipping_class_id": 0,
+    "reviews_allowed": false,
+    "average_rating": "0.00",
+    "rating_count": 0,
+    "upsell_ids": [],
+    "cross_sell_ids": [],
+    "parent_id": 0,
+    "purchase_note": "",
+    "categories": [
+      {
+        "id": 136,
+        "name": "Единично спално бельо",
+        "slug": "%d0%b5%d0%b4%d0%b8%d0%bd%d0%b8%d1%87%d0%bd%d0%be-%d1%81%d0%bf%d0%b0%d0%bb%d0%bd%d0%be-%d0%b1%d0%b5%d0%bb%d1%8c%d0%be"
+      },
+      {
+        "id": 133,
+        "name": "Памук Ранфорс 100%",
+        "slug": "%d0%bf%d0%b0%d0%bc%d1%83%d0%ba-%d1%80%d0%b0%d0%bd%d1%84%d0%be%d1%80%d1%81-100"
+      },
+      {
+        "id": 83,
+        "name": "Промоции",
+        "slug": "%d0%bf%d1%80%d0%be%d0%bc%d0%be%d1%86%d0%b8%d0%b8"
+      },
+      {
+        "id": 32,
+        "name": "Спално бельо",
+        "slug": "%d1%81%d0%bf%d0%b0%d0%bb%d0%bd%d0%be-%d0%b1%d0%b5%d0%bb%d1%8c%d0%be"
+      }
+    ],
+    "brands": [
+      {
+        "id": 163,
+        "name": "Musa – 3",
+        "slug": "musa-3"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 22231,
+        "date_created": "2025-08-01T18:23:57",
+        "date_created_gmt": "2025-08-01T13:23:57",
+        "date_modified": "2025-08-01T18:23:57",
+        "date_modified_gmt": "2025-08-01T13:23:57",
+        "src": "https://sateno.bg/wp-content/uploads/2024/11/ChatGPT-Image-Aug-1-2025-11_47_36-AM.png",
+        "name": "ChatGPT Image Aug 1, 2025, 11_47_36 AM",
+        "alt": ""
+      },
+      {
+        "id": 18878,
+        "date_created": "2025-01-21T19:06:49",
+        "date_created_gmt": "2025-01-21T14:06:49",
+        "date_modified": "2025-01-21T19:06:49",
+        "date_modified_gmt": "2025-01-21T14:06:49",
+        "src": "https://sateno.bg/wp-content/uploads/2024/12/IMG_0018-1-scaled.jpg",
+        "name": "IMG_0018",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Brand",
+        "slug": "Brand",
+        "position": 0,
+        "visible": true,
+        "variation": false,
+        "options": [
+          "Musa – 3"
+        ]
+      }
+    ],
+    "default_attributes": [],
+    "variations": [],
+    "grouped_products": [],
+    "menu_order": 0,
+    "price_html": "<span class=\"woocommerce-Price-amount amount\"><bdi>0.00&nbsp;<span class=\"woocommerce-Price-currencySymbol\">&euro;</span></bdi></span>",
+    "related_ids": [
+      21144,
+      22877,
+      23385,
+      22937,
+      23340
+    ],
+    "meta_data": [
+      {
+        "id": 25596,
+        "key": "_wp_page_template",
+        "value": "default"
+      },
+      {
+        "id": 25597,
+        "key": "woodmart_sguide_select",
+        "value": "none"
+      },
+      {
+        "id": 25598,
+        "key": "woodmart_price_unit_of_measure",
+        "value": ""
+      },
+      {
+        "id": 25599,
+        "key": "_rank_math_gtin_code",
+        "value": ""
+      },
+      {
+        "id": 25615,
+        "key": "woodmart_total_stock_quantity",
+        "value": ""
+      },
+      {
+        "id": 25616,
+        "key": "woodmart_wc_video_gallery",
+        "value": {
+          "22231": {
+            "video_type": "mp4",
+            "upload_video_id": "",
+            "upload_video_url": "",
+            "youtube_url": "",
+            "vimeo_url": "",
+            "autoplay": "0",
+            "video_size": "contain",
+            "video_control": "theme",
+            "hide_gallery_img": "0",
+            "hide_information": "0",
+            "audio_status": "unmute"
+          },
+          "18878": {
+            "video_type": "mp4",
+            "upload_video_id": "19111",
+            "upload_video_url": "http://sateno.bg/wp-content/uploads/2025/01/0202-21-2.mp4",
+            "youtube_url": "",
+            "vimeo_url": "",
+            "autoplay": "0",
+            "video_size": "contain",
+            "video_control": "theme",
+            "hide_gallery_img": "0",
+            "hide_information": "0",
+            "audio_status": "unmute"
+          }
+        }
+      },
+      {
+        "id": 25618,
+        "key": "_wc_facebook_sync_enabled",
+        "value": "yes"
+      },
+      {
+        "id": 25619,
+        "key": "fb_visibility",
+        "value": "yes"
+      },
+      {
+        "id": 25620,
+        "key": "fb_product_description",
+        "value": ""
+      },
+      {
+        "id": 25621,
+        "key": "_wc_facebook_product_image_source",
+        "value": "product"
+      },
+      {
+        "id": 25622,
+        "key": "_wc_facebook_commerce_enabled",
+        "value": "no"
+      },
+      {
+        "id": 25627,
+        "key": "_product_360_image_gallery",
+        "value": ""
+      },
+      {
+        "id": 25628,
+        "key": "rank_math_internal_links_processed",
+        "value": "1"
+      },
+      {
+        "id": 25629,
+        "key": "_woodmart_whb_header",
+        "value": "none"
+      },
+      {
+        "id": 25630,
+        "key": "_woodmart_main_layout",
+        "value": "default"
+      },
+      {
+        "id": 25631,
+        "key": "_woodmart_sidebar_width",
+        "value": "default"
+      },
+      {
+        "id": 25632,
+        "key": "_woodmart_custom_sidebar",
+        "value": "none"
+      },
+      {
+        "id": 25633,
+        "key": "_woodmart_new_label",
+        "value": "on"
+      },
+      {
+        "id": 25634,
+        "key": "_woodmart_new_label_date",
+        "value": ""
+      },
+      {
+        "id": 25635,
+        "key": "_woodmart_swatches_attribute",
+        "value": ""
+      },
+      {
+        "id": 25636,
+        "key": "_woodmart_related_off",
+        "value": ""
+      },
+      {
+        "id": 25637,
+        "key": "_woodmart_exclude_show_single_variation",
+        "value": ""
+      },
+      {
+        "id": 25638,
+        "key": "_woodmart_product_video",
+        "value": ""
+      },
+      {
+        "id": 25639,
+        "key": "_woodmart_product_hashtag",
+        "value": ""
+      },
+      {
+        "id": 25640,
+        "key": "_woodmart_single_product_style",
+        "value": "inherit"
+      },
+      {
+        "id": 25641,
+        "key": "_woodmart_thums_position",
+        "value": "inherit"
+      },
+      {
+        "id": 25642,
+        "key": "_woodmart_extra_content",
+        "value": ""
+      },
+      {
+        "id": 25643,
+        "key": "_woodmart_extra_position",
+        "value": "after"
+      },
+      {
+        "id": 25644,
+        "key": "_woodmart_product_design",
+        "value": "inherit"
+      },
+      {
+        "id": 25645,
+        "key": "_woodmart_product-background",
+        "value": ""
+      },
+      {
+        "id": 25646,
+        "key": "_woodmart_hide_tabs_titles",
+        "value": ""
+      },
+      {
+        "id": 25647,
+        "key": "_woodmart_product_custom_tab_title",
+        "value": ""
+      },
+      {
+        "id": 25648,
+        "key": "_woodmart_product_custom_tab_content_type",
+        "value": "text"
+      },
+      {
+        "id": 25649,
+        "key": "_woodmart_product_custom_tab_content",
+        "value": ""
+      },
+      {
+        "id": 25650,
+        "key": "_woodmart_product_custom_tab_html_block",
+        "value": ""
+      },
+      {
+        "id": 25651,
+        "key": "_woodmart_product_custom_tab_title_2",
+        "value": ""
+      },
+      {
+        "id": 25652,
+        "key": "_woodmart_product_custom_tab_content_type_2",
+        "value": "text"
+      },
+      {
+        "id": 25653,
+        "key": "_woodmart_product_custom_tab_content_2",
+        "value": ""
+      },
+      {
+        "id": 25654,
+        "key": "_woodmart_product_custom_tab_html_block_2",
+        "value": ""
+      },
+      {
+        "id": 90326,
+        "key": "rank_math_analytic_object_id",
+        "value": "132"
+      },
+      {
+        "id": 90327,
+        "key": "_rightpress_prices",
+        "value": "{\"a9544156\":{\"p\":{\"7be37f84\":{\"p\":\"67\",\"t\":1755519918}}}}"
+      },
+      {
+        "id": 92809,
+        "key": "fb_product_item_id",
+        "value": "8810849935670838"
+      },
+      {
+        "id": 124775,
+        "key": "fb_rich_text_description",
+        "value": ""
+      },
+      {
+        "id": 124776,
+        "key": "fb_product_video",
+        "value": []
+      },
+      {
+        "id": 124777,
+        "key": "fb_brand",
+        "value": ""
+      },
+      {
+        "id": 124778,
+        "key": "fb_mpn",
+        "value": ""
+      },
+      {
+        "id": 124779,
+        "key": "fb_size",
+        "value": ""
+      },
+      {
+        "id": 124780,
+        "key": "fb_color",
+        "value": ""
+      },
+      {
+        "id": 124781,
+        "key": "fb_material",
+        "value": ""
+      },
+      {
+        "id": 124782,
+        "key": "fb_pattern",
+        "value": ""
+      },
+      {
+        "id": 124783,
+        "key": "fb_age_group",
+        "value": ""
+      },
+      {
+        "id": 124784,
+        "key": "fb_gender",
+        "value": ""
+      },
+      {
+        "id": 124785,
+        "key": "fb_product_condition",
+        "value": ""
+      },
+      {
+        "id": 124786,
+        "key": "_woodmart_product_custom_tab_priority",
+        "value": ""
+      },
+      {
+        "id": 124787,
+        "key": "_woodmart_product_custom_tab_priority_2",
+        "value": ""
+      },
+      {
+        "id": 124788,
+        "key": "_woodmart_product_custom_tab_title_3",
+        "value": ""
+      },
+      {
+        "id": 124789,
+        "key": "_woodmart_product_custom_tab_priority_3",
+        "value": ""
+      },
+      {
+        "id": 124790,
+        "key": "_woodmart_product_custom_tab_content_type_3",
+        "value": "text"
+      },
+      {
+        "id": 124791,
+        "key": "_woodmart_product_custom_tab_content_3",
+        "value": ""
+      },
+      {
+        "id": 124792,
+        "key": "_woodmart_product_custom_tab_html_block_3",
+        "value": ""
+      },
+      {
+        "id": 124793,
+        "key": "_woodmart_product_custom_tab_title_4",
+        "value": ""
+      },
+      {
+        "id": 124794,
+        "key": "_woodmart_product_custom_tab_priority_4",
+        "value": ""
+      },
+      {
+        "id": 124795,
+        "key": "_woodmart_product_custom_tab_content_type_4",
+        "value": "text"
+      },
+      {
+        "id": 124796,
+        "key": "_woodmart_product_custom_tab_content_4",
+        "value": ""
+      },
+      {
+        "id": 124797,
+        "key": "_woodmart_product_custom_tab_html_block_4",
+        "value": ""
+      },
+      {
+        "id": 124798,
+        "key": "_woodmart_product_custom_tab_title_5",
+        "value": ""
+      },
+      {
+        "id": 124799,
+        "key": "_woodmart_product_custom_tab_priority_5",
+        "value": ""
+      },
+      {
+        "id": 124800,
+        "key": "_woodmart_product_custom_tab_content_type_5",
+        "value": "text"
+      },
+      {
+        "id": 124801,
+        "key": "_woodmart_product_custom_tab_content_5",
+        "value": ""
+      },
+      {
+        "id": 124802,
+        "key": "_woodmart_product_custom_tab_html_block_5",
+        "value": ""
+      },
+      {
+        "id": 170012,
+        "key": "_elementor_page_assets",
+        "value": []
+      },
+      {
+        "id": 234462,
+        "key": "_product_addons",
+        "value": [
+          {
+            "name": "Моля, изберете размер на долния чаршаф",
+            "title_format": "label",
+            "description_enable": 0,
+            "description": "",
+            "placeholder_enable": 0,
+            "placeholder": "",
+            "type": "multiple_choice",
+            "display": "radiobutton",
+            "position": 0,
+            "required": 1,
+            "restrictions": 0,
+            "restrictions_type": "any_text",
+            "adjust_price": 0,
+            "price_type": "flat_fee",
+            "price": "",
+            "id": "1761147839",
+            "min": 0,
+            "max": 0,
+            "default": "",
+            "options": [
+              {
+                "label": "Без ластик 180 х 240 см",
+                "price": "",
+                "image": "",
+                "price_type": "flat_fee",
+                "visibility": 1
+              },
+              {
+                "label": "С ластик 120 х 200 +20см",
+                "price": "5.10",
+                "image": "",
+                "price_type": "flat_fee",
+                "visibility": 1
+              },
+              {
+                "label": "С ластик 100 х 200 +20см",
+                "price": "5.10",
+                "image": "",
+                "price_type": "flat_fee",
+                "visibility": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 234463,
+        "key": "_product_addons_exclude_global",
+        "value": "0"
+      },
+      {
+        "id": 234464,
+        "key": "_delivery_price",
+        "value": ""
+      },
+      {
+        "id": 234465,
+        "key": "_real_stock_quantity",
+        "value": "0"
+      },
+      {
+        "id": 234466,
+        "key": "_tufan_stock_quantity",
+        "value": "0"
+      },
+      {
+        "id": 294424,
+        "key": "rank_math_seo_score",
+        "value": "23"
+      }
+    ],
+    "stock_status": "outofstock",
+    "has_options": true,
+    "post_password": "",
+    "global_unique_id": "",
+    "exclude_global_add_ons": false,
+    "addons": [
+      {
+        "name": "Моля, изберете размер на долния чаршаф",
+        "type": "multiple_choice",
+        "position": 0,
+        "required": true,
+        "title_format": "label",
+        "default": "",
+        "description_enable": false,
+        "description": "",
+        "placeholder_enable": false,
+        "placeholder": "",
+        "display": "radiobutton",
+        "restrictions_type": "any_text",
+        "adjust_price": false,
+        "price": "",
+        "price_type": "flat_fee",
+        "restrictions": false,
+        "min": "0",
+        "max": "0",
+        "options": [
+          {
+            "label": "Без ластик 180 х 240 см",
+            "price": "",
+            "price_type": "flat_fee",
+            "image": 0,
+            "visibility": true
+          },
+          {
+            "label": "С ластик 120 х 200 +20см",
+            "price": "5.10",
+            "price_type": "flat_fee",
+            "image": 0,
+            "visibility": true
+          },
+          {
+            "label": "С ластик 100 х 200 +20см",
+            "price": "5.10",
+            "price_type": "flat_fee",
+            "image": 0,
+            "visibility": true
+          }
+        ],
+        "id": 1761147839
+      }
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://sateno.bg/wp-json/wc/v3/products/17270",
+          "targetHints": {
+            "allow": [
+              "GET",
+              "POST",
+              "PUT",
+              "PATCH",
+              "DELETE"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://sateno.bg/wp-json/wc/v3/products"
+        }
+      ]
+    }
+  }
+]

@@ -16,4 +16,5 @@ public class SiteDto {
     private CurrencyDto currency;
     private LanguageDto language;
     private boolean active = false;
+    private String orderCreateApiKey;
 }
