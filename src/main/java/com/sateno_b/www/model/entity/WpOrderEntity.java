@@ -54,7 +54,7 @@ public class WpOrderEntity extends BaseEntity {
     @Column
     private String customerIp;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String customerAgent;
 
     @JdbcTypeCode(SqlTypes.JSON)

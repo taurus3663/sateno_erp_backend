@@ -4,11 +4,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sateno_b.www.model.dto.WoOrderDto;
 import com.sateno_b.www.model.dto.WoPaoIdValueValueDto;
+import com.sateno_b.www.model.entity.CustomerEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.data.PaoIdValue;
 import com.sateno_b.www.model.entity.data.PaoIdValueValue;
+import com.sateno_b.www.model.repository.CustomerRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import com.sateno_b.www.shared.AuthTool;
@@ -32,6 +34,7 @@ public class WpOrderService {
     private final ObjectMapper objectMapper;
 
     private static final String ORDER_URL = "/wp-json/wc/v3/orders/";
+    private final CustomerRepository customerRepository;
 
     @Transactional
     public void syncOrderToDB(Long siteId){
@@ -43,7 +46,27 @@ public class WpOrderService {
         List<WoOrderDto> all = fetchAllOrders(site, auth);
 
         for (WoOrderDto dto : all) {
+
+            CustomerEntity customer = customerRepository.findByPhone(dto.getBilling().getPhone())
+                    .orElseGet(() -> {
+                        CustomerEntity customerEntity = new CustomerEntity();
+                        customerEntity.setPhone(dto.getBilling().getPhone());
+                        customerEntity.setFirstName(dto.getBilling().getFirstName());
+                        customerEntity.setLastName(dto.getBilling().getLastName());
+                        customerEntity.setEmail(dto.getBilling().getEmail());
+                        customerEntity.setAddress(dto.getBilling().getAddress1().isEmpty()
+                                ? dto.getBilling().getAddress2()
+                                : dto.getBilling().getAddress1());
+                        customerEntity.setEik(dto.getBilling().getCompanyName());
+                      return customerRepository.save(customerEntity);
+                    });
+
+            SiteEntity siteEntity = siteRepository.getReferenceById(siteId);
+
+
             WpOrderEntity wpOrderEntity = new WpOrderEntity();
+            wpOrderEntity.setCustomer(customer);
+            wpOrderEntity.setSite(siteEntity);
             wpOrderEntity.setWpOrderId(dto.getId());
             wpOrderEntity.setOrderLine(dto.getLineItems()
                     .stream()
