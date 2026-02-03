@@ -132,6 +132,93 @@ public class WpOrderService {
         }
     }
 
+    @Transactional
+    public void newOrderFromSite(WoOrderDto dto, Long siteId) {
+
+        CustomerEntity customer = customerRepository.findByPhone(dto.getBilling().getPhone())
+                .orElseGet(() -> {
+                    CustomerEntity customerEntity = new CustomerEntity();
+                    customerEntity.setPhone(dto.getBilling().getPhone());
+                    customerEntity.setFirstName(dto.getBilling().getFirstName());
+                    customerEntity.setLastName(dto.getBilling().getLastName());
+                    customerEntity.setEmail(dto.getBilling().getEmail());
+                    customerEntity.setAddress(dto.getBilling().getAddress1().isEmpty()
+                            ? dto.getBilling().getAddress2()
+                            : dto.getBilling().getAddress1());
+                    customerEntity.setEik(dto.getBilling().getCompanyName());
+                    return customerRepository.save(customerEntity);
+                });
+
+        SiteEntity siteEntity = siteRepository.getReferenceById(siteId);
+
+
+        WpOrderEntity wpOrderEntity = new WpOrderEntity();
+        wpOrderEntity.setCustomer(customer);
+        wpOrderEntity.setSite(siteEntity);
+        wpOrderEntity.setWpOrderId(dto.getId());
+        wpOrderEntity.setOrderLine(dto.getLineItems()
+                .stream()
+                .map(woOrderLineItemDto -> {
+                    OrderLineItem orderLineItem = new OrderLineItem();
+                    orderLineItem.setSku(woOrderLineItemDto.getSku());
+                    orderLineItem.setQuantity(woOrderLineItemDto.getQuantity());
+                    orderLineItem.setPrice(woOrderLineItemDto.getSubtotal());
+                    orderLineItem.setProductId(woOrderLineItemDto.getProductId());
+                    orderLineItem.setProductName(woOrderLineItemDto.getProductName());
+                    orderLineItem.setTotalPrice(woOrderLineItemDto.getTotal());
+                    orderLineItem.setPaoIdValue(woOrderLineItemDto.getPaoIdValue()
+                            .stream()
+                            .filter(node -> "_pao_ids".equals(node.getKey()))
+                            .map(woPaoIdValueDto -> {
+                                PaoIdValue paoIdValue = new PaoIdValue();
+                                paoIdValue.setId(woPaoIdValueDto.getId());
+                                paoIdValue.setKey(woPaoIdValueDto.getKey());
+
+                                List<WoPaoIdValueValueDto> valueDtos = objectMapper.convertValue(
+                                        woPaoIdValueDto.getValue(),
+                                        new TypeReference<List<WoPaoIdValueValueDto>>() {}
+                                );
+
+                                paoIdValue.setValue(valueDtos.stream().map(vDto -> {
+                                    PaoIdValueValue val = new PaoIdValueValue();
+                                    val.setId(vDto.getId());
+                                    val.setKey(vDto.getKey());
+                                    val.setRawValue(vDto.getRawValue());
+                                    val.setRawPrice(vDto.getRawPrice());
+                                    val.setValue(vDto.getValue());
+                                    val.setPriceType(vDto.getPriceType());
+                                    return val;
+                                }).toList());
+
+//                                    paoIdValue.setValue(woPaoIdValueDto.getValue()
+//                                            .stream()
+//                                            .map(woPaoIdValueValueDto -> {
+//                                                PaoIdValueValue  paoIdValueValue = new PaoIdValueValue();
+//                                                paoIdValueValue.setId(woPaoIdValueValueDto.getId());
+//                                                paoIdValueValue.setKey(woPaoIdValueValueDto.getKey());
+//                                                paoIdValueValue.setRawValue(woPaoIdValueValueDto.getRawValue());
+//                                                paoIdValueValue.setRawPrice(woPaoIdValueValueDto.getRawPrice());
+//                                                paoIdValueValue.setValue(woPaoIdValueValueDto.getValue());
+//                                                return paoIdValueValue;
+//                                            }).toList());
+                                return paoIdValue;
+                            }).toList());
+                    orderLineItem.setProductName(woOrderLineItemDto.getProductName());
+                    return orderLineItem;
+                }).toList());
+        wpOrderEntity.setBilling(dto.getBilling());
+        wpOrderEntity.setShipping(dto.getShipping());
+        wpOrderEntity.setCurrency(dto.getCurrency());
+        wpOrderEntity.setCurrency_symbol(dto.getCurrencySymbol());
+        wpOrderEntity.setStatus(dto.getStatus());
+        wpOrderEntity.setCustomerIp(dto.getCustomerIpAddress());
+        wpOrderEntity.setCustomerAgent(dto.getCustomerUserAgent());
+        wpOrderEntity.setTotalPrice(new BigDecimal(dto.getTotal()));
+        wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
+        wpOrderEntity.setTransactionId(dto.getTransactionId());
+        wpOrderRepository.save(wpOrderEntity);
+    }
+
     private List<WoOrderDto> fetchAllOrders(SiteEntity site, String auth){
         List<WoOrderDto> allOrders = new ArrayList<>();
 
@@ -157,4 +244,5 @@ public class WpOrderService {
 
         return allOrders;
     }
+
 }

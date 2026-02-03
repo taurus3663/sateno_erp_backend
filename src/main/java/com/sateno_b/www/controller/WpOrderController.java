@@ -1,24 +1,33 @@
 package com.sateno_b.www.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sateno_b.www.model.dto.WoOrderDto;
 import com.sateno_b.www.model.dto.WpOrderDto;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.repository.WpOrderRepository;
+import com.sateno_b.www.service.WebHookService;
 import com.sateno_b.www.service.WpOrderService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/wp_order")
 @RequiredArgsConstructor
+@Slf4j
 public class WpOrderController {
 
     private final WpOrderRepository wpOrderRepository;
     private final ModelMapper modelMapper;
     private final WpOrderService wpOrderService;
+    private final WebHookService webHookService;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable) {
@@ -31,5 +40,46 @@ public class WpOrderController {
     @PostMapping("/sync/{siteId}")
     public void syncWpOrder(@PathVariable Long siteId){
             wpOrderService.syncOrderToDB(siteId);
+    }
+
+    @PostMapping("/save")
+    public ResponseEntity<WpOrderDto> saveWpOrder(@RequestBody WpOrderDto wpOrderDto){
+        Optional<WpOrderEntity> byId = wpOrderRepository.findById(wpOrderDto.getId());
+        if(byId.isPresent()){
+            byId.get().setStatus(wpOrderDto.getStatus());
+            wpOrderRepository.save(byId.get());
+            return ResponseEntity.ok(wpOrderDto);
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @PostMapping("/create")
+    public void createWpOrder(@RequestHeader("x-wc-webhook-signature") String signature,
+                              @RequestBody String rawPayload){
+
+            Long siteId = webHookService.validateAndGetSiteId(rawPayload, signature);
+            if(siteId != null){
+
+                try {
+                    // 2. Ръчно десериализираме JSON-а към DTO
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    // Използваме ObjectMapper, защото rawPayload ни трябваше като String за проверката
+                    WoOrderDto dto = objectMapper.readValue(rawPayload, WoOrderDto.class);
+
+                    // 3. Извикваме сървиса за запис в базата
+                    wpOrderService.newOrderFromSite(dto, siteId);
+
+                    log.info("Успешно обработена поръчка #{} от сайт ID: {}", dto.getId(), siteId);
+
+
+                } catch (JsonProcessingException e) {
+                    log.error("Грешка при парсване на JSON от WooCommerce: {}", e.getMessage());
+
+                } catch (Exception e) {
+                    log.error("Грешка при обработка на поръчката: {}", e.getMessage());
+
+                }
+            }
+
     }
 }
