@@ -228,7 +228,7 @@ public class WpOrderService {
         do {
 
             var response = restClient.get()
-                    .uri(site.getUrl() + ORDER_URL + "?per_page=1&page=" + currentPage + "&orderby=id&order=desc")
+                    .uri(site.getUrl() + ORDER_URL + "?per_page=100&page=" + currentPage + "&orderby=id&order=desc")
                     .header("Authorization", "Basic " + auth)
                     .retrieve()
                     .toEntity(new ParameterizedTypeReference<List<WoOrderDto>>() {});

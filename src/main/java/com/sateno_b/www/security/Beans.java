@@ -3,6 +3,7 @@ package com.sateno_b.www.security;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,6 +20,10 @@ import java.util.List;
 @Configuration
 @RequiredArgsConstructor
 public class Beans {
+
+    // Взима списъка от пропъртитата. Ако няма нищо, по подразбиране е localhost
+    @Value("${app.cors.allowed-origins:http://localhost:4200}")
+    private List<String> allowedOrigins;
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
@@ -44,12 +49,13 @@ public class Beans {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of(
-                "http://localhost:4200",   // Angular dev
-                "http://192.168.31.232",  // ако браузър е директно на IP
-                "http://192.168.31.232:8080",  // ако браузър е директно на IP
-                "http://192.168.31.232:4200"
-        ));
+//        config.setAllowedOrigins(List.of(
+//                "http://localhost:4200",   // Angular dev
+//                "http://192.168.31.232",  // ако браузър е директно на IP
+//                "http://192.168.31.232:8080",  // ако браузър е директно на IP
+//                "http://192.168.31.232:4200"
+//        ));
+        config.setAllowedOrigins(allowedOrigins);
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
