@@ -33,7 +33,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/erp/auth/login",
                                 "/error",
-                                "/media/**"
+                                "/media/**",
+                                "/erp/wp_order/create"
                         ).permitAll()
                         .anyRequest().authenticated());
 
