@@ -9,12 +9,14 @@ public enum OrderStatus {
     PENDING("pending"),
     PROCESSING("processing"),
     ON_HOLD("on-hold"),
-    COMPLETED("completed"),
+    SENT("sent"),
     CANCELLED("cancelled"),
     REFUNDED("refunded"),
     FAILED("failed"),
     TRASH("trash"),
-    UNKNOWN("unknown");
+    UNKNOWN("unknown"),
+    ABANDONED("abandoned"),
+    COMPLETED("completed");
 
     private final String value;
 
