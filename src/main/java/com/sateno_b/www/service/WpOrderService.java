@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,7 +47,6 @@ public class WpOrderService {
         List<WoOrderDto> all = fetchAllOrders(site, auth);
 
         for (WoOrderDto dto : all) {
-
             CustomerEntity customer = customerRepository.findByPhone(dto.getBilling().getPhone())
                     .orElseGet(() -> {
                         CustomerEntity customerEntity = new CustomerEntity();
@@ -128,6 +128,7 @@ public class WpOrderService {
             wpOrderEntity.setTotalPrice(new BigDecimal(dto.getTotal()));
             wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
             wpOrderEntity.setTransactionId(dto.getTransactionId());
+            wpOrderEntity.setWpOrderTime(dto.getDateCreated().toInstant(java.time.ZoneOffset.UTC));
             wpOrderRepository.save(wpOrderEntity);
         }
     }
@@ -216,6 +217,7 @@ public class WpOrderService {
         wpOrderEntity.setTotalPrice(new BigDecimal(dto.getTotal()));
         wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
         wpOrderEntity.setTransactionId(dto.getTransactionId());
+        wpOrderEntity.setWpOrderTime(dto.getDateCreated().toInstant(ZoneOffset.UTC));
         wpOrderRepository.save(wpOrderEntity);
     }
 

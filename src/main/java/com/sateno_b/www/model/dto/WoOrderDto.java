@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
@@ -7,6 +8,8 @@ import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
 import lombok.Data;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -47,4 +50,7 @@ public class WoOrderDto {
 
     @JsonProperty("line_items")
     private List<WoOrderLineItemDto> lineItems;
+
+    @JsonProperty("date_created")
+    private LocalDateTime dateCreated;
 }

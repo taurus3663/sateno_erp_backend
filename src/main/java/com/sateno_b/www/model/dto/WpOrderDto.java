@@ -30,5 +30,6 @@ public class WpOrderDto {
     private String currencySymbol;
     private Instant createTime;
     private Instant updateTime;
+    private Instant wpOrderTime;
 
 }

@@ -10,6 +10,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
@@ -30,6 +31,9 @@ public class WpOrderEntity extends BaseEntity {
 
     @Enumerated(EnumType.ORDINAL)
     private OrderStatus status;
+
+    @Column
+    private Instant wpOrderTime;
 
     @ManyToOne(fetch = FetchType.LAZY)
     private CustomerEntity customer;

@@ -28,6 +28,7 @@ public class WpOrderController {
     private final ModelMapper modelMapper;
     private final WpOrderService wpOrderService;
     private final WebHookService webHookService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status) {
@@ -35,7 +36,8 @@ public class WpOrderController {
         Pageable sortedByIdDesc = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
-                Sort.by("id").descending()
+                Sort.by("wpOrderTime").descending() // Първо по най-нова дата
+                        .and(Sort.by("id").descending()) // После по ID, ако датите са еднакви
         );
 
 
@@ -78,7 +80,7 @@ public class WpOrderController {
 
                 try {
                     // 2. Ръчно десериализираме JSON-а към DTO
-                    ObjectMapper objectMapper = new ObjectMapper();
+//                    ObjectMapper objectMapper = new ObjectMapper();
                     // Използваме ObjectMapper, защото rawPayload ни трябваше като String за проверката
                     WoOrderDto dto = objectMapper.readValue(rawPayload, WoOrderDto.class);
 

@@ -12,6 +12,8 @@ public enum PaymentMethod {
     STRIPE("stripe", "Stripe"),
     CARD("card", "Карта"),
     COD("cod", "Наложен платеж"),
+    STRIPE_CC("stripe_cc", "Карта (Stripe)"),
+    STRIPE_APPLEPAY("stripe_applepay", "Apple Pay"),
     UNKNOWN("unknown", "Неизвестен метод"); // Предпазна мрежа
 
     private final String code;
@@ -35,6 +37,7 @@ public enum PaymentMethod {
                 return method;
             }
         }
+        System.out.println("!!! ВНИМАНИЕ: Непознат метод в JSON-а: [" + value + "]");
         return UNKNOWN; // Вместо да гърми, записва "unknown"
     }
 }

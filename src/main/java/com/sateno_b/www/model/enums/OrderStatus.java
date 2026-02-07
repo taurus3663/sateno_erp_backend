@@ -6,17 +6,12 @@ import lombok.Getter;
 
 @Getter
 public enum OrderStatus {
-    PENDING("pending"),
     PROCESSING("processing"),
-    ON_HOLD("on-hold"),
     SENT("sent"),
     CANCELLED("cancelled"),
-    REFUNDED("refunded"),
-    FAILED("failed"),
-    TRASH("trash"),
-    UNKNOWN("unknown"),
     ABANDONED("abandoned"),
-    COMPLETED("completed");
+    COMPLETED("completed"),
+    APPROVED("approved");
 
     private final String value;
 
@@ -36,6 +31,6 @@ public enum OrderStatus {
                 return b;
             }
         }
-        return UNKNOWN; // Връща UNKNOWN вместо да хвърля Exception
+        return PROCESSING; // Връща UNKNOWN вместо да хвърля Exception
     }
 }
