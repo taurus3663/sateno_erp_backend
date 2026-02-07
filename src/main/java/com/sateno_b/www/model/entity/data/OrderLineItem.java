@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.entity.data;
 
+import com.sateno_b.www.model.dto.WoOrderLineItemImageDto;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -14,4 +15,5 @@ public class OrderLineItem {
     private BigDecimal price;
     private BigDecimal totalPrice;
     private List<PaoIdValue> paoIdValue;
+    private WoOrderLineItemImageDto image;
 }

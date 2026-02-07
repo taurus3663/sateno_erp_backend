@@ -78,6 +78,7 @@ public class WpOrderService {
                         orderLineItem.setProductId(woOrderLineItemDto.getProductId());
                         orderLineItem.setProductName(woOrderLineItemDto.getProductName());
                         orderLineItem.setTotalPrice(woOrderLineItemDto.getTotal());
+                        orderLineItem.setImage(woOrderLineItemDto.getImage());
                         orderLineItem.setPaoIdValue(woOrderLineItemDto.getPaoIdValue()
                                 .stream()
                                 .filter(node -> "_pao_ids".equals(node.getKey()))
@@ -167,6 +168,7 @@ public class WpOrderService {
                     orderLineItem.setProductId(woOrderLineItemDto.getProductId());
                     orderLineItem.setProductName(woOrderLineItemDto.getProductName());
                     orderLineItem.setTotalPrice(woOrderLineItemDto.getTotal());
+                    orderLineItem.setImage(woOrderLineItemDto.getImage());
                     orderLineItem.setPaoIdValue(woOrderLineItemDto.getPaoIdValue()
                             .stream()
                             .filter(node -> "_pao_ids".equals(node.getKey()))
