@@ -5,14 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sateno_b.www.model.dto.WoOrderDto;
 import com.sateno_b.www.model.dto.WpOrderDto;
 import com.sateno_b.www.model.entity.WpOrderEntity;
+import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import com.sateno_b.www.service.WebHookService;
 import com.sateno_b.www.service.WpOrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,8 +30,24 @@ public class WpOrderController {
     private final WebHookService webHookService;
 
     @GetMapping("/list")
-    public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable) {
-        Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findAll(pageable);
+    public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status) {
+
+        Pageable sortedByIdDesc = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by("id").descending()
+        );
+
+
+        // 1. Конфигурираме мачера (как да сравнява)
+//        ExampleMatcher matcher = ExampleMatcher.matching()
+//                .withIgnoreNullValues() // Игнорира полетата, които не са пратени от Angular
+//                .withIgnoreCase()      // Игнорира малки/големи букви
+//                .withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING); // LIKE %value% за текстове
+
+        OrderStatus orderStatus = (status != null) ? OrderStatus.fromValue(status) : null;
+
+        Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findWithFilters(orderStatus, sortedByIdDesc);
         Page<WpOrderDto> wpOrderDtos =wpOrderEntities.map(mapper -> modelMapper.map(mapper, WpOrderDto.class));
 
         return ResponseEntity.ok(wpOrderDtos);
