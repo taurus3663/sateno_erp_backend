@@ -34,5 +34,5 @@ public class WpOrderDto {
 
     private List<OrderLineItemDto> orderLineOtherOrders;
     private Boolean showDuplicateWarning = false;
-
+    private List<Long> ordersToMerge;
 }

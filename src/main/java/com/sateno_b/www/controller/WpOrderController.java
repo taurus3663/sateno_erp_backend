@@ -9,9 +9,13 @@ import com.sateno_b.www.model.dto.WpOrderDto;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.OrderStatus;
+import com.sateno_b.www.model.enums.PaymentMethod;
+import com.sateno_b.www.model.enums.WsAction;
 import com.sateno_b.www.model.repository.WpOrderRepository;
+import com.sateno_b.www.service.NotificationService;
 import com.sateno_b.www.service.WebHookService;
 import com.sateno_b.www.service.WpOrderService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -19,6 +23,7 @@ import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -34,6 +39,7 @@ public class WpOrderController {
     private final WpOrderService wpOrderService;
     private final WebHookService webHookService;
     private final ObjectMapper objectMapper;
+    private final NotificationService notificationService;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status) {
@@ -93,11 +99,52 @@ public class WpOrderController {
     }
 
     @PostMapping("/save")
+    @Transactional
     public ResponseEntity<WpOrderDto> saveWpOrder(@RequestBody WpOrderDto wpOrderDto){
         Optional<WpOrderEntity> byId = wpOrderRepository.findById(wpOrderDto.getId());
         if(byId.isPresent()){
             byId.get().setStatus(wpOrderDto.getStatus());
+
+            if(wpOrderDto.getOrdersToMerge() != null && !wpOrderDto.getOrdersToMerge().isEmpty()) {
+                
+                List<WpOrderEntity> ordersToMerge = wpOrderRepository.findAllById(wpOrderDto.getOrdersToMerge());
+
+                for (WpOrderEntity wpOrderEntity : ordersToMerge) {
+
+                    boolean isPayed = wpOrderEntity.getPaymentMethod() == PaymentMethod.CARD ||
+                            wpOrderEntity.getPaymentMethod() == PaymentMethod.STRIPE ||
+                            wpOrderEntity.getPaymentMethod() == PaymentMethod.STRIPE_APPLEPAY ||
+                            wpOrderEntity.getPaymentMethod() == PaymentMethod.STRIPE_CC;
+
+                    for (OrderLineItem orderLineItem : wpOrderEntity.getOrderLine()) {
+
+                        OrderLineItem newItem = new OrderLineItem();
+                        newItem.setProductName(orderLineItem.getProductName());
+                        newItem.setQuantity(orderLineItem.getQuantity());
+                        newItem.setSku(orderLineItem.getSku());
+                        newItem.setImage(orderLineItem.getImage());
+                        newItem.setPaoIdValue(orderLineItem.getPaoIdValue());
+
+                        if(isPayed){
+                            newItem.setPrice(BigDecimal.valueOf(0));
+                            newItem.setTotalPrice(BigDecimal.valueOf(0));
+                        } else {
+                            newItem.setPrice(orderLineItem.getPrice());
+                            newItem.setTotalPrice(orderLineItem.getTotalPrice());
+
+                            byId.get().setTotalPrice(byId.get().getTotalPrice().add(newItem.getTotalPrice()));
+                        }
+                        wpOrderEntity.setStatus(OrderStatus.JOINT);
+                        wpOrderEntity.setParentId(byId.get().getId());
+                        byId.get().getOrderLine().add(newItem);
+                        wpOrderRepository.save(wpOrderEntity);
+                    }
+                }
+                
+            }
+
             wpOrderRepository.save(byId.get());
+            notificationService.sendUpdate("orders", WsAction.UPDATED);
             return ResponseEntity.ok(wpOrderDto);
         }
         return ResponseEntity.notFound().build();
