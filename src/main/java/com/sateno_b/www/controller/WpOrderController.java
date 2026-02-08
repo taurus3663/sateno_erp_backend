@@ -166,9 +166,9 @@ public class WpOrderController {
                     // 3. Извикваме сървиса за запис в базата
                     wpOrderService.newOrderFromSite(dto, siteId);
 
-                    log.info("Успешно обработена поръчка #{} от сайт ID: {}", dto.getId(), siteId);
+//                    log.info("Успешно обработена поръчка #{} от сайт ID: {}", dto.getId(), siteId);
 
-
+                    notificationService.sendUpdate("orders", WsAction.UPDATED);
                 } catch (JsonProcessingException e) {
                     log.error("Грешка при парсване на JSON от WooCommerce: {}", e.getMessage());
 

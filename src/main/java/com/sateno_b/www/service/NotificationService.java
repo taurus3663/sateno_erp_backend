@@ -11,7 +11,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NotificationService {
 
-    private SimpMessagingTemplate simpMessagingTemplate;
+    private final SimpMessagingTemplate simpMessagingTemplate;
 
     public void sendUpdate(String topic, WsAction action) {
         Map<String, String> message = Map.of(
