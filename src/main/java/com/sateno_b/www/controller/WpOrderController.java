@@ -2,9 +2,12 @@ package com.sateno_b.www.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sateno_b.www.model.dto.OrderLineItemDto;
 import com.sateno_b.www.model.dto.WoOrderDto;
+import com.sateno_b.www.model.dto.WoOrderLineItemDto;
 import com.sateno_b.www.model.dto.WpOrderDto;
 import com.sateno_b.www.model.entity.WpOrderEntity;
+import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import com.sateno_b.www.service.WebHookService;
@@ -16,7 +19,9 @@ import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/wp_order")
@@ -41,16 +46,43 @@ public class WpOrderController {
         );
 
 
-        // 1. Конфигурираме мачера (как да сравнява)
-//        ExampleMatcher matcher = ExampleMatcher.matching()
-//                .withIgnoreNullValues() // Игнорира полетата, които не са пратени от Angular
-//                .withIgnoreCase()      // Игнорира малки/големи букви
-//                .withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING); // LIKE %value% за текстове
-
         OrderStatus orderStatus = (status != null) ? OrderStatus.fromValue(status) : null;
 
         Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findWithFilters(orderStatus, sortedByIdDesc);
-        Page<WpOrderDto> wpOrderDtos =wpOrderEntities.map(mapper -> modelMapper.map(mapper, WpOrderDto.class));
+        Page<WpOrderDto> wpOrderDtos =wpOrderEntities.map(entity -> {
+            WpOrderDto dto = modelMapper.map(entity, WpOrderDto.class);
+
+            if(entity.getStatus() == OrderStatus.PROCESSING && entity.getCustomer() != null) {
+
+                String phone = entity.getCustomer().getPhone();
+                if(phone != null && !phone.isEmpty()) {
+                    List<WpOrderEntity> duplicates = wpOrderRepository.findDuplicatesWithLines(
+                            phone, OrderStatus.PROCESSING, entity.getId()
+                    );
+
+                    List<OrderLineItemDto> allDuplicateLines = duplicates.stream()
+                            .flatMap(dup -> dup.getOrderLine().stream().map(line -> {
+                                // Мапваме продукта
+                                OrderLineItemDto lineDto = modelMapper.map(line, OrderLineItemDto.class);
+                                // Заковаваме ID-то на поръчката, от която идва
+                                lineDto.setOrderId(dup.getId());
+                                lineDto.setWpOrderId(dup.getWpOrderId());
+                                return lineDto;
+                            }))
+                            .collect(Collectors.toList());
+                    if(!allDuplicateLines.isEmpty()) {
+                        System.out.printf("Duplicates found: %s\n", allDuplicateLines.size());
+                        System.out.println(dto.getWpOrderId());
+                        dto.setShowDuplicateWarning(true);
+                    }
+
+                    dto.setOrderLineOtherOrders(allDuplicateLines);
+                }
+
+            }
+
+            return dto;
+        });
 
         return ResponseEntity.ok(wpOrderDtos);
     }

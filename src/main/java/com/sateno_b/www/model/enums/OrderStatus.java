@@ -11,7 +11,8 @@ public enum OrderStatus {
     CANCELLED("cancelled"),
     ABANDONED("abandoned"),
     COMPLETED("completed"),
-    APPROVED("approved");
+    APPROVED("approved"),
+    JOINT("joint");
 
     private final String value;
 

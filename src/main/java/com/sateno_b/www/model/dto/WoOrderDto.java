@@ -52,5 +52,5 @@ public class WoOrderDto {
     private List<WoOrderLineItemDto> lineItems;
 
     @JsonProperty("date_created")
-    private LocalDateTime dateCreated;
+    private String dateCreated;
 }

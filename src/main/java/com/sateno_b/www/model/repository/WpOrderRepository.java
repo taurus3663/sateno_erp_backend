@@ -9,9 +9,25 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
     @Query("SELECT o FROM WpOrderEntity o WHERE " +
             "(:status IS NULL OR o.status = :status)")
     Page<WpOrderEntity> findWithFilters(@Param("status") OrderStatus status, Pageable pageable);
+
+
+    // WpOrderRepository.java
+    @Query("SELECT DISTINCT o FROM WpOrderEntity o " +
+//            "JOIN FETCH o.orderLine " +
+            "WHERE o.customer.phone = :phone " +
+            "AND o.status = :status " +
+            "AND o.id != :currentId " +
+            "AND o.parentId IS NULL") // Не искаме да закачаме поръчки, които вече са били обединени
+    List<WpOrderEntity> findDuplicatesWithLines(
+            @Param("phone") String phone,
+            @Param("status") OrderStatus status,
+            @Param("currentId") Long currentId
+    );
 }

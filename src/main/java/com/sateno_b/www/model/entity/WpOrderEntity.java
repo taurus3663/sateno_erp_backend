@@ -23,6 +23,9 @@ import java.util.List;
 @Table(name = "wp_order")
 public class WpOrderEntity extends BaseEntity {
 
+    @Column
+    private Long parentId;
+
     @Column(unique = true)
     private Long wpOrderId;
 

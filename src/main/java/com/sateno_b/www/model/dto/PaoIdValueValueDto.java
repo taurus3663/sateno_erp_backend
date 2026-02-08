@@ -1,9 +1,9 @@
-package com.sateno_b.www.model.entity.data;
+package com.sateno_b.www.model.dto;
 
 import lombok.Data;
 
 @Data
-public class PaoIdValueValue {
+public class PaoIdValueValueDto {
     private String key;
     private String value;
     private Long id;

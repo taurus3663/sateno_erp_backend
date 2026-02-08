@@ -24,12 +24,15 @@ public class WpOrderDto {
     private String transactionId;
     private String customerIp;
     private String customerAgent;
-    private List<OrderLineItem> orderLine;
+    private List<OrderLineItemDto> orderLine;
     private BigDecimal totalPrice;
     private String currency;
     private String currencySymbol;
     private Instant createTime;
     private Instant updateTime;
     private Instant wpOrderTime;
+
+    private List<OrderLineItemDto> orderLineOtherOrders;
+    private Boolean showDuplicateWarning = false;
 
 }

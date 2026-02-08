@@ -21,6 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -129,7 +132,9 @@ public class WpOrderService {
             wpOrderEntity.setTotalPrice(new BigDecimal(dto.getTotal()));
             wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
             wpOrderEntity.setTransactionId(dto.getTransactionId());
-            wpOrderEntity.setWpOrderTime(dto.getDateCreated().toInstant(java.time.ZoneOffset.UTC));
+            LocalDateTime ldt = LocalDateTime.parse(dto.getDateCreated());
+            Instant instant = ldt.atZone(ZoneId.of("Europe/Sofia")).toInstant();
+            wpOrderEntity.setWpOrderTime(instant);
             wpOrderRepository.save(wpOrderEntity);
         }
     }
@@ -219,7 +224,9 @@ public class WpOrderService {
         wpOrderEntity.setTotalPrice(new BigDecimal(dto.getTotal()));
         wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
         wpOrderEntity.setTransactionId(dto.getTransactionId());
-        wpOrderEntity.setWpOrderTime(dto.getDateCreated().toInstant(ZoneOffset.UTC));
+        LocalDateTime ldt = LocalDateTime.parse(dto.getDateCreated());
+        Instant instant = ldt.atZone(ZoneId.of("Europe/Sofia")).toInstant();
+        wpOrderEntity.setWpOrderTime(instant);
         wpOrderRepository.save(wpOrderEntity);
     }
 
