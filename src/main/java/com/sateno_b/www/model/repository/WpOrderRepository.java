@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.repository;
 
+import com.sateno_b.www.model.entity.CustomerEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.enums.OrderStatus;
 import org.springframework.data.domain.Page;
@@ -14,8 +15,9 @@ import java.util.List;
 @Repository
 public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
     @Query("SELECT o FROM WpOrderEntity o WHERE " +
-            "(:status IS NULL OR o.status = :status)")
-    Page<WpOrderEntity> findWithFilters(@Param("status") OrderStatus status, Pageable pageable);
+            "(:status IS NULL OR o.status = :status) AND " +
+    "(:phone IS NULL OR o.customer.phone = :phone)")
+    Page<WpOrderEntity> findWithFilters(@Param("status") OrderStatus status, @Param("phone") String phone, Pageable pageable);
 
 
     // WpOrderRepository.java
@@ -30,4 +32,9 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
             @Param("status") OrderStatus status,
             @Param("currentId") Long currentId
     );
+
+    long countByCustomer(CustomerEntity customer);
+
+    @Query("SELECT o.customer.id, COUNT(o) FROM WpOrderEntity o WHERE o.customer IN :customers GROUP BY o.customer.id")
+    List<Object[]> countByCustomersBatch(@Param("customers") List<CustomerEntity> customers);
 }

@@ -6,6 +6,7 @@ import com.sateno_b.www.model.dto.OrderLineItemDto;
 import com.sateno_b.www.model.dto.WoOrderDto;
 import com.sateno_b.www.model.dto.WoOrderLineItemDto;
 import com.sateno_b.www.model.dto.WpOrderDto;
+import com.sateno_b.www.model.entity.CustomerEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.OrderStatus;
@@ -24,8 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -42,7 +42,8 @@ public class WpOrderController {
     private final NotificationService notificationService;
 
     @GetMapping("/list")
-    public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status) {
+    public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status,
+                                                   @RequestParam(required = false) String phone) {
 
         Pageable sortedByIdDesc = PageRequest.of(
                 pageable.getPageNumber(),
@@ -54,16 +55,33 @@ public class WpOrderController {
 
         OrderStatus orderStatus = (status != null) ? OrderStatus.fromValue(status) : null;
 
-        Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findWithFilters(orderStatus, sortedByIdDesc);
+        Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findWithFilters(orderStatus, phone, sortedByIdDesc);
+
+        List<CustomerEntity> customers = wpOrderEntities.getContent().stream()
+                .map(WpOrderEntity::getCustomer)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<Long, Long> customerCounts = new HashMap<>();
+        if (!customers.isEmpty()) {
+            List<Object[]> results = wpOrderRepository.countByCustomersBatch(customers);
+            customerCounts = results.stream().collect(Collectors.toMap(
+                    res -> (Long) res[0], // ID на клиента
+                    res -> (Long) res[1]  // Брой поръчки
+            ));
+        }
+        Map<Long, Long> finalCounts = customerCounts;
+
         Page<WpOrderDto> wpOrderDtos =wpOrderEntities.map(entity -> {
             WpOrderDto dto = modelMapper.map(entity, WpOrderDto.class);
 
             if(entity.getStatus() == OrderStatus.PROCESSING && entity.getCustomer() != null) {
 
-                String phone = entity.getCustomer().getPhone();
-                if(phone != null && !phone.isEmpty()) {
+                String phone1 = entity.getCustomer().getPhone();
+                if(phone1 != null && !phone1.isEmpty()) {
                     List<WpOrderEntity> duplicates = wpOrderRepository.findDuplicatesWithLines(
-                            phone, OrderStatus.PROCESSING, entity.getId()
+                            phone1, OrderStatus.PROCESSING, entity.getId()
                     );
 
                     List<OrderLineItemDto> allDuplicateLines = duplicates.stream()
@@ -87,6 +105,13 @@ public class WpOrderController {
 
             }
 
+            if(entity.getCustomer() != null) {
+                long count = finalCounts.getOrDefault(entity.getCustomer().getId(), 0L);
+                dto.setCustomerOrderCount(count);
+            }
+//            long count = wpOrderRepository.countByCustomer(entity.getCustomer());
+//            dto.setCustomerOrderCount(count);
+//            System.out.println(count);
             return dto;
         });
 
