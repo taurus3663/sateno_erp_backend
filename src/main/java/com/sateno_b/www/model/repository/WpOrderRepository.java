@@ -16,8 +16,12 @@ import java.util.List;
 public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
     @Query("SELECT o FROM WpOrderEntity o WHERE " +
             "(:status IS NULL OR o.status = :status) AND " +
-    "(:phone IS NULL OR o.customer.phone = :phone)")
-    Page<WpOrderEntity> findWithFilters(@Param("status") OrderStatus status, @Param("phone") String phone, Pageable pageable);
+    "(:phone IS NULL OR o.customer.phone = :phone) AND" +
+            "(:customer IS NULL OR :customer = '' OR (" +
+            " LOWER(o.customer.firstName) LIKE LOWER(CONCAT('%', :customer, '%')) OR " +
+            " LOWER(o.customer.lastName) LIKE LOWER(CONCAT('%', :customer, '%')) OR " +
+            " o.customer.phone LIKE CONCAT('%', :customer, '%')))")
+    Page<WpOrderEntity> findWithFilters(@Param("status") OrderStatus status, @Param("phone") String phone,@Param("customer") String customerNameORPhone, Pageable pageable);
 
 
     // WpOrderRepository.java

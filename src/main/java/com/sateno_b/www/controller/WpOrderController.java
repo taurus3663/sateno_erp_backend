@@ -43,7 +43,8 @@ public class WpOrderController {
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status,
-                                                   @RequestParam(required = false) String phone) {
+                                                   @RequestParam(required = false) String phone,
+                                                   @RequestParam(required = false) String customer) {
 
         Pageable sortedByIdDesc = PageRequest.of(
                 pageable.getPageNumber(),
@@ -55,7 +56,7 @@ public class WpOrderController {
 
         OrderStatus orderStatus = (status != null) ? OrderStatus.fromValue(status) : null;
 
-        Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findWithFilters(orderStatus, phone, sortedByIdDesc);
+        Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findWithFilters(orderStatus, phone, customer, sortedByIdDesc);
 
         List<CustomerEntity> customers = wpOrderEntities.getContent().stream()
                 .map(WpOrderEntity::getCustomer)
