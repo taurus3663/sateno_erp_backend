@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
@@ -41,4 +42,6 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
 
     @Query("SELECT o.customer.id, COUNT(o) FROM WpOrderEntity o WHERE o.customer IN :customers GROUP BY o.customer.id")
     List<Object[]> countByCustomersBatch(@Param("customers") List<CustomerEntity> customers);
+
+    Boolean existsByWpOrderId(Long id);
 }

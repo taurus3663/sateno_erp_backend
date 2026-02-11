@@ -14,6 +14,8 @@ import com.sateno_b.www.model.repository.CustomerRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import com.sateno_b.www.shared.AuthTool;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
@@ -36,21 +38,43 @@ public class WpOrderService {
     private final RestClient restClient;
     private final SiteRepository siteRepository;
     private final ObjectMapper objectMapper;
+    @PersistenceContext
+    private final EntityManager entityManager;
 
     private static final String ORDER_URL = "/wp-json/wc/v3/orders/";
     private final CustomerRepository customerRepository;
 
-    @Transactional
+
     public void syncOrderToDB(Long siteId){
         SiteEntity site = siteRepository.findById(siteId).orElse(null);
         if(site == null) {return;}
 
         String auth = AuthTool.getAuth(site.getConsumerKey(), site.getConsumerSecret());
 
+
         List<WoOrderDto> all = fetchAllOrders(site, auth);
 
-        for (WoOrderDto dto : all) {
-            CustomerEntity customer = customerRepository.findByPhone(dto.getBilling().getPhone())
+        saveAllToDb(all, siteId);
+
+    }
+
+    @Transactional
+    protected void saveAllToDb(List<WoOrderDto> orders, Long siteId) {
+        int count = 0;
+        for (WoOrderDto dto : orders) {
+
+            if(wpOrderRepository.existsByWpOrderId(dto.getId())) {
+                continue;
+            }
+
+            String rawPhone = dto.getBilling().getPhone().replaceAll("[^0-9]", "");
+            String phoneSuffix = rawPhone.length() >= 9
+                    ? rawPhone.substring(rawPhone.length() - 9)
+                    : rawPhone;
+
+            CustomerEntity customer = customerRepository.findByPhoneSuffix(phoneSuffix)
+                    .stream()
+                    .findFirst()
                     .orElseGet(() -> {
                         CustomerEntity customerEntity = new CustomerEntity();
                         customerEntity.setPhone(dto.getBilling().getPhone());
@@ -61,7 +85,7 @@ public class WpOrderService {
                                 ? dto.getBilling().getAddress2()
                                 : dto.getBilling().getAddress1());
                         customerEntity.setEik(dto.getBilling().getCompanyName());
-                      return customerRepository.save(customerEntity);
+                        return customerRepository.save(customerEntity);
                     });
 
             SiteEntity siteEntity = siteRepository.getReferenceById(siteId);
@@ -106,17 +130,6 @@ public class WpOrderService {
                                         return val;
                                     }).toList());
 
-//                                    paoIdValue.setValue(woPaoIdValueDto.getValue()
-//                                            .stream()
-//                                            .map(woPaoIdValueValueDto -> {
-//                                                PaoIdValueValue  paoIdValueValue = new PaoIdValueValue();
-//                                                paoIdValueValue.setId(woPaoIdValueValueDto.getId());
-//                                                paoIdValueValue.setKey(woPaoIdValueValueDto.getKey());
-//                                                paoIdValueValue.setRawValue(woPaoIdValueValueDto.getRawValue());
-//                                                paoIdValueValue.setRawPrice(woPaoIdValueValueDto.getRawPrice());
-//                                                paoIdValueValue.setValue(woPaoIdValueValueDto.getValue());
-//                                                return paoIdValueValue;
-//                                            }).toList());
                                     return paoIdValue;
                                 }).toList());
                         orderLineItem.setProductName(woOrderLineItemDto.getProductName());
@@ -136,13 +149,25 @@ public class WpOrderService {
             Instant instant = ldt.atZone(ZoneId.of("Europe/Sofia")).toInstant();
             wpOrderEntity.setWpOrderTime(instant);
             wpOrderRepository.save(wpOrderEntity);
+            if (++count == 50) {
+                count = 0;
+                wpOrderRepository.flush();
+                entityManager.clear();
+            }
         }
     }
 
     @Transactional
     public void newOrderFromSite(WoOrderDto dto, Long siteId) {
 
-        CustomerEntity customer = customerRepository.findByPhone(dto.getBilling().getPhone())
+        String rawPhone = dto.getBilling().getPhone().replaceAll("[^0-9]", "");
+        String phoneSuffix = rawPhone.length() >= 9
+                ? rawPhone.substring(rawPhone.length() - 9)
+                : rawPhone;
+
+        CustomerEntity customer = customerRepository.findByPhoneSuffix(phoneSuffix)
+                .stream()
+                .findFirst()
                 .orElseGet(() -> {
                     CustomerEntity customerEntity = new CustomerEntity();
                     customerEntity.setPhone(dto.getBilling().getPhone());
@@ -244,6 +269,11 @@ public class WpOrderService {
                     .retrieve()
                     .toEntity(new ParameterizedTypeReference<List<WoOrderDto>>() {});
 
+            List<String> totalPagesHeader = response.getHeaders().get("X-WP-TotalPages");
+//            System.out.println("totalPagesHeader: " + totalPagesHeader);
+            if (totalPagesHeader != null && !totalPagesHeader.isEmpty()) {
+                totalPages = Integer.parseInt(totalPagesHeader.get(0));
+            }
 
             if(response.getBody() != null) {
                 allOrders.addAll(response.getBody());
@@ -253,6 +283,7 @@ public class WpOrderService {
             currentPage++;
         } while (currentPage <= totalPages);
 
+        System.out.println(allOrders.size());
         return allOrders;
     }
 

@@ -1,0 +1,18 @@
+package com.sateno_b.www.model.repository;
+
+import com.sateno_b.www.model.entity.CourierSettingsEntity;
+import com.sateno_b.www.model.enums.CourierType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface CourierSettingsRepository extends JpaRepository<CourierSettingsEntity, Long> {
+    // Вземаме конкретна настройка (напр. Спиди за Сайт 1)
+    Optional<CourierSettingsEntity> findBySiteIdAndCourierType(Long siteId, CourierType type);
+
+    // Всички активни куриери за даден сайт
+    List<CourierSettingsEntity> findAllBySiteIdAndActiveTrue(Long siteId);
+}
