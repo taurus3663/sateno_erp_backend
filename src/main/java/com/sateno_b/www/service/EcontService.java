@@ -1,5 +1,7 @@
 package com.sateno_b.www.service;
 
+import com.sateno_b.www.model.dto.ShipmentCityDto;
+import com.sateno_b.www.model.dto.ShipmentOfficeDto;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +12,7 @@ import org.springframework.web.client.RestClient;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RequiredArgsConstructor
@@ -27,6 +30,16 @@ public class EcontService implements ShippingProvider {
     @Override
     public String getStatus(String wayBillNumber) {
         return "";
+    }
+
+    @Override
+    public List<ShipmentCityDto> getCities(String nameFilter, String username, String password) {
+        return List.of();
+    }
+
+    @Override
+    public List<ShipmentOfficeDto> getOffices(String nameFilter, String username, String password) {
+        return List.of();
     }
 
     public boolean testLogin(String username, String password) {
