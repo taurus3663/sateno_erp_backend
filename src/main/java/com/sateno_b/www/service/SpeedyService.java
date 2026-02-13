@@ -4,9 +4,11 @@ import com.sateno_b.www.model.dto.ShipmentCityDto;
 import com.sateno_b.www.model.dto.ShipmentOfficeDto;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,44 +30,49 @@ public class SpeedyService implements ShippingProvider {
     }
 
     @Override
-    public List<ShipmentCityDto> getCities(String nameFilter, String username, String password) {
+    public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
         var body = createBaseBody(username, password);
         body.put("countryId", 100);
         body.put("name", nameFilter);
 
         Map<String, Object> response = postToSpeedy("location/site", body);
-        List<Map<String, Object>> sites = (List<Map<String, Object>>) response.get("sites");
-
-        return sites.stream()
+        if (response == null || !response.containsKey("sites")) {
+            return List.of();
+        }
+        List<?> sitesList = (List<?>) response.get("sites");
+        return sitesList.stream()
+                .map(item -> (Map<String, Object>) item)
                 .map(s -> {
-                   ShipmentCityDto shipmentCity = new ShipmentCityDto();
-                    shipmentCity.setId(Long.parseLong(s.get("id").toString()));
-                    shipmentCity.setName(s.get("name").toString());
-                    shipmentCity.setPostCode(s.get("postCode").toString());
-                    return shipmentCity;
+                    ShipmentCityDto dto = new ShipmentCityDto();
+                    dto.setId(Long.parseLong(s.get("id").toString()));
+                    dto.setName(s.get("name").toString());
+                    dto.setPostCode(s.get("postCode") != null ? s.get("postCode").toString() : "");
+                    return dto;
                 })
                 .toList();
     }
 
     @Override
-        public List<ShipmentOfficeDto> getOffices(String cityId, String username, String password) {
+        public List<ShipmentOfficeDto> getOffices( String username, String password, Long cityId, String nameFilter) {
             var body = createBaseBody(username, password);
             body.put("siteId", cityId); // Филтрираме офисите по избрания град
+            body.put("name", nameFilter);
 
-            Map<String, Object> response = postToSpeedy("location/office", body);
-
-            List<Map<String, Object>> offices = (List<Map<String, Object>>) response.get("offices");
-
-            return offices.stream()
-                    .map(o -> {
-                        Map<String, Object> address = (Map<String, Object>) o.get("address");
-                       ShipmentOfficeDto shipOffice = new ShipmentOfficeDto();
-                        shipOffice.setId(Long.parseLong(o.get("id").toString()));
-                        shipOffice.setName(o.get("name").toString());
-                        shipOffice.setAddress(address.get("fullAddressString").toString());
-                        return  shipOffice;
-                    })
-                    .toList();
+        Map<String, Object> response = postToSpeedy("location/office", body);
+        if (response == null || !response.containsKey("offices")) {
+            return List.of();
+        }
+        List<?> sitesList = (List<?>) response.get("offices");
+        return sitesList.stream()
+                .map(item -> (Map<String, Object>) item)
+                .map(s -> {
+                    ShipmentOfficeDto dto = new ShipmentOfficeDto();
+                    dto.setId(Long.parseLong(s.get("id").toString()));
+                    dto.setName(s.get("name").toString());
+//                    dto.setPostCode(s.get("postCode") != null ? s.get("postCode").toString() : "");
+                    return dto;
+                })
+                .toList();
         }
 
     public boolean testLogin(String username, String password) {
@@ -87,7 +94,7 @@ public class SpeedyService implements ShippingProvider {
                     .toEntity(Object.class);
 
             System.out.println("Отговор от Спиди: " + response.getStatusCode());
-
+            System.out.println(response.getBody().toString());
             // Ако статусът е 2xx, значи userName и password са приети.
             return response.getStatusCode().is2xxSuccessful();
 
@@ -109,8 +116,9 @@ public class SpeedyService implements ShippingProvider {
     private Map<String, Object> postToSpeedy(String endpoint, Map<String, Object> body) {
         return restClient.post()
                 .uri("https://api.speedy.bg/v1/" + endpoint)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON) // Задължително за Спиди
                 .body(body)
                 .retrieve()
-                .body(Map.class);
+                .body(new ParameterizedTypeReference<Map<String, Object>>() {});
     }
 }

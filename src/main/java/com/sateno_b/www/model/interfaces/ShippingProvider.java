@@ -9,7 +9,7 @@ public interface ShippingProvider {
 
     void generateWayBill(Long orderId, Long siteId);
     String getStatus(String wayBillNumber);
-    List<ShipmentCityDto> getCities(String nameFilter, String username, String password);
-    List<ShipmentOfficeDto> getOffices(String nameFilter, String username, String password);
+    List<ShipmentCityDto> getCities(String username, String password, String nameFilter);
+    List<ShipmentOfficeDto> getOffices(String username, String password, Long cityId, String nameFilter);
 
 }

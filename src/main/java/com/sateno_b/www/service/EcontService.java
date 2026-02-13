@@ -38,9 +38,10 @@ public class EcontService implements ShippingProvider {
     }
 
     @Override
-    public List<ShipmentOfficeDto> getOffices(String nameFilter, String username, String password) {
+    public List<ShipmentOfficeDto> getOffices(String username, String password, Long cityId, String nameFilter) {
         return List.of();
     }
+
 
     public boolean testLogin(String username, String password) {
         try {
