@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.entity;
 
+import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.enums.CourierType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -16,6 +17,9 @@ public class CourierSettingsEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     private CourierType courierType;
+
+    @Enumerated(EnumType.STRING)
+    private CourierShipmentType courierShipmentType;
 
     @Column
     private String name;
@@ -36,4 +40,13 @@ public class CourierSettingsEntity extends BaseEntity {
 
     @Column(nullable = false)
     private boolean active = false;
+
+    @Column
+    private Integer sortOrder = 0;
+    @Column
+    private Double freeShippingPriceMax;
+    @Column
+    private Boolean autoShippingPrice = false;
+    @Column
+    private Double fixedShippingPrice;
 }

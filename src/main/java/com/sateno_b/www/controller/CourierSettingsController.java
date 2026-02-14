@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.Map;
 
 @RestController
@@ -30,26 +31,43 @@ public class CourierSettingsController {
     @PostMapping("/save")
     public ResponseEntity<CourierSettingsDto> save(@RequestBody CourierSettingsDto courierSettingsDto) {
 
-        if(courierSettingsDto.getId() == null ||  courierSettingsDto.getId() == 0){
+        // 1. Създаване на нов куриер
+        if (courierSettingsDto.getId() == null || courierSettingsDto.getId() == 0) {
+            CourierSettingsEntity entity = modelMapper.map(courierSettingsDto, CourierSettingsEntity.class);
 
-            CourierSettingsEntity en =  modelMapper.map(courierSettingsDto, CourierSettingsEntity.class);
-            CourierSettingsDto dto = modelMapper.map(courierSettingsRepository.save(en), CourierSettingsDto.class);
-            return ResponseEntity.ok(dto);
+            // Важно: ModelMapper автоматично ще мапне site.id, ако DTO-то го има.
+            // Hibernate ще разпознае, че това е съществуващ запис само по ID.
+            CourierSettingsEntity savedEntity = courierSettingsRepository.save(entity);
+            return ResponseEntity.ok(modelMapper.map(savedEntity, CourierSettingsDto.class));
         }
 
+        // 2. Редакция на съществуващ куриер
         return courierSettingsRepository.findById(courierSettingsDto.getId())
                 .map(en -> {
-                    modelMapper.map(courierSettingsDto, en);
-                    CourierSettingsEntity u = courierSettingsRepository.save(en);
+                    // 1. Ръчно се справяме с референцията към обекта
+                    if (courierSettingsDto.getSite() == null) {
+                        en.setSite(null); // Казваме на JPA, че връзката е премахната
+                    }
 
+                    // 2. Мапваме останалите полета
+                    // Важно: Настрой ModelMapper да прескача 'site' полето при мапване,
+                    // за да не презапише току-що зададения null с грешна стойност
+                    modelMapper.map(courierSettingsDto, en);
+
+                    CourierSettingsEntity u = courierSettingsRepository.save(en);
                     return ResponseEntity.ok(modelMapper.map(u, CourierSettingsDto.class));
                 }).orElse(ResponseEntity.notFound().build());
     }
-
     @GetMapping("/list")
     public ResponseEntity<Page<CourierSettingsDto>> list(Pageable pageable) {
 
-        Page<CourierSettingsEntity> d = courierSettingsRepository.findAll(pageable);
+        Page<CourierSettingsEntity> d = courierSettingsRepository.findAll(pageable)
+                .map(courierSettingsEntity -> {
+                    if(courierSettingsEntity.getSite() != null) {
+                        courierSettingsEntity.getSite().setCouriers(new ArrayList<>());
+                    }
+                    return courierSettingsEntity;
+                });
 //        Page<CurrencyDto> dtoPage = list.map(entity -> modelMapper.map(entity, CurrencyDto.class));
         Page<CourierSettingsDto> dtos = d.map(mapper -> modelMapper.map(mapper, CourierSettingsDto.class));
 

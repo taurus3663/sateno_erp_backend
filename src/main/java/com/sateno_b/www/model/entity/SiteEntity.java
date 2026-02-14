@@ -3,6 +3,8 @@ package com.sateno_b.www.model.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @EqualsAndHashCode(callSuper = true)
 @Data
 @AllArgsConstructor
@@ -11,7 +13,7 @@ import lombok.*;
 @Setter
 @Entity
 @Table(name = "site")
-public class SiteEntity extends BaseEntity{
+public class SiteEntity extends BaseEntity {
 
     @Column
     private String name;
@@ -38,6 +40,9 @@ public class SiteEntity extends BaseEntity{
 
     @Column()
     private String orderCreateApiKey;
+
+    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<CourierSettingsEntity> couriers;
 
 
 }

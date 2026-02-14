@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface SiteRepository extends JpaRepository<SiteEntity, Long> {
     List<SiteEntity> findByActiveTrue();
+
 }
