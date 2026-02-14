@@ -41,8 +41,8 @@ public class SiteEntity extends BaseEntity {
     @Column()
     private String orderCreateApiKey;
 
-    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<CourierSettingsEntity> couriers;
+//    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+//    private List<CourierSettingsEntity> couriers;
 
 
 }

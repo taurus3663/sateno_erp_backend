@@ -42,7 +42,7 @@ public class CourierSettingsEntity extends BaseEntity {
     private boolean active = false;
 
     @Column
-    private Integer sortOrder = 0;
+    private Integer sortOrder;
     @Column
     private Double freeShippingPriceMax;
     @Column

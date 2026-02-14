@@ -18,4 +18,6 @@ public interface CourierSettingsRepository extends JpaRepository<CourierSettings
     List<CourierSettingsEntity> findAllBySiteIdAndActiveTrue(Long siteId);
 
     List<CourierSettingsEntity> findAllBySite(SiteEntity site);
+
+    Optional<CourierSettingsEntity> findByIdOrderById(Long id);
 }

@@ -61,13 +61,7 @@ public class CourierSettingsController {
     @GetMapping("/list")
     public ResponseEntity<Page<CourierSettingsDto>> list(Pageable pageable) {
 
-        Page<CourierSettingsEntity> d = courierSettingsRepository.findAll(pageable)
-                .map(courierSettingsEntity -> {
-                    if(courierSettingsEntity.getSite() != null) {
-                        courierSettingsEntity.getSite().setCouriers(new ArrayList<>());
-                    }
-                    return courierSettingsEntity;
-                });
+        Page<CourierSettingsEntity> d = courierSettingsRepository.findAll(pageable);
 //        Page<CurrencyDto> dtoPage = list.map(entity -> modelMapper.map(entity, CurrencyDto.class));
         Page<CourierSettingsDto> dtos = d.map(mapper -> modelMapper.map(mapper, CourierSettingsDto.class));
 

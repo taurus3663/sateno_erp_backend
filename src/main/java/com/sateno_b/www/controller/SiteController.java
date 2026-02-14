@@ -1,5 +1,6 @@
 package com.sateno_b.www.controller;
 
+import com.sateno_b.www.model.dto.CourierSettingsDto;
 import com.sateno_b.www.model.dto.SiteDto;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
@@ -7,6 +8,7 @@ import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.CurrencyRepository;
 import com.sateno_b.www.model.repository.LanguageRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
@@ -17,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/site")
@@ -35,17 +38,20 @@ public class SiteController {
             @RequestParam(name = "size", defaultValue = "10") int size
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<SiteEntity> list = siteRepository.findAll(pageable)
+        Page<SiteDto> list = siteRepository.findAll(pageable)
                 .map(s -> {
-                    List<CourierSettingsEntity> allBySite = courierSettingsRepository.findAllBySite(s).stream()
-                            .peek(courierSettingsEntity -> courierSettingsEntity.setSite(null)).toList();
-                    s.setCouriers(allBySite);
-                    return s;
+                    List<CourierSettingsDto> allBySite = courierSettingsRepository.findAllBySite(s)
+                            .stream().map(d -> modelMapper.map(d, CourierSettingsDto.class)).toList();
+
+                    SiteDto siteDto = modelMapper.map(s, SiteDto.class);
+                    siteDto.setCouriers(allBySite);
+                    return siteDto;
                 });
-        Page<SiteDto> dtoPage = list.map(entity -> modelMapper.map(entity, SiteDto.class));
-        return ResponseEntity.ok(dtoPage);
+
+        return ResponseEntity.ok(list);
     }
 
+    @Transactional
     @PostMapping("/save")
     public ResponseEntity<SiteDto> saveSite(@RequestBody SiteDto siteDto) {
         SiteEntity siteEntity;
@@ -87,6 +93,23 @@ public class SiteController {
             languageRepository.findById(siteEntity.getLanguage().getId())
                     .ifPresent(siteEntity::setLanguage);
         }
+        
+        
+        if(!siteDto.getCouriers().isEmpty()) {
+            for (CourierSettingsDto courier : siteDto.getCouriers()) {
+                Optional<CourierSettingsEntity> byId = courierSettingsRepository.findByIdOrderById(courier.getId());
+                if(byId.isPresent()) {
+                    byId.get()
+                            .setActive(courier.isActive());
+                    byId.get().setAutoShippingPrice(courier.getAutoShippingPrice());
+                    byId.get().setFixedShippingPrice(courier.getFixedShippingPrice());
+                    byId.get().setFreeShippingPriceMax(courier.getFreeShippingPriceMax());
+                    byId.get().setSortOrder(courier.getSortOrder());
+                    courierSettingsRepository.save(byId.get());
+                }
+            }
+        }
+        
 
         SiteEntity saved = siteRepository.save(siteEntity);
         return ResponseEntity.ok(modelMapper.map(saved, SiteDto.class));

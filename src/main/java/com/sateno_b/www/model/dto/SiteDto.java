@@ -1,9 +1,11 @@
 package com.sateno_b.www.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -19,5 +21,6 @@ public class SiteDto {
     private LanguageDto language;
     private boolean active = false;
     private String orderCreateApiKey;
-    private List<CourierSettingsDto> couriers;
+
+    private List<CourierSettingsDto> couriers = new ArrayList<>();
 }

@@ -20,7 +20,7 @@ public class CourierSettingsDto {
     private boolean active = true;
 
 //    @Column
-    private Integer sortOrder = 0;
+    private Integer sortOrder;
 //    @Column
     private Double freeShippingPriceMax;
 //    @Column
