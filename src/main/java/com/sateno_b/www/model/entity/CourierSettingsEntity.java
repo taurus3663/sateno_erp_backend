@@ -1,9 +1,12 @@
 package com.sateno_b.www.model.entity;
 
+import com.sateno_b.www.model.entity.data.CourierContractDetails;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.enums.CourierType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -49,4 +52,9 @@ public class CourierSettingsEntity extends BaseEntity {
     private Boolean autoShippingPrice = false;
     @Column
     private Double fixedShippingPrice;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private CourierContractDetails courierContractDetails;
+
 }

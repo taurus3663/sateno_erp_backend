@@ -5,8 +5,10 @@ import com.sateno_b.www.model.dto.CheckOutCourierDto;
 import com.sateno_b.www.model.dto.CheckOutCourierListDto;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
+import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
+import com.sateno_b.www.service.SpeedyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +23,12 @@ public class CheckOutController {
 
     private final CourierSettingsRepository courierSettingsRepository;
     private final SiteRepository siteRepository;
+    private final SpeedyService speedyService;
 
     @PostMapping("/check-couriers")
     public ResponseEntity<CheckOutCourierListDto> check(@RequestBody CheckCourierRequest request) {
+
+//        System.out.println(request.toString());
 
         SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
         List<CourierSettingsEntity> couriers = courierSettingsRepository.findAllBySiteAndActive(site, true);
@@ -40,6 +45,18 @@ public class CheckOutController {
             courierDto.setSortOrder(courier.getSortOrder());
             courierDto.setFixedShippingPrice(courier.getFixedShippingPrice());
             courierDto.setFreeShippingPriceMax(courier.getFreeShippingPriceMax());
+
+            if(courier.getAutoShippingPrice() == true) {
+                System.out.println("works");
+                if(courier.getCourierType() == CourierType.SPEEDY) {
+
+
+                   double finalPrice = speedyService.calculatePrice(request.getCart_weight(), courier.getCourierShipmentType(), courier.getUsername(), courier.getPassword(), courier);
+                    System.out.printf("fPrice: %f\n", finalPrice);
+                }
+
+            }
+
             dto.getCheckOutCourierList().add(courierDto);
         }
 
