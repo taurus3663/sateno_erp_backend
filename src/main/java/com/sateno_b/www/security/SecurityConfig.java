@@ -35,7 +35,8 @@ public class SecurityConfig {
                                 "/error",
                                 "/media/**",
                                 "/erp/wp_order/create",
-                                "/ws/**"
+                                "/ws/**",
+                                "/erp/checkout/**"
                         ).permitAll()
                         .anyRequest().authenticated());
 

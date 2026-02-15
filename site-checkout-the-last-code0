@@ -1,0 +1,268 @@
+/**
+ * SILIYAN ERP - SHIPPING MODULE (OFFICE, ADDRESS & LOCKERS)
+ */
+add_action( 'woocommerce_checkout_billing', 'siliyan_erp_advanced_search' );
+
+function siliyan_erp_advanced_search() {
+
+	$site_domain = $_SERVER['HTTP_HOST'];
+    $api_url = 'http://77.71.76.17:9494/erp/checkout/check-couriers';
+
+    $args = array(
+        'body'        => json_encode( array( 'site' => $site_domain ) ),
+        'headers'     => array(
+            'Content-Type' => 'application/json',
+            'Accept'       => 'application/json'
+        ),
+        'timeout'     => 15,
+        'blocking'    => true, // Задължително за да чака отговор
+    );
+
+    $response = wp_remote_post( $api_url, $args );
+
+//     // ТОВА ЩЕ СПРЕ САЙТА И ЩЕ ПОКАЖЕ ГРЕШКАТА
+//     if ( is_wp_error( $response ) ) {
+//         die('Грешка: ' . $response->get_error_message());
+//     } else {
+//         die('Отговор от сървъра: ' . wp_remote_retrieve_body( $response ));
+//     }
+
+
+
+
+    // Дефинираме списъка с карти динамично
+    $delivery_options = [
+        ['slug' => 'speedy', 'mode' => 'office',  'name' => 'Speedy - До офис'],
+        ['slug' => 'speedy', 'mode' => 'address', 'name' => 'Speedy - До адрес'],
+        ['slug' => 'speedy', 'mode' => 'locker',  'name' => 'Speedy - До автомат (APM)'],
+        ['slug' => 'econt',  'mode' => 'office',  'name' => 'Econt - До офис'],
+        ['slug' => 'econt',  'mode' => 'address', 'name' => 'Econt - До адрес'],
+        ['slug' => 'boxnow', 'mode' => 'office',  'name' => 'BoxNow - До автомат']
+    ];
+    ?>
+    <div id="sl-shipping-system" style="clear:both; margin-top:30px;">
+        <h3 style="font-weight:600; margin-bottom:15px; font-size:18px;">Метод на доставка</h3>
+
+        <?php foreach ($delivery_options as $opt):
+            $slug = $opt['slug'];
+            $mode = $opt['mode'];
+            $unique_id = $slug . '_' . $mode;
+        ?>
+        <div class="sl-card" id="box-<?php echo $unique_id; ?>" onclick="slOpen('<?php echo $slug; ?>', '<?php echo $mode; ?>')">
+            <div class="sl-row">
+                <div class="sl-info">
+                    <input type="radio" name="siliyan_courier_full" value="<?php echo $unique_id; ?>" id="r-<?php echo $unique_id; ?>">
+                    <label for="r-<?php echo $unique_id; ?>" style="cursor:pointer"><?php echo $opt['name']; ?></label>
+                </div>
+                <img src="https://co.middleware.bg/courier-menus/<?php echo $slug; ?>-logo.png" width="80">
+            </div>
+
+            <div class="sl-dropdowns" id="drop-<?php echo $unique_id; ?>" style="display:none; margin-top:15px;">
+
+                <?php if ($mode === 'office' || $mode === 'locker'): ?>
+                    <div class="mw-chips">
+                        <span class="sl-chip" onclick="slQuick('<?php echo $unique_id; ?>', 'Пловдив')">Пловдив</span>
+                        <span class="sl-chip" onclick="slQuick('<?php echo $unique_id; ?>', 'София')">София</span>
+                        <span class="sl-chip" onclick="slQuick('<?php echo $unique_id; ?>', 'Варна')">Варна</span>
+                        <span class="sl-chip" onclick="slQuick('<?php echo $unique_id; ?>', 'Бургас')">Бургас</span>
+                    </div>
+                    <input type="text" id="input-<?php echo $unique_id; ?>" class="sl-search-input combined-search"
+                           placeholder="<?php echo ($mode === 'locker') ? 'Търси автомат в град...' : 'Напишете град или име на офис...'; ?>" autocomplete="off">
+                    <div id="results-<?php echo $unique_id; ?>" class="mw-results-list" style="display:none;"></div>
+                    <input type="hidden" name="sl_val_<?php echo $unique_id; ?>" id="val-<?php echo $unique_id; ?>">
+
+                <?php else: ?>
+                    <div class="address-vertical-stack" style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="position:relative;">
+                            <input type="text" id="city-input-<?php echo $unique_id; ?>" class="sl-search-input city-autocomplete"
+                                   placeholder="Напишете град..." autocomplete="off">
+                            <div id="city-results-<?php echo $unique_id; ?>" class="mw-results-list" style="display:none;"></div>
+                        </div>
+                        <input type="text" name="sl_postcode_<?php echo $unique_id; ?>" id="postcode-<?php echo $unique_id; ?>" placeholder="Пощенски код" class="sl-search-input">
+                        <input type="text" name="sl_street_<?php echo $unique_id; ?>" placeholder="Улица, номер, квартал, вх, ап..." class="sl-search-input">
+                        <input type="hidden" name="sl_city_<?php echo $unique_id; ?>" id="city-hidden-<?php echo $unique_id; ?>">
+                    </div>
+                <?php endif; ?>
+
+                <div id="text-<?php echo $unique_id; ?>" class="sl-status">
+                    <?php echo ($mode === 'office' || $mode === 'locker') ? '< Изберете град и обект >' : '< Изберете град и въведете адрес >'; ?>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+
+        <input type="hidden" name="siliyan_courier" id="final-courier">
+        <input type="hidden" name="siliyan_mode" id="final-mode">
+    </div>
+
+    <style>
+        .sl-card { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; background: #fff; position: relative; transition: 0.2s; }
+        .sl-card.active { border: 2px solid #000; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .sl-row { display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+        .sl-info { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+        .sl-chip { background: #f0f0f0; padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; display: inline-block; margin: 3px 2px; }
+        .sl-chip:hover { background: #333; color: #fff; }
+        .sl-search-input { width: 100% !important; height: 44px !important; border: 1px solid #ccc !important; padding: 0 15px !important; border-radius: 6px !important; font-size: 14px !important; }
+        .mw-results-list { position: absolute; width: 100%; max-height: 250px; overflow-y: auto; background: #fff; border: 1px solid #ddd; z-index: 9999; left: 0; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+        .mw-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; text-align: left; }
+        .mw-item:hover { background: #f8f8f8; font-weight: bold; }
+        .sl-status { margin-top: 10px; font-size: 12px; color: #888; font-style: italic; }
+    </style>
+
+    <script>
+    var sl_MasterDB = { speedy: null, econt: null, boxnow: null };
+    var sl_CitiesList = null;
+
+    function slOpen(courier, mode) {
+        var $ = jQuery;
+        var unique_id = courier + '_' + mode;
+        $('.sl-card').removeClass('active'); $('.sl-dropdowns').hide();
+        $('#r-' + unique_id).prop('checked', true);
+        $('#box-' + unique_id).addClass('active').find('.sl-dropdowns').show();
+        $('#final-courier').val(courier);
+        $('#final-mode').val(mode);
+
+        if ((mode === 'office' || mode === 'locker') && !sl_MasterDB[courier]) {
+            $.getJSON("<?php echo admin_url('admin-ajax.php'); ?>", { action: 'sl_get_data_v6', type: courier }, function(res) {
+                sl_MasterDB[courier] = res;
+            });
+        }
+        if (mode === 'address' && !sl_CitiesList) {
+            $.getJSON("https://couriers.lynk.bg/new/bg-cities.txt", function(res) {
+                sl_CitiesList = res;
+            });
+        }
+        $(document.body).trigger('update_checkout');
+    }
+
+    // --- ФИЛТЪР ЗА ТИП ОБЕКТ ---
+    function slCheckType(name, mode) {
+        if (mode !== 'locker') return true;
+        var n = name.toLowerCase();
+        return n.includes('автомат') || n.includes('apm') || n.includes('locker');
+    }
+
+    // --- ЛОГИКА ЗА ГРАДОВЕ ---
+    jQuery(document).on('input focus', '.city-autocomplete', function() {
+        var $ = jQuery;
+        var uid = this.id.replace('city-input-', '');
+        var term = $(this).val().trim().toLowerCase();
+        var resDiv = $('#city-results-' + uid);
+        if (!sl_CitiesList) return;
+        var html = ''; var count = 0;
+        $.each(sl_CitiesList, function(cityName, zipData) {
+            $.each(zipData, function(postCode, detailsArray) {
+                if (!Array.isArray(detailsArray) || detailsArray.length === 0) return;
+                var details = detailsArray[0];
+                var nameEn = details.nameEn || "";
+                if (term === "" || cityName.toLowerCase().includes(term) || nameEn.toLowerCase().includes(term) || postCode.includes(term)) {
+                    html += `<div class="mw-item city-select" data-uid="${uid}" data-city="${cityName}" data-postcode="${postCode}">📍 ${cityName} <b>(${postCode})</b></div>`;
+                    count++;
+                }
+                if (count >= 20) return false;
+            });
+            if (count >= 20) return false;
+        });
+        resDiv.html(html || '<div class="mw-item">Няма намерен резултат...</div>').show();
+    });
+
+    jQuery(document).on('click', '.city-select', function() {
+        var $ = jQuery;
+        var uid = $(this).data('uid');
+        var city = $(this).data('city');
+        var pc = $(this).data('postcode');
+        $('#city-input-' + uid).val(city + ' (' + pc + ')');
+        $('#city-hidden-' + uid).val(city);
+        $('#postcode-' + uid).val(pc);
+        $('#city-results-' + uid).hide();
+        $(document.body).trigger('update_checkout');
+    });
+
+    // --- ЛОГИКА ЗА ОФИСИ / АВТОМАТИ ---
+    jQuery(document).on('input focus', '.combined-search', function() {
+        var $ = jQuery;
+        var uid = this.id.replace('input-', '');
+        var courier = uid.split('_')[0];
+        var mode = uid.split('_')[1];
+        var term = $(this).val().trim().toLowerCase();
+        var resDiv = $('#results-' + uid);
+        if (!sl_MasterDB[courier]) return;
+        if (term.length === 0) { renderInitial(uid, courier, mode); return; }
+        var words = term.split(/\s+/).filter(w => w.length > 0);
+        var html = ''; var count = 0;
+        for (var key in sl_MasterDB[courier]) {
+            var offices = sl_MasterDB[courier][key];
+            for (var i = 0; i < offices.length; i++) {
+                var off = offices[i];
+                var cityName = (off.city ? off.city : key.toUpperCase()).trim();
+                var label = off.name.toLowerCase().includes(cityName.toLowerCase()) ? off.name : cityName + " - " + off.name;
+
+                if (!slCheckType(label, mode)) continue;
+
+                if (words.every(word => label.toLowerCase().includes(word))) {
+                    html += `<div class="mw-item office-trigger" data-uid="${uid}" data-id="${off.code}" data-text="${label}">🏢 ${label}</div>`;
+                    count++;
+                }
+                if (count >= 50) break;
+            }
+            if (count >= 50) break;
+        }
+        resDiv.html(html || '<div class="mw-item">Няма резултати</div>').show();
+    });
+
+    function renderInitial(uid, courier, mode) {
+        var $ = jQuery; var html = ''; var count = 0;
+        for (var key in sl_MasterDB[courier]) {
+            var offices = sl_MasterDB[courier][key];
+            for (var i = 0; i < offices.length; i++) {
+                var off = offices[i];
+                var cityName = (off.city ? off.city : key.toUpperCase()).trim();
+                var combined = cityName + " - " + off.name;
+
+                if (!slCheckType(combined, mode)) continue;
+
+                html += `<div class="mw-item office-trigger" data-uid="${uid}" data-id="${off.code}" data-text="${combined}">🏢 ${combined}</div>`;
+                count++; if (count >= 50) break;
+            }
+            if (count >= 50) break;
+        }
+        $('#results-' + uid).html(html).show();
+    }
+
+    jQuery(document).on('click', '.office-trigger', function() {
+        var $ = jQuery; var uid = $(this).data('uid');
+        $('#input-' + uid).val($(this).data('text'));
+        $('#val-' + uid).val($(this).data('id'));
+        $('#results-' + uid).hide();
+        $(document.body).trigger('update_checkout');
+    });
+
+    jQuery(document).on('click', function(e) {
+        if (!jQuery(e.target).closest('.sl-card').length) { jQuery('.mw-results-list').hide(); }
+    });
+
+    function slQuick(uid, city) { jQuery('#input-' + uid).val(city).trigger('input').focus(); }
+    </script>
+    <?php
+}
+
+add_action('wp_ajax_sl_get_data_v6', function() {
+    $u = ['speedy' => 'https://couriers.lynk.bg/new/bg-speedy-offices.txt', 'econt' => 'https://couriers.lynk.bg/new/bg-econt-offices.txt', 'boxnow' => 'https://couriers.lynk.bg/new/bg-boxnow-offices.txt'];
+    echo wp_remote_retrieve_body(wp_remote_get($u[$_GET['type']], ['timeout' => 30]));
+    wp_die();
+});
+
+add_action( 'woocommerce_checkout_update_order_meta', function($order_id) {
+    $courier = $_POST['siliyan_courier'] ?? '';
+    $mode = $_POST['siliyan_mode'] ?? '';
+    $uid = $courier . '_' . $mode;
+    update_post_meta($order_id, '_siliyan_courier', $courier);
+    update_post_meta($order_id, '_siliyan_mode', $mode);
+    if ($mode === 'office' || $mode === 'locker') {
+        update_post_meta($order_id, '_siliyan_office_id', $_POST['sl_val_' . $uid] ?? '');
+    } else {
+        update_post_meta($order_id, '_siliyan_city', $_POST['sl_city_' . $uid] ?? '');
+        update_post_meta($order_id, '_siliyan_postcode', $_POST['sl_postcode_' . $uid] ?? '');
+        update_post_meta($order_id, '_siliyan_street', $_POST['sl_street_' . $uid] ?? '');
+    }
+});

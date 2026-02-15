@@ -58,6 +58,7 @@ public class CourierSettingsController {
                     return ResponseEntity.ok(modelMapper.map(u, CourierSettingsDto.class));
                 }).orElse(ResponseEntity.notFound().build());
     }
+
     @GetMapping("/list")
     public ResponseEntity<Page<CourierSettingsDto>> list(Pageable pageable) {
 
@@ -93,4 +94,6 @@ public class CourierSettingsController {
                 "message", message
         ));
     }
+
+
 }
