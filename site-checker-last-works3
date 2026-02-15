@@ -1,0 +1,244 @@
+/**
+ * SILIYAN ERP - SHIPPING MODULE (SORTING, FREE BADGE & AUTO-CALC LOGIC)
+ */
+add_action( 'woocommerce_checkout_billing', 'siliyan_erp_advanced_search' );
+
+function siliyan_erp_advanced_search() {
+    $site_domain = $_SERVER['HTTP_HOST'];
+    $api_url = 'http://77.71.76.17:9494/erp/checkout/check-couriers';
+
+    $args = array(
+        'body'        => json_encode( array( 'site' => $site_domain ) ),
+        'headers'     => array( 'Content-Type' => 'application/json' ),
+        'timeout'     => 15,
+        'blocking'    => true,
+    );
+
+    $response = wp_remote_post( $api_url, $args );
+    if ( is_wp_error( $response ) ) return;
+
+    $data = json_decode( wp_remote_retrieve_body( $response ), true );
+    $delivery_options = isset($data['checkOutCourierList']) ? $data['checkOutCourierList'] : [];
+    $currency_symbol = isset($data['currencySymbol']) ? $data['currencySymbol'] : 'лв';
+
+    // 1. СОРТИРОВКА СПОРЕД sortOrder
+    if (!empty($delivery_options)) {
+        usort($delivery_options, function($a, $b) {
+            $orderA = isset($a['sortOrder']) ? (int)$a['sortOrder'] : 999;
+            $orderB = isset($b['sortOrder']) ? (int)$b['sortOrder'] : 999;
+            return $orderA <=> $orderB;
+        });
+    }
+
+    // 2. ЗАРЕЖДАНЕ НА ГРАДОВЕТЕ ПРЕЗ PHP
+    $cities_res = wp_remote_get("https://couriers.lynk.bg/new/bg-cities.txt");
+    $cities_json = !is_wp_error($cities_res) ? wp_remote_retrieve_body($cities_res) : '{}';
+
+    ?>
+    <script>
+        var sl_CitiesList = <?php echo $cities_json; ?>;
+        var sl_MasterDB = { speedy: null, econt: null, boxnow: null };
+    </script>
+
+    <div id="sl-shipping-system" style="clear:both; margin-top:30px;">
+        <h3 style="font-weight:600; margin-bottom:15px; font-size:18px;">Метод на доставка</h3>
+
+        <?php
+        if (!empty($delivery_options)) :
+            foreach ($delivery_options as $opt):
+                $slug = str_replace('_', '', strtolower($opt['courierType']));
+                $mode = strtolower($opt['courierShipmentType']);
+                $unique_id = $slug . '_' . $mode;
+                $courier_id = isset($opt['id']) ? $opt['id'] : 0;
+                $auto_calc = isset($opt['autoCalculate']) ? (bool)$opt['autoCalculate'] : false;
+                $fixed_price = isset($opt['fixedShippingPrice']) ? $opt['fixedShippingPrice'] : null;
+
+                // Генерираме името
+                $display_name = ucfirst($slug) . ' - ' . ($mode === 'locker' ? 'До автомат' : ($mode === 'office' ? 'До офис' : 'До адрес'));
+                $price_html = '';
+
+                // ЛОГИКА ЗА ЦЕНАТА И БЕЗПЛАТНАТА ЗНАЧКА
+                if (($fixed_price === null || (float)$fixed_price <= 0) && !$auto_calc) {
+                    $price_html = ' <span class="sl-badge-free">БЕЗПЛАТНО</span>';
+                }
+                elseif ($fixed_price > 0) {
+                    $price_html = ' <span class="sl-price-tag">(' . number_format($fixed_price, 2) . ' ' . $currency_symbol . ')</span>';
+                }
+        ?>
+        <div class="sl-card" id="box-<?php echo $unique_id; ?>" onclick="slOpen('<?php echo $slug; ?>', '<?php echo $mode; ?>', <?php echo $courier_id; ?>)">
+            <div class="sl-row">
+                <div class="sl-info">
+                    <input type="radio" name="siliyan_courier_full" value="<?php echo $unique_id; ?>" id="r-<?php echo $unique_id; ?>">
+                    <label for="r-<?php echo $unique_id; ?>" style="cursor:pointer"><?php echo $display_name . $price_html; ?></label>
+                </div>
+                <img src="https://co.middleware.bg/courier-menus/<?php echo $slug; ?>-logo.png" width="80" onerror="this.style.display='none'">
+            </div>
+
+            <div class="sl-dropdowns" id="drop-<?php echo $unique_id; ?>" style="display:none; margin-top:15px;">
+
+                <?php if ($mode === 'office' || $mode === 'locker'): ?>
+                    <div class="mw-chips">
+                        <span class="sl-chip" onclick="slQuick('<?php echo $unique_id; ?>', 'София')">София</span>
+                        <span class="sl-chip" onclick="slQuick('<?php echo $unique_id; ?>', 'Пловдив')">Пловдив</span>
+                        <span class="sl-chip" onclick="slQuick('<?php echo $unique_id; ?>', 'Варна')">Варна</span>
+                    </div>
+                    <input type="text" id="input-<?php echo $unique_id; ?>" class="sl-search-input combined-search"
+                           placeholder="Търси град или обект..." autocomplete="off">
+                    <div id="results-<?php echo $unique_id; ?>" class="mw-results-list" style="display:none;"></div>
+                    <input type="hidden" name="sl_val_<?php echo $unique_id; ?>" id="val-<?php echo $unique_id; ?>">
+
+                <?php else: ?>
+                    <div class="address-vertical-stack" style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="position:relative;">
+                            <input type="text" id="city-input-<?php echo $unique_id; ?>" class="sl-search-input city-autocomplete"
+                                   placeholder="Напишете град..." autocomplete="off">
+                            <div id="city-results-<?php echo $unique_id; ?>" class="mw-results-list" style="display:none;"></div>
+                        </div>
+                        <input type="text" name="sl_postcode_<?php echo $unique_id; ?>" id="postcode-<?php echo $unique_id; ?>" placeholder="ПК" class="sl-search-input">
+                        <input type="text" name="sl_street_<?php echo $unique_id; ?>" placeholder="Улица и номер..." class="sl-search-input">
+                        <input type="hidden" name="sl_city_<?php echo $unique_id; ?>" id="city-hidden-<?php echo $unique_id; ?>">
+                    </div>
+                <?php endif; ?>
+
+                <div id="text-<?php echo $unique_id; ?>" class="sl-status"> < Изберете опция > </div>
+            </div>
+        </div>
+        <?php endforeach; endif; ?>
+
+        <input type="hidden" name="siliyan_courier_id" id="final-courier-id">
+        <input type="hidden" name="siliyan_mode" id="final-mode">
+    </div>
+
+    <style>
+        .sl-card { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; background: #fff; transition: 0.2s; }
+        .sl-card.active { border: 2px solid #27ae60 !important; background: #f9fffb !important; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .sl-row { display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+        .sl-info { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+        .sl-badge-free { background: #27ae60; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 13px; font-weight: 800; text-transform: uppercase; margin-left: 8px; display: inline-block; vertical-align: middle; animation: pulseFree 2s infinite; }
+        @keyframes pulseFree { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .sl-price-tag { color: #555; font-size: 13px; margin-left: 5px; font-weight: normal; }
+        .sl-search-input { width: 100% !important; height: 44px !important; border: 1px solid #ccc !important; padding: 0 15px !important; border-radius: 6px !important; font-size: 14px !important; }
+        .mw-results-list { position: absolute; width: 100%; max-height: 250px; overflow-y: auto; background: #fff; border: 1px solid #ddd; z-index: 9999; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+        .mw-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; text-align: left; }
+        .mw-item:hover { background: #f8f8f8; font-weight: bold; }
+        .sl-status { margin-top: 10px; font-size: 12px; color: #888; font-style: italic; }
+        .sl-chip { background: #f0f0f0; padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; display: inline-block; margin: 3px 2px; }
+    </style>
+
+    <script>
+    function slOpen(courier, mode, courierId) {
+        var $ = jQuery;
+        var uid = courier + '_' + mode;
+        $('.sl-card').removeClass('active'); $('.sl-dropdowns').hide();
+        $('#box-' + uid).addClass('active').find('.sl-dropdowns').show();
+        $('#r-' + uid).prop('checked', true);
+
+        $('#final-courier-id').val(courierId);
+        $('#final-mode').val(mode);
+
+        if ((mode === 'office' || mode === 'locker') && !sl_MasterDB[courier]) {
+            $.getJSON("<?php echo admin_url('admin-ajax.php'); ?>", { action: 'sl_get_data_v6', type: courier }, function(res) {
+                sl_MasterDB[courier] = res;
+            });
+        }
+        $(document.body).trigger('update_checkout');
+    }
+
+    function slCheckType(name, mode, courier) {
+        if (courier === 'boxnow') return true;
+        if (mode !== 'locker') return true;
+        var n = name.toLowerCase();
+        return n.includes('автомат') || n.includes('apm') || n.includes('locker');
+    }
+
+    jQuery(document).on('input focus', '.city-autocomplete', function() {
+        var $ = jQuery; var uid = this.id.replace('city-input-', '');
+        var term = $(this).val().trim().toLowerCase();
+        var resDiv = $('#city-results-' + uid);
+        if (!sl_CitiesList) return;
+        var html = ''; var count = 0;
+        $.each(sl_CitiesList, function(cityName, zipData) {
+            $.each(zipData, function(postCode, detailsArray) {
+                if (term === "" || cityName.toLowerCase().includes(term) || postCode.includes(term)) {
+                    html += `<div class="mw-item city-select" data-uid="${uid}" data-city="${cityName}" data-postcode="${postCode}">📍 ${cityName} <b>(${postCode})</b></div>`;
+                    count++;
+                }
+                if (count >= 15) return false;
+            });
+            if (count >= 15) return false;
+        });
+        resDiv.html(html).show();
+    });
+
+    jQuery(document).on('click', '.city-select', function() {
+        var $ = jQuery; var uid = $(this).data('uid');
+        $('#city-input-' + uid).val($(this).data('city') + ' (' + $(this).data('postcode') + ')');
+        $('#city-hidden-' + uid).val($(this).data('city'));
+        $('#postcode-' + uid).val($(this).data('postcode'));
+        $('.mw-results-list').hide();
+        $(document.body).trigger('update_checkout');
+    });
+
+    jQuery(document).on('input focus', '.combined-search', function() {
+        var $ = jQuery; var uid = this.id.replace('input-', '');
+        var courier = uid.split('_')[0]; var mode = uid.split('_')[1];
+        var term = $(this).val().trim().toLowerCase();
+        if (!sl_MasterDB[courier]) return;
+        var words = term.split(/\s+/).filter(w => w.length > 0);
+        var html = ''; var count = 0;
+
+        $.each(sl_MasterDB[courier], function(key, value) {
+            var offices = Array.isArray(value) ? value : [value];
+            $.each(offices, function(i, off) {
+                if (!off || !off.name) return;
+                var city = (off.city ? off.city : (typeof key === 'string' ? key : '')).toUpperCase().trim();
+                var label = (city ? city + " - " : "") + off.name;
+                if (!slCheckType(label, mode, courier)) return;
+                if (words.every(w => label.toLowerCase().includes(w))) {
+                    html += `<div class="mw-item office-trigger" data-uid="${uid}" data-id="${off.code || off.id}" data-text="${label}">🏢 ${label}</div>`;
+                    count++;
+                }
+                if (count >= 30) return false;
+            });
+            if (count >= 30) return false;
+        });
+        $('#results-' + uid).html(html || '<div class="mw-item">Няма резултати</div>').show();
+    });
+
+    jQuery(document).on('click', '.office-trigger', function() {
+        var $ = jQuery; var uid = $(this).data('uid');
+        $('#input-' + uid).val($(this).data('text'));
+        $('#val-' + uid).val($(this).data('id'));
+        $('.mw-results-list').hide();
+        $(document.body).trigger('update_checkout');
+    });
+
+    jQuery(document).on('click', function(e) {
+        if (!jQuery(e.target).closest('.sl-card').length) { jQuery('.mw-results-list').hide(); }
+    });
+
+    function slQuick(uid, city) { jQuery('#input-' + uid).val(city).trigger('input').focus(); }
+    </script>
+    <?php
+}
+
+add_action('wp_ajax_sl_get_data_v6', function() {
+    $u = ['speedy' => 'https://couriers.lynk.bg/new/bg-speedy-offices.txt', 'econt' => 'https://couriers.lynk.bg/new/bg-econt-offices.txt', 'boxnow' => 'https://couriers.lynk.bg/new/bg-boxnow-offices.txt'];
+    echo wp_remote_retrieve_body(wp_remote_get($u[$_GET['type']], ['timeout' => 30]));
+    wp_die();
+});
+
+add_action( 'woocommerce_checkout_update_order_meta', function($order_id) {
+    if (isset($_POST['siliyan_courier_id'])) update_post_meta($order_id, '_siliyan_courier_id', sanitize_text_field($_POST['siliyan_courier_id']));
+    if (isset($_POST['siliyan_mode'])) update_post_meta($order_id, '_siliyan_mode', sanitize_text_field($_POST['siliyan_mode']));
+    $uid = isset($_POST['siliyan_courier_full']) ? $_POST['siliyan_courier_full'] : '';
+    if ($uid) {
+        if (strpos($uid, 'address') === false) {
+            update_post_meta($order_id, '_siliyan_office_id', sanitize_text_field($_POST['sl_val_' . $uid]));
+        } else {
+            update_post_meta($order_id, '_siliyan_city', sanitize_text_field($_POST['sl_city_' . $uid]));
+            update_post_meta($order_id, '_siliyan_postcode', sanitize_text_field($_POST['sl_postcode_' . $uid]));
+            update_post_meta($order_id, '_siliyan_street', sanitize_text_field($_POST['sl_street_' . $uid]));
+        }
+    }
+});

@@ -9,6 +9,8 @@ import java.util.List;
 public class CheckOutCourierListDto {
 
     private List<CheckOutCourierDto> checkOutCourierList = new ArrayList<>();
+    private String currencySymbol;
+    private String currencyName;
 //    private
 
 }

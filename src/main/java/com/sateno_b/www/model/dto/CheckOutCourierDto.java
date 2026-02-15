@@ -10,8 +10,8 @@ public class CheckOutCourierDto {
     private CourierType courierType;
     private CourierShipmentType courierShipmentType;
 
-    private String fixedShippingPrice;
-    private String freeShippingPriceMax;
+    private Double fixedShippingPrice;
+    private Double freeShippingPriceMax;
     private Integer sortOrder;
     private boolean active;
 
