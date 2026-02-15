@@ -40,7 +40,7 @@ public class SiteController {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<SiteDto> list = siteRepository.findAll(pageable)
                 .map(s -> {
-                    List<CourierSettingsDto> allBySite = courierSettingsRepository.findAllBySite(s)
+                    List<CourierSettingsDto> allBySite = courierSettingsRepository.findAllBySiteOrderBySortOrderAsc(s)
                             .stream().map(d -> modelMapper.map(d, CourierSettingsDto.class)).toList();
 
                     SiteDto siteDto = modelMapper.map(s, SiteDto.class);
@@ -97,7 +97,7 @@ public class SiteController {
         
         if(!siteDto.getCouriers().isEmpty()) {
             for (CourierSettingsDto courier : siteDto.getCouriers()) {
-                Optional<CourierSettingsEntity> byId = courierSettingsRepository.findByIdOrderById(courier.getId());
+                Optional<CourierSettingsEntity> byId = courierSettingsRepository.findById(courier.getId());
                 if(byId.isPresent()) {
                     byId.get()
                             .setActive(courier.isActive());

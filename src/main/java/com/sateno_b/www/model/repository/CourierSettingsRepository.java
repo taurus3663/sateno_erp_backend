@@ -17,8 +17,7 @@ public interface CourierSettingsRepository extends JpaRepository<CourierSettings
     // Всички активни куриери за даден сайт
     List<CourierSettingsEntity> findAllBySiteIdAndActiveTrue(Long siteId);
 
-    List<CourierSettingsEntity> findAllBySite(SiteEntity site);
+    List<CourierSettingsEntity> findAllBySiteOrderBySortOrderAsc(SiteEntity site);
     List<CourierSettingsEntity> findAllBySiteAndActive(SiteEntity site, boolean active);
 
-    Optional<CourierSettingsEntity> findByIdOrderById(Long id);
 }
