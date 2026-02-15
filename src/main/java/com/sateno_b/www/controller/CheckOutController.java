@@ -25,9 +25,6 @@ public class CheckOutController {
     @PostMapping("/check-couriers")
     public ResponseEntity<CheckOutCourierListDto> check(@RequestBody CheckCourierRequest request) {
 
-        System.out.println(request.toString());
-
-
         SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
         List<CourierSettingsEntity> couriers = courierSettingsRepository.findAllBySiteAndActive(site, true);
 
