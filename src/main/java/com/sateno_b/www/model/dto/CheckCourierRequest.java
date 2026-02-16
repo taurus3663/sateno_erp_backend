@@ -20,4 +20,8 @@ public class CheckCourierRequest {
     private String postcode;
     private CourierType courierType;
     private CourierShipmentType courierShipmentType;
+
+    public double getCart_weight() {
+        return cart_weight == 0? 0.5 : cart_weight;
+    }
 }

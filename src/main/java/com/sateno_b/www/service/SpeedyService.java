@@ -38,13 +38,23 @@ public class SpeedyService implements ShippingProvider {
            CourierSettingsEntity courierSettings = g.get();
 
 
+
+           if(courierSettings.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())){
+               return 0;
+           }
+
            try {
                Map<String, Object> body = createBaseBody(courierSettings.getUsername(), courierSettings.getPassword());
                body.put("shippingDate", java.time.LocalDate.now().toString());
 
                Map<String, Object> content = new HashMap<>();
                content.put("contents", "Текстилни изделия");
-               content.put("parcelsCount", request.getItems().size());
+               if(request.getCourierShipmentType() == CourierShipmentType.LOCKER){
+                   content.put("parcelsCount", 1);
+               } else {
+                   content.put("parcelsCount", request.getItems().size());
+               }
+
                content.put("totalWeight", request.getCart_weight());
                body.put("content", content);
 
@@ -65,7 +75,26 @@ public class SpeedyService implements ShippingProvider {
 
                Map<String, Object> recipient = new HashMap<>();
                recipient.put("privatePerson", true);
-               recipient.put("siteId", request.getTargetId());
+               if (request.getCourierShipmentType() == CourierShipmentType.OFFICE ||
+                       request.getCourierShipmentType() == CourierShipmentType.LOCKER) {
+
+                   // ВАЖНО: За офиси и автомати targetId е ID на офиса
+                   recipient.put("pickupOfficeId", Long.parseLong(request.getTargetId()));
+               } else if (request.getCourierShipmentType() == CourierShipmentType.ADDRESS) {
+
+                   // До адрес: Спиди предпочита да получи siteId вътре в addressLocation
+                   Map<String, Object> addressLocation = new HashMap<>();
+//                   addressLocation.put("siteId", Long.parseLong(request.getTargetId()));
+
+                   // Ако имаш пощенски код в рекуеста, добави го за по-голяма точност
+                   if (request.getPostcode() != null && !request.getPostcode().isEmpty()) {
+                       addressLocation.put("postCode", request.getPostcode());
+                       addressLocation.put("siteName", request.getTargetId());
+                   }
+
+                   recipient.put("addressLocation", addressLocation);
+               }
+//               recipient.put("siteId", request.getTargetId());
                body.put("recipient", recipient);
 
 //               List<Map<String, Object>> parcels = new ArrayList<>();
@@ -95,7 +124,7 @@ public class SpeedyService implements ShippingProvider {
             }
 
 
-
+            return -1;
 
 
            } catch (Exception e) {
