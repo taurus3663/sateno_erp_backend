@@ -1,21 +1,21 @@
 package com.sateno_b.www.service;
 
+import com.sateno_b.www.model.dto.CheckCourierRequest;
 import com.sateno_b.www.model.dto.ShipmentCityDto;
 import com.sateno_b.www.model.dto.ShipmentOfficeDto;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
+import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.data.CourierContractDetails;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
+import com.sateno_b.www.model.repository.SiteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RequiredArgsConstructor
 @Service
@@ -23,85 +23,54 @@ public class SpeedyService implements ShippingProvider {
 
     private final RestClient restClient;
     private final CourierSettingsRepository courierSettingsRepository;
+    private final SiteRepository siteRepository;
+
+    public double calculatePrice(CheckCourierRequest request) {
+
+        SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
+
+       Optional<CourierSettingsEntity> g =
+               courierSettingsRepository
+                       .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(),
+                               request.getCourierShipmentType());
+
+       if(g.isPresent()) {
+           CourierSettingsEntity courierSettings = g.get();
 
 
-    public double calculatePrice(double weight, CourierShipmentType shipmentType, String username, String password, CourierSettingsEntity courierSettings) {
-        try {
-            Map<String, Object> body = createBaseBody(username, password);
-            var contract = courierSettings.getCourierContractDetails();
-            Map<String, Object> content = new HashMap<>();
-            content.put("contents", "Текстилни изделия");
-            content.put("parcelsCount", 1);   // <-- ТУК трябва да е
-            content.put("totalWeight", 2.5);
-            body.put("content", content);
+           try {
+               Map<String, Object> body = createBaseBody(courierSettings.getUsername(), courierSettings.getPassword());
+               body.put("shippingDate", java.time.LocalDate.now().toString());
 
-            Map<String, Object> payment = new HashMap<>();
+               Map<String, Object> content = new HashMap<>();
+               content.put("contents", "Текстилни изделия");
+               content.put("parcelsCount", request.getItems().size());
+               content.put("totalWeight", request.getCart_weight());
+               body.put("content", content);
 
-// кой плаща
-            payment.put("courierServicePayer", "SENDER");
+               Map<String, Object> payment = new HashMap<>();
+               payment.put("courierServicePayer", "RECIPIENT");
+               payment.put("declaredValuePayer", "RECIPIENT");
+               body.put("payment", payment);
 
-// начин на плащане
-            payment.put("declaredValuePayer", "SENDER");
+               Map<String, Object> service = new HashMap<>();
+               service.put("serviceIds", List.of(505L));
+               service.put("autoAdjustPickupDate", true);
+               body.put("service", service);
 
-            body.put("payment", payment);
+               var contract = courierSettings.getCourierContractDetails();
+               Map<String, Object> sender = new HashMap<>();
+               sender.put("clientId", contract.getClientId());
+               body.put("sender", sender);
 
-// Добави и тези, за да сме сигурни, че сесията е пълна
-            body.put("parcelsCount", 1);
+               Map<String, Object> recipient = new HashMap<>();
+               recipient.put("privatePerson", true);
+               recipient.put("siteId", request.getTargetId());
+               body.put("recipient", recipient);
 
-            // 1. ОСНОВНИ ПАРАМЕТРИ
-            // Пробвай със serviceId 3 (Икономична), защото 502/505 понякога са забранени за нови акаунти
-            long serviceId = (shipmentType == CourierShipmentType.ADDRESS) ? 2L : 3L;
-
-            Map<String, Object> service = new HashMap<>();
-            service.put("serviceIds", List.of(505L)); // ✅ ТУК Е КЛЮЧОВОТО
-            service.put("autoAdjustPickupDate", true);
-
-            body.put("service", service);
-
-
-            body.put("shippingDate", java.time.LocalDate.now().toString());
-
-            // 2. ПОДАТЕЛ (Използваме clientId)
-            Map<String, Object> sender = new HashMap<>();
-            sender.put("clientId", contract.getClientId());
-            body.put("sender", sender);
-
-            // 3. ПОЛУЧАТЕЛ
-            Map<String, Object> recipient = new HashMap<>();
-            recipient.put("privatePerson", true);
-            recipient.put("siteId", 68134L); // София
-
-            if (shipmentType == CourierShipmentType.ADDRESS) {
-                recipient.put("addressLocation", Map.of("siteId", 68134L));
-            } else {
-                // Офис 10 е винаги валиден (Централна поща София)
-                recipient.put("pickupOfficeId", 10L);
-            }
-            body.put("recipient", recipient);
-
-            // 4. ПАКЕТИ (PARCELS) - Ключово за грешката "service.required"
-            double calcWeight = (weight <= 0) ? 1.0 : weight;
-
-            // Спиди изисква списък от обекти, всеки със 'size'
-            List<Map<String, Object>> parcels = new ArrayList<>();
-            Map<String, Object> parcel = new HashMap<>();
-            Map<String, Object> size = new HashMap<>();
-            size.put("weight", calcWeight);
-            parcel.put("size", size);
-            parcels.add(parcel);
-
-            body.put("parcels", parcels);
-
-            // 5. ДОПЪЛНИТЕЛНИ ПАРАМЕТРИ (Понякога критични)
-            // Указваме изрично, че е 1 пакет
-            body.put("totalWeight", calcWeight);
-
-            // API повикване
-            Map<String, Object> response = postToSpeedy("calculate", body);
-            System.out.println("DEBUG SPEEDY PAYLOAD: " + body);
-            System.out.println("DEBUG SPEEDY RESPONSE: " + response);
-
-            if (response != null && response.containsKey("calculations")) {
+//               List<Map<String, Object>> parcels = new ArrayList<>();
+               Map<String, Object> response = postToSpeedy("calculate", body);
+               if (response != null && response.containsKey("calculations")) {
                 List<Map<String, Object>> calculations =
                         (List<Map<String, Object>>) response.get("calculations");
 
@@ -118,22 +87,129 @@ public class SpeedyService implements ShippingProvider {
                             (Map<String, Object>) calc.get("price");
 
                     if (price != null && price.containsKey("total")) {
+//                        return Double.parseDouble(price.get("total").toString());
+                        System.out.println(Double.parseDouble(price.get("total").toString()));
                         return Double.parseDouble(price.get("total").toString());
                     }
                 }
             }
 
-        } catch (Exception e) {
-            System.err.println("Speedy Calc Error: " + e.getMessage());
-        }
-        return 0.00;
+
+
+
+
+           } catch (Exception e) {
+               System.out.println("Speedy service error: " + e.getMessage());
+           }
+       }
+
+
+
+        return 0;
     }
-    /**
-     * Резервна калкулация (Fallback), за да не е безплатна доставката при проблем с API
-     */
-//    private double calculateFallback(double weight, CourierShipmentType type) {
-//        double base = (type == CourierShipmentType.ADDRESS) ? 7.50 : 5.50;
-//        return base + (weight * 0.50);
+
+//    public double calculatePrice(double weight, CourierShipmentType shipmentType, String username, String password, CourierSettingsEntity courierSettings) {
+//        try {
+//            Map<String, Object> body = createBaseBody(username, password);
+//            var contract = courierSettings.getCourierContractDetails();
+//            Map<String, Object> content = new HashMap<>();
+//            content.put("contents", "Текстилни изделия");
+//            content.put("parcelsCount", 1);   // <-- ТУК трябва да е
+//            content.put("totalWeight", 2.5);
+//            body.put("content", content);
+//
+//            Map<String, Object> payment = new HashMap<>();
+//
+//// кой плаща
+//            payment.put("courierServicePayer", "SENDER");
+//
+//// начин на плащане
+//            payment.put("declaredValuePayer", "SENDER");
+//
+//            body.put("payment", payment);
+//
+//// Добави и тези, за да сме сигурни, че сесията е пълна
+//            body.put("parcelsCount", 1);
+//
+//            // 1. ОСНОВНИ ПАРАМЕТРИ
+//            // Пробвай със serviceId 3 (Икономична), защото 502/505 понякога са забранени за нови акаунти
+//            long serviceId = (shipmentType == CourierShipmentType.ADDRESS) ? 2L : 3L;
+//
+//            Map<String, Object> service = new HashMap<>();
+//            service.put("serviceIds", List.of(505L)); // ✅ ТУК Е КЛЮЧОВОТО
+//            service.put("autoAdjustPickupDate", true);
+//
+//            body.put("service", service);
+//
+//
+//            body.put("shippingDate", java.time.LocalDate.now().toString());
+//
+//            // 2. ПОДАТЕЛ (Използваме clientId)
+//            Map<String, Object> sender = new HashMap<>();
+//            sender.put("clientId", contract.getClientId());
+//            body.put("sender", sender);
+//
+//            // 3. ПОЛУЧАТЕЛ
+//            Map<String, Object> recipient = new HashMap<>();
+//            recipient.put("privatePerson", true);
+//            recipient.put("siteId", 68134L); // София
+//
+//            if (shipmentType == CourierShipmentType.ADDRESS) {
+//                recipient.put("addressLocation", Map.of("siteId", 68134L));
+//            } else {
+//                // Офис 10 е винаги валиден (Централна поща София)
+//                recipient.put("pickupOfficeId", 10L);
+//            }
+//            body.put("recipient", recipient);
+//
+//            // 4. ПАКЕТИ (PARCELS) - Ключово за грешката "service.required"
+//            double calcWeight = (weight <= 0) ? 1.0 : weight;
+//
+//            // Спиди изисква списък от обекти, всеки със 'size'
+//            List<Map<String, Object>> parcels = new ArrayList<>();
+//            Map<String, Object> parcel = new HashMap<>();
+//            Map<String, Object> size = new HashMap<>();
+//            size.put("weight", calcWeight);
+//            parcel.put("size", size);
+//            parcels.add(parcel);
+//
+//            body.put("parcels", parcels);
+//
+//            // 5. ДОПЪЛНИТЕЛНИ ПАРАМЕТРИ (Понякога критични)
+//            // Указваме изрично, че е 1 пакет
+//            body.put("totalWeight", calcWeight);
+//
+//            // API повикване
+//            Map<String, Object> response = postToSpeedy("calculate", body);
+//            System.out.println("DEBUG SPEEDY PAYLOAD: " + body);
+//            System.out.println("DEBUG SPEEDY RESPONSE: " + response);
+//
+//            if (response != null && response.containsKey("calculations")) {
+//                List<Map<String, Object>> calculations =
+//                        (List<Map<String, Object>>) response.get("calculations");
+//
+//                if (!calculations.isEmpty()) {
+//
+//                    Map<String, Object> calc = calculations.get(0);
+//
+//                    if (calc.containsKey("error")) {
+//                        System.out.println("Speedy service error: " + calc.get("error"));
+//                        return 0.0;
+//                    }
+//
+//                    Map<String, Object> price =
+//                            (Map<String, Object>) calc.get("price");
+//
+//                    if (price != null && price.containsKey("total")) {
+//                        return Double.parseDouble(price.get("total").toString());
+//                    }
+//                }
+//            }
+//
+//        } catch (Exception e) {
+//            System.err.println("Speedy Calc Error: " + e.getMessage());
+//        }
+//        return 0.00;
 //    }
 
     @Override
@@ -276,5 +352,29 @@ public class SpeedyService implements ShippingProvider {
                 .body(body)
                 .retrieve()
                 .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+    }
+
+    public double calculatePriceDefault(double weight, CourierShipmentType type) {
+        double basePrice = 0;
+
+        if (type == CourierShipmentType.OFFICE) {
+            if (weight <= 3) basePrice = 4.05;
+            else if (weight <= 5) basePrice = 4.88;
+            else if (weight <= 10) basePrice = 6.44;
+            else basePrice = 6.44 + (weight - 10) * 0.50;
+        } else if (type == CourierShipmentType.ADDRESS) { // До адрес
+            if (weight <= 3) basePrice = 5.95;
+            else if (weight <= 5) basePrice = 7.20;
+            else if (weight <= 10) basePrice = 10.50;
+            else basePrice = 10.50 + (weight - 10) * 0.80;
+        } else if ( type == CourierShipmentType.LOCKER ) {
+            if (weight <= 3) basePrice = 3.20; // Примерна цена за малък пакет
+            else if (weight <= 20) basePrice = 4.50;
+            else basePrice = 6.00;
+        }
+
+        // Добавяме средна такса гориво (напр. 10%) и ДДС (20%)
+        double fuelSurcharge = 1.10;
+        return basePrice * fuelSurcharge * 1.20;
     }
 }

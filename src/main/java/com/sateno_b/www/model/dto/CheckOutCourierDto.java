@@ -14,5 +14,6 @@ public class CheckOutCourierDto {
     private Double freeShippingPriceMax;
     private Integer sortOrder;
     private boolean active;
+    private boolean autoShippingPrice;
 
 }

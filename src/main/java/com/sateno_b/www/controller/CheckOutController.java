@@ -45,14 +45,17 @@ public class CheckOutController {
             courierDto.setSortOrder(courier.getSortOrder());
             courierDto.setFixedShippingPrice(courier.getFixedShippingPrice());
             courierDto.setFreeShippingPriceMax(courier.getFreeShippingPriceMax());
+            courierDto.setAutoShippingPrice(courier.getAutoShippingPrice());
 
             if(courier.getAutoShippingPrice() == true) {
                 System.out.println("works");
                 if(courier.getCourierType() == CourierType.SPEEDY) {
 
 
-                   double finalPrice = speedyService.calculatePrice(request.getCart_weight(), courier.getCourierShipmentType(), courier.getUsername(), courier.getPassword(), courier);
-                    System.out.printf("fPrice: %f\n", finalPrice);
+//                   double finalPrice = speedyService.calculatePrice(request.getCart_weight(), courier.getCourierShipmentType(), courier.getUsername(), courier.getPassword(), courier);
+//                    System.out.printf("fPrice: %f\n", finalPrice);
+                    double finalPrice = speedyService.calculatePriceDefault(request.getCart_weight(),  courier.getCourierShipmentType());
+                    courierDto.setFixedShippingPrice(finalPrice);
                 }
 
             }
@@ -62,6 +65,12 @@ public class CheckOutController {
 
 
         return new ResponseEntity<>(dto, HttpStatus.OK);
+    }
+
+    @PostMapping("/recalculate-price")
+    public double recalculate(@RequestBody CheckCourierRequest request) {
+        double v = speedyService.calculatePrice(request);
+        return v;
     }
 
 }

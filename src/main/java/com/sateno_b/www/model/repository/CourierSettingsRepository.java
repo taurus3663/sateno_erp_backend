@@ -2,6 +2,7 @@ package com.sateno_b.www.model.repository;
 
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
+import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.enums.CourierType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -19,5 +20,6 @@ public interface CourierSettingsRepository extends JpaRepository<CourierSettings
 
     List<CourierSettingsEntity> findAllBySiteOrderBySortOrderAsc(SiteEntity site);
     List<CourierSettingsEntity> findAllBySiteAndActive(SiteEntity site, boolean active);
+    Optional<CourierSettingsEntity> findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(SiteEntity site, CourierType courierType, CourierShipmentType courierShipmentType);
 
 }
