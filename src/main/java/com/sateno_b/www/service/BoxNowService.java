@@ -20,17 +20,6 @@ public class BoxNowService implements ShippingProvider {
 
     private final RestClient restClient;
 
-
-    @Override
-    public void generateWayBill(Long orderId, Long siteId) {
-
-    }
-
-    @Override
-    public String getStatus(String wayBillNumber) {
-        return "";
-    }
-
     @Override
     public List<ShipmentCityDto> getCities(String nameFilter, String username, String password) {
         return List.of();

@@ -149,15 +149,12 @@ public class SpeedyService implements ShippingProvider {
 //
 //            Map<String, Object> payment = new HashMap<>();
 //
-//// кой плаща
 //            payment.put("courierServicePayer", "SENDER");
 //
-//// начин на плащане
 //            payment.put("declaredValuePayer", "SENDER");
 //
 //            body.put("payment", payment);
 //
-//// Добави и тези, за да сме сигурни, че сесията е пълна
 //            body.put("parcelsCount", 1);
 //
 //            // 1. ОСНОВНИ ПАРАМЕТРИ
@@ -242,16 +239,6 @@ public class SpeedyService implements ShippingProvider {
 //    }
 
     @Override
-    public void generateWayBill(Long orderId, Long siteId) {
-
-    }
-
-    @Override
-    public String getStatus(String wayBillNumber) {
-        return "";
-    }
-
-    @Override
     public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
         var body = createBaseBody(username, password);
         body.put("countryId", 100);
@@ -299,7 +286,7 @@ public class SpeedyService implements ShippingProvider {
 
     public boolean testLogin(String username, String password, Long courierId) {
         try {
-            System.out.println("Тестване на връзка със Спиди за потребител: " + username);
+//            System.out.println("Тестване на връзка със Спиди за потребител: " + username);
 
             Map<String, Object> body = new HashMap<>();
             // ВАЖНО: Ключовете трябва да са точно userName и password

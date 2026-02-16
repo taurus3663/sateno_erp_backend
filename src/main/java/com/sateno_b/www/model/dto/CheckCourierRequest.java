@@ -17,6 +17,7 @@ public class CheckCourierRequest {
     private String currency;
 
     private String targetId;
+    private String cityName;
     private String postcode;
     private CourierType courierType;
     private CourierShipmentType courierShipmentType;

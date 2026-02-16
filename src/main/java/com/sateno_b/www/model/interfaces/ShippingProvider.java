@@ -7,8 +7,6 @@ import java.util.List;
 
 public interface ShippingProvider {
 
-    void generateWayBill(Long orderId, Long siteId);
-    String getStatus(String wayBillNumber);
     List<ShipmentCityDto> getCities(String username, String password, String nameFilter);
     List<ShipmentOfficeDto> getOffices(String username, String password, Long cityId, String nameFilter);
 

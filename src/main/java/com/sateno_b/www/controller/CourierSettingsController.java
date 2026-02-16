@@ -80,7 +80,7 @@ public class CourierSettingsController {
                 isSucessful = speedyService.testLogin(courierSettingsDto.getUsername(), courierSettingsDto.getPassword(), courierSettingsDto.getId());
             }
             else if(courierSettingsDto.getCourierType() == CourierType.ECONT) {
-                isSucessful = econtService.testLogin(courierSettingsDto.getUsername(), courierSettingsDto.getPassword());
+                isSucessful = econtService.testLogin(courierSettingsDto.getUsername(), courierSettingsDto.getPassword(), courierSettingsDto.getId());
             }
             else if(courierSettingsDto.getCourierType() == CourierType.BOX_NOW) {
                 isSucessful = boxNowService.testLogin(courierSettingsDto.getApiKey(), courierSettingsDto.getApiSecret());

@@ -8,6 +8,7 @@ import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
+import com.sateno_b.www.service.EcontService;
 import com.sateno_b.www.service.SpeedyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +25,7 @@ public class CheckOutController {
     private final CourierSettingsRepository courierSettingsRepository;
     private final SiteRepository siteRepository;
     private final SpeedyService speedyService;
+    private final EcontService econtService;
 
     @PostMapping("/check-couriers")
     public ResponseEntity<CheckOutCourierListDto> check(@RequestBody CheckCourierRequest request) {
@@ -69,7 +71,13 @@ public class CheckOutController {
 
     @PostMapping("/recalculate-price")
     public double recalculate(@RequestBody CheckCourierRequest request) {
-        double v = speedyService.calculatePrice(request);
+        double v = 0;
+        if(request.getCourierType() == CourierType.SPEEDY) {
+            v = speedyService.calculatePrice(request);
+        } else if(request.getCourierType() == CourierType.ECONT) {
+            v = econtService.calculatePrice(request);
+        }
+
         return v;
     }
 

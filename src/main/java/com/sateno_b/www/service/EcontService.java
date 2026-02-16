@@ -1,19 +1,25 @@
 package com.sateno_b.www.service;
 
+import com.sateno_b.www.model.dto.CheckCourierRequest;
 import com.sateno_b.www.model.dto.ShipmentCityDto;
 import com.sateno_b.www.model.dto.ShipmentOfficeDto;
+import com.sateno_b.www.model.entity.CourierSettingsEntity;
+import com.sateno_b.www.model.entity.SiteEntity;
+import com.sateno_b.www.model.entity.data.CourierContractDetails;
+import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
+import com.sateno_b.www.model.repository.CourierSettingsRepository;
+import com.sateno_b.www.model.repository.SiteRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Consumer;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -21,16 +27,8 @@ import java.util.Map;
 public class EcontService implements ShippingProvider {
 
     private final RestClient restClient;
-
-    @Override
-    public void generateWayBill(Long orderId, Long siteId) {
-
-    }
-
-    @Override
-    public String getStatus(String wayBillNumber) {
-        return "";
-    }
+    private final SiteRepository siteRepository;
+    private final CourierSettingsRepository courierSettingsRepository;
 
     @Override
     public List<ShipmentCityDto> getCities(String nameFilter, String username, String password) {
@@ -43,27 +41,198 @@ public class EcontService implements ShippingProvider {
     }
 
 
-    public boolean testLogin(String username, String password) {
+    public boolean testLogin(String username, String password, Long courierId) {
         try {
-            // За демо винаги ползвай този URL
-//            String demoUrl = "https://demo.econt.com/ee/services/Profile/ProfileService.getClientProfiles.json";
-            String demoUrl = "https://ee.econt.com/services/Profile/ProfileService.getClientProfiles.json";
+            var response = postToEcont("services/Profile/ProfileService.getClientProfiles.json", new HashMap<>(), username, password, false);
 
-            var response = restClient.post()
-                    .uri(demoUrl)
-                    .headers(headers -> {
-                        headers.setBasicAuth(username, password);
-                        headers.setContentType(MediaType.APPLICATION_JSON);
-                    })
-                    .body("{}") // Еконт изисква поне празен обект
-                    .retrieve()
-                    .toEntity(String.class);
+            List<?> profilesList = (List<?>) response.get("profiles");
+            if (profilesList != null && !profilesList.isEmpty()) {
+                // 1. Взимаме първия профил
+                Map<String, Object> profileMap = (Map<String, Object>) profilesList.get(0);
 
-            return response.getStatusCode().is2xxSuccessful();
+                // 2. Данните за клиента са вложени в ключ "client"
+                Map<String, Object> clientMap = (Map<String, Object>) profileMap.get("client");
+
+                if (clientMap != null) {
+                    CourierContractDetails details = new CourierContractDetails();
+
+                    // Мапваме ID-то (1488680848) и името
+                    details.setClientId(Long.parseLong(clientMap.get("id").toString()));
+                    details.setClientName((String) clientMap.get("name"));
+
+                    // Еконт не връща "objectName" директно тук, ползваме името на фирмата
+                    details.setObjectName((String) clientMap.get("name"));
+
+                    // Ползваме molName за контактно лице
+                    details.setContactName((String) clientMap.get("molName"));
+
+                    // Имейлът е в основния client обект
+                    details.setEmail(clientMap.get("email") != null ? clientMap.get("email").toString() : "");
+
+                    // 3. Обработка на адреса (взимаме първия от списъка "addresses")
+                    List<?> addressesList = (List<?>) profileMap.get("addresses");
+                    if (addressesList != null && !addressesList.isEmpty()) {
+                        Map<String, Object> addrMap = (Map<String, Object>) addressesList.get(0);
+                        Map<String, Object> cityMap = (Map<String, Object>) addrMap.get("city");
+
+                        CourierContractDetails.AddressDetails addr = new CourierContractDetails.AddressDetails();
+                        if (cityMap != null) {
+                            addr.setSiteId(Long.parseLong(cityMap.get("id").toString()));
+                            addr.setSiteName((String) cityMap.get("name"));
+                            addr.setPostCode(cityMap.get("postCode") != null ? cityMap.get("postCode").toString() : "");
+                        }
+
+                        // Сглобяваме адрес за визуализация
+                        String fullAddr = (String) addrMap.get("street") + " " + (String) addrMap.get("num");
+                        addr.setFullAddressString(fullAddr);
+
+                        details.setAddress(addr);
+                    }
+
+                    // 4. Запис в базата
+                    CourierSettingsEntity c = courierSettingsRepository.findById(courierId).orElse(null);
+                    if (c != null) {
+                        c.setCourierContractDetails(details);
+                        courierSettingsRepository.save(c);
+                    }
+                    return true;
+                }
+            }
+            return false;
         } catch (Exception e) {
-            log.error("EcontService testLogin error {}", e.getMessage());
+            log.error("EcontService testLogin error: {}", e.getMessage());
             return false;
         }
+    }
+
+    public double calculatePrice(CheckCourierRequest request) {
+        try {
+            SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
+            Optional<CourierSettingsEntity> settingsOpt = courierSettingsRepository
+                    .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(), request.getCourierShipmentType());
+
+            if (settingsOpt.isPresent()) {
+                CourierSettingsEntity settings = settingsOpt.get();
+                var contract = settings.getCourierContractDetails();
+
+                if (settings.getFreeShippingPriceMax() != null &&
+                        settings.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())) {
+                    return 0.0;
+                }
+
+                Map<String, Object> body = new HashMap<>();
+                Map<String, Object> label = new HashMap<>();
+
+                // 1. ПОДАТЕЛ (Sender)
+                Map<String, Object> senderAddress = new HashMap<>();
+                Map<String, Object> senderCity = new HashMap<>();
+                senderCity.put("id", (contract.getAddress() != null && contract.getAddress().getSiteId() != null)
+                        ? contract.getAddress().getSiteId() : 23149);
+                senderAddress.put("city", senderCity);
+                label.put("senderAddress", senderAddress);
+                label.put("senderClientNumber", contract.getClientId());
+
+                // 2. ПОЛУЧАТЕЛ (Receiver)
+                Map<String, Object> receiverAddress = new HashMap<>();
+                Map<String, Object> receiverCity = new HashMap<>();
+                receiverCity.put("country", Map.of("code3", "BGR"));
+                receiverCity.put("name", request.getCityName());
+                receiverCity.put("postCode", request.getPostcode());
+
+                Map<String, Object> services = new HashMap<>();
+                services.put("shipmentSide", "receiver");
+                services.put("paySide", "receiver");
+
+                Map<String, Object> paySide2 = new HashMap<>();
+                paySide2.put("courierService", "receiver");
+                if (request.getCourierShipmentType() == CourierShipmentType.OFFICE ||
+                        request.getCourierShipmentType() == CourierShipmentType.LOCKER) {
+
+                    receiverAddress.put("officeCode", request.getTargetId());
+
+                    label.put("receiverDeliveryType", "office"); // Малки букви спрямо документацията
+
+                } else {
+                    // ДО АДРЕС
+                    label.put("receiverDeliveryType", "door"); // ТОВА ПРАВИ ПРАТКАТА "ДО АДРЕС"
+
+                    receiverAddress.put("street", "ул. Централна");
+                    receiverAddress.put("num",  "1");
+
+                    services.put("payAfterTest", true); // Опция "Преглед"
+
+                    // ЗАДЪЛЖИТЕЛНО: Улица и Номер за калкулация "до врата"
+//                    receiverAddress.put("street", "Централна");
+//                    receiverAddress.put("num", "1");
+                }
+                receiverAddress.put("city", receiverCity);
+                label.put("receiverAddress", receiverAddress);
+                label.put("services", services);
+                label.put("paymentSide", paySide2);
+                // 3. ПАРАМЕТРИ НА ПРАТКАТА
+                label.put("packCount", Integer.parseInt(request.getItems_count()));
+                label.put("shipmentType", "pack");
+                label.put("weight", 4.0);
+                label.put("shipmentDescription", "Текстилни изделия");
+
+                label.put("price", "2");
+                label.put("currency", "EUR");
+
+                body.put("label", label);
+                body.put("mode", "calculate");
+
+                try {
+                    String jsonBody = new com.fasterxml.jackson.databind.ObjectMapper()
+                            .writerWithDefaultPrettyPrinter()
+                            .writeValueAsString(body);
+                    System.out.println("--- SENDING JSON TO ECONT ---");
+                    System.out.println(jsonBody);
+                } catch (Exception e) {
+                    log.error("Error printing JSON body: {}", e.getMessage());
+                }
+                // 5. ИЗПРАЩАНЕ
+                Map<String, Object> response = postToEcont("services/Shipments/LabelService.createLabel.json", body,
+                        settings.getUsername(), settings.getPassword(), false);
+
+                System.out.println("DEBUG JSON2: " + response);
+
+                if (response != null && response.containsKey("label")) {
+                    Map<String, Object> labelRes = (Map<String, Object>) response.get("label");
+
+                    // Стойността, която ПОЛУЧАТЕЛЯТ трябва да плати
+                    if (labelRes.containsKey("receiverDueAmount")) {
+                        double due = Double.parseDouble(labelRes.get("receiverDueAmount").toString());
+                        if (due > 0) {
+                            return due; // Връщаме цената за клиента
+                        }
+                    }
+
+                    // Fallback към общата цена
+                    if (labelRes.containsKey("totalPrice")) {
+                        return Double.parseDouble(labelRes.get("totalPrice").toString());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Econt Error: {}", e.getMessage());
+        }
+        return -1.0;
+    }
+
+
+    private Map<String, Object> postToEcont(String endpoint, Map<String, Object> body, String username, String password, boolean isCustom) {
+        String turl = isCustom ? endpoint: "https://ee.econt.com/" + endpoint;
+        return restClient.post()
+                .uri(turl)
+//                .uri("https://ee.econt.com/ee/" + endpoint)
+                .headers(httpHeaders -> {
+                    httpHeaders.setBasicAuth(username, password);
+                    httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+                })
+                .body(body)
+                .retrieve()
+                .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
+
     }
 
 }
