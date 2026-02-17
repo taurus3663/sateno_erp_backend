@@ -1,0 +1,549 @@
+
+/**
+ * SILIYAN ERP - SHIPPING MODULE (COMPLETE VERSION)
+ */
+
+
+
+
+add_action( 'woocommerce_checkout_process', function() {
+
+    if ( empty($_POST['siliyan_courier_full']) ) {
+        wc_add_notice( 'Моля изберете метод на доставка.', 'error' );
+    }
+
+});
+
+add_filter( 'woocommerce_checkout_fields', function( $fields ) {
+    $allowed = ['billing_first_name', 'billing_last_name', 'billing_phone', 'billing_email'];
+
+    foreach ( $fields['billing'] as $key => $field ) {
+        if ( ! in_array( $key, $allowed ) ) {
+            // ВМЕСТО unset, ги правим скрити
+            $fields['billing'][$key]['type'] = 'hidden';
+            $fields['billing'][$key]['label'] = '';
+            $fields['billing'][$key]['required'] = false; // Важно, за да не гърми при запис
+        }
+    }
+
+    return $fields;
+});
+
+add_filter( 'woocommerce_billing_fields' , 'siliyan_add_custom_billing_fields' );
+function siliyan_add_custom_billing_fields( $fields ) {
+    // Добавяме изцяло нови ключове в обекта Billing
+    $fields['billing_office_code'] = array(
+        'type'      => 'hidden', // Скрито за потребителя
+        'label'     => 'Office Code',
+        'required'  => false,
+        'class'     => array('sl-hidden'),
+    );
+
+    $fields['billing_courier_type'] = array(
+        'type'      => 'hidden',
+        'label'     => 'Courier Type',
+        'required'  => false,
+        'class'     => array('sl-hidden'),
+    );
+
+    return $fields;
+}
+
+
+// add_action( 'woocommerce_checkout_billing', 'siliyan_erp_advanced_search' );
+add_action( 'woocommerce_after_checkout_billing_form', 'siliyan_erp_advanced_search' );
+
+
+function siliyan_erp_advanced_search() {
+
+    // 1. ПОДГОТОВКА НА ДАННИТЕ ОТ КОЛИЧКАТА
+    $cart = WC()->cart;
+    $cart_items = array();
+    $total_weight = 0;
+
+    foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
+        $_product   = apply_filters( 'woocommerce_cart_item_product', $cart_item['data'], $cart_item, $cart_item_key );
+        $quantity   = $cart_item['quantity'];
+        $price      = $cart_item['line_total'];
+        $weight     = (float)$_product->get_weight() * $quantity;
+
+        $total_weight += $weight;
+
+        $cart_items[] = array(
+            'id'       => $cart_item['product_id'],
+            'name'     => $_product->get_name(),
+            'sku'      => $_product->get_sku(),
+            'quantity' => $quantity,
+            'price'    => $price,
+            'weight'   => (float)$_product->get_weight(),
+        );
+    }
+
+    $site_domain = $_SERVER['HTTP_HOST'];
+    $api_url = 'http://77.71.76.17:9494/erp/checkout/check-couriers';
+
+    $request_body = array(
+        'site'         => $site_domain,
+        'cart_total'   => $cart->get_total('edit'),
+        'cart_weight'  => $total_weight,
+        'items_count'  => $cart->get_cart_contents_count(),
+        'items'        => $cart_items,
+        'currency'     => get_woocommerce_currency()
+    );
+
+    $args = array(
+        'body'        => json_encode( $request_body ),
+        'headers'     => array( 'Content-Type' => 'application/json' ),
+        'timeout'     => 15,
+        'blocking'    => true,
+    );
+
+    // 2. ИЗПРАЩАНЕ КЪМ JAVA ЗА ПЪРВОНАЧАЛНИ ЦЕНИ
+    $response = wp_remote_post( $api_url, $args );
+    if ( is_wp_error( $response ) ) return;
+
+    $data = json_decode( wp_remote_retrieve_body( $response ), true );
+    $delivery_options = isset($data['checkOutCourierList']) ? $data['checkOutCourierList'] : [];
+    $currency_symbol = isset($data['currencySymbol']) ? $data['currencySymbol'] : '€';
+
+    // Сортировка
+    if (!empty($delivery_options)) {
+        usort($delivery_options, function($a, $b) {
+            $orderA = isset($a['sortOrder']) ? (int)$a['sortOrder'] : 999;
+            $orderB = isset($b['sortOrder']) ? (int)$b['sortOrder'] : 999;
+            return $orderA <=> $orderB;
+        });
+    }
+
+    $cities_res = wp_remote_get("https://couriers.lynk.bg/new/bg-cities.txt");
+    $cities_json = !is_wp_error($cities_res) ? wp_remote_retrieve_body($cities_res) : '{}';
+
+    ?>
+    <script>
+        var sl_CitiesList = <?php echo $cities_json; ?>;
+        var sl_MasterDB = { speedy: null, econt: null, boxnow: null };
+        var sl_CurrentCourier = '';
+        var sl_CurrentMode = '';
+        var sl_CartWeight = <?php echo $total_weight; ?>;
+        var sl_CartTotal = "<?php echo $cart->get_total('edit'); ?>";
+        var sl_CurrencySymbol = "<?php echo $currency_symbol; ?>";
+        var sl_ExchangeRate = 1.95583;
+
+    </script>
+
+    <div id="sl-shipping-system" style="clear:both; margin-top:30px;">
+        <h3 style="font-weight:600; margin-bottom:15px; font-size:18px;">Метод на доставка</h3>
+
+        <?php
+        if (!empty($delivery_options)) :
+            foreach ($delivery_options as $opt):
+                $slug = str_replace('_', '', strtolower($opt['courierType']));
+                $mode = strtolower($opt['courierShipmentType']);
+                $unique_id = $slug . '_' . $mode;
+                $courier_id = isset($opt['id']) ? $opt['id'] : 0;
+
+                $calc_p = isset($opt['fPrice']) ? (float)$opt['fPrice'] : (isset($opt['fixedShippingPrice']) ? (float)$opt['fixedShippingPrice'] : 0);
+
+                if ($calc_p <= 0) {
+                    $price_html = ' <span class="sl-badge-free">БЕЗПЛАТНО</span>';
+                } else {
+                    $p_orig = number_format($calc_p, 2) . ' ' . $currency_symbol;
+                    $p_bgn = number_format($calc_p * 1.95583, 2) . ' лв.';
+                    $price_html = ' <span class="sl-price-tag">' . $p_orig . ' <small>(' . $p_bgn . ')</small></span>';
+                }
+        ?>
+        <div class="sl-card"
+             id="box-<?php echo $unique_id; ?>"
+             data-auto-shipping-price="<?php echo ($opt['autoShippingPrice'] ? 'true' : 'false'); ?>"
+             onclick="slOpen('<?php echo $slug; ?>', '<?php echo $mode; ?>', <?php echo $courier_id; ?>)">
+            <div class="sl-row">
+                <div class="sl-info">
+                    <input type="radio" name="siliyan_courier_full" value="<?php echo $unique_id; ?>" id="r-<?php echo $unique_id; ?>">
+                    <label for="r-<?php echo $unique_id; ?>" style="cursor:pointer">
+                        <?php echo ucfirst($slug) . ' - ' . ($mode === 'locker' ? 'До автомат' : ($mode === 'office' ? 'До офис' : 'До адрес')); ?>
+                        <span class="price-holder"><?php echo $price_html; ?></span>
+                    </label>
+                </div>
+                <img src="https://co.middleware.bg/courier-menus/<?php echo $slug; ?>-logo.png" width="80" onerror="this.style.display='none'">
+            </div>
+
+            <div class="sl-dropdowns" id="drop-<?php echo $unique_id; ?>" style="display:none; margin-top:15px;">
+                <?php if ($mode === 'office' || $mode === 'locker'): ?>
+                    <div class="mw-chips">
+                        <span class="sl-chip" onclick="slQuick('<?php echo $unique_id; ?>', 'София')">София</span>
+                        <span class="sl-chip" onclick="slQuick('<?php echo $unique_id; ?>', 'Пловдив')">Пловдив</span>
+                        <span class="sl-chip" onclick="slQuick('<?php echo $unique_id; ?>', 'Варна')">Варна</span>
+                    </div>
+                    <input type="text" id="input-<?php echo $unique_id; ?>" class="sl-search-input combined-search" placeholder="Търси град или обект..." autocomplete="off">
+                    <div id="results-<?php echo $unique_id; ?>" class="mw-results-list" style="display:none;"></div>
+                    <input type="hidden" name="sl_val_<?php echo $unique_id; ?>" id="val-<?php echo $unique_id; ?>">
+
+                <?php else: ?>
+                    <div class="address-vertical-stack" style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="position:relative;">
+                            <input type="text" id="city-input-<?php echo $unique_id; ?>" class="sl-search-input city-autocomplete" placeholder="Напишете град..." autocomplete="off">
+                            <div id="city-results-<?php echo $unique_id; ?>" class="mw-results-list" style="display:none;"></div>
+                        </div>
+                        <input type="text" name="sl_postcode_<?php echo $unique_id; ?>" id="postcode-<?php echo $unique_id; ?>" placeholder="ПК" class="sl-search-input">
+                        <input type="text" name="sl_street_<?php echo $unique_id; ?>" placeholder="Улица и номер..." class="sl-search-input">
+                        <input type="hidden" name="sl_city_<?php echo $unique_id; ?>" id="city-hidden-<?php echo $unique_id; ?>">
+                    </div>
+                <?php endif; ?>
+                <div id="text-<?php echo $unique_id; ?>" class="sl-status"> < Изберете опция > </div>
+            </div>
+        </div>
+        <?php endforeach; endif; ?>
+
+        <input type="hidden" name="siliyan_courier_id" id="final-courier-id">
+        <input type="hidden" name="siliyan_mode" id="final-mode">
+    </div>
+
+    <style>
+		/* Скрива контейнерите на полетата, които направихме hidden */
+    .woocommerce-billing-fields__field-wrapper p.form-row.sl-hidden,
+    .sl-hidden-sync,
+    #billing_city_field,
+    #billing_postcode_field,
+    #billing_address_1_field,
+    #billing_address_2_field,
+    #billing_country_field,
+    #billing_state_field {
+        display: none !important;
+        visibility: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* Подсигуряваме, че твоят модул няма да има излишен празен марджин отгоре */
+    #sl-shipping-system {
+        clear: both;
+        margin-top: 20px;
+    }
+        .sl-card { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; background: #fff; transition: 0.2s; position: relative;}
+        .sl-card.active { border: 2px solid #27ae60 !important; background: #f9fffb !important; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .sl-row { display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+        .sl-info { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+        .sl-badge-free { background: #27ae60; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 13px; font-weight: 800; text-transform: uppercase; margin-left: 8px; animation: pulseFree 2s infinite; }
+        @keyframes pulseFree { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .sl-price-tag { color: #27ae60; font-size: 14px; margin-left: 5px; font-weight: bold; background: #f1f1f1; padding: 2px 8px; border-radius: 4px; }
+        .sl-price-tag small { color: #666; font-weight: normal; font-size: 12px; margin-left: 4px; border-left: 1px solid #ccc; padding-left: 5px;}
+        .sl-search-input { width: 100% !important; height: 44px !important; border: 1px solid #ccc !important; padding: 0 15px !important; border-radius: 6px !important; font-size: 14px !important; }
+        .mw-results-list { position: absolute; width: 100%; max-height: 250px; overflow-y: auto; background: #fff; border: 1px solid #ddd; z-index: 9999; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+        .mw-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; text-align: left; }
+        .mw-item:hover { background: #f8f8f8; font-weight: bold; }
+        .sl-chip { background: #f0f0f0; padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; display: inline-block; margin: 3px 2px; }
+    </style>
+
+    <script>
+    function slTriggerRecalculate(targetId, postcode = '', cityName = '') {
+        var $ = jQuery;
+
+
+		// 1. Пълним стандартните Billing полета на WooCommerce веднага
+    $('#billing_city').val(cityName);
+    $('#billing_postcode').val(postcode);
+
+    // 2. Определяме адреса: ако е офис, взимаме името му от инпута, ако е адрес - от улицата
+    var uid = sl_CurrentCourier.toLowerCase() + '_' + sl_CurrentMode.toLowerCase();
+    var finalAddr = "";
+
+    if (sl_CurrentMode === 'office' || sl_CurrentMode === 'locker') {
+        finalAddr = "Офис: " + $('#input-' + uid).val();
+    } else {
+        // Взимаме стойността от твоето поле за улица
+        finalAddr = $('input[name="sl_street_' + uid + '"]').val() || "";
+    }
+
+    $('#billing_address_1').val(finalAddr);
+
+    // 3. Казваме на WooCommerce, че има промяна (за да се обновят данните в сесията)
+    $(document.body).trigger('update_checkout');
+
+
+        if (!sl_CurrentCourier || !sl_CurrentMode) return;
+
+        var uid = sl_CurrentCourier.toLowerCase() + '_' + sl_CurrentMode.toLowerCase();
+        var $card = $('#box-' + uid);
+
+        var isAuto = $card.data('autoShippingPrice');
+        if (isAuto === false || isAuto === "false" || isAuto === 0) {
+            $(document.body).trigger('update_checkout');
+            return;
+        }
+
+        var $priceHolder = $card.find('.price-holder');
+        $priceHolder.html(' <small style="color:orange;">Изчисляване...</small>');
+
+        // СЪЗДАВАМЕ ПЪЛЕН ПАКЕТ ДАННИ ЗА JAVA DTO
+        var payload = {
+            site: window.location.hostname,
+            cart_total: sl_CartTotal,
+            cart_weight: parseFloat(sl_CartWeight),
+            items_count: "<?php echo $cart->get_cart_contents_count(); ?>",
+            currency: "<?php echo get_woocommerce_currency(); ?>",
+            courierType: sl_CurrentCourier.toUpperCase() === 'BOXNOW' ? 'BOX_NOW' : sl_CurrentCourier.toUpperCase(),
+            courierShipmentType: sl_CurrentMode.toUpperCase() === 'LOCKER' ? 'LOCKER' : (sl_CurrentMode.toUpperCase() === 'OFFICE' ? 'OFFICE' : 'ADDRESS'),
+            targetId: String(targetId),
+            postcode: String(postcode),
+            cityName: String(cityName), // ВечеcityName винаги се праща
+            items: <?php echo json_encode($cart_items); ?>
+        };
+
+//         console.log("--- SENDING RECALC TO PROXY ---", payload);
+
+        $.ajax({
+            url: '<?php echo admin_url('admin-ajax.php'); ?>?action=sl_recalculate_proxy',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(payload),
+            success: function(newPrice) {
+                var price = parseFloat(newPrice);
+                var uid = sl_CurrentCourier.toLowerCase() + '_' + sl_CurrentMode.toLowerCase();
+                var $pH = $('#box-' + uid).find('.price-holder');
+
+                if (isNaN(price) || price <= 0) {
+                    $pH.html(' <span class="sl-badge-free">БЕЗПЛАТНО</span>');
+                } else {
+                    var pBgn = (price * sl_ExchangeRate).toFixed(2);
+                    var html = ' <span class="sl-price-tag">' + price.toFixed(2) + ' ' + sl_CurrencySymbol +
+                               ' <small>(' + pBgn + ' лв.)</small></span>';
+                    $pH.html(html);
+                }
+                $(document.body).trigger('update_checkout');
+            },
+            error: function() {
+                var $pH = $('#box-' + sl_CurrentCourier.toLowerCase() + '_' + sl_CurrentMode.toLowerCase()).find('.price-holder');
+                $pH.html(' <small style="color:red;">Грешка</small>');
+            }
+        });
+    }
+
+    function slOpen(courier, mode, courierId) {
+        var $ = jQuery;
+        var uid = courier + '_' + mode;
+        sl_CurrentCourier = courier;
+        sl_CurrentMode = mode;
+
+        $('.sl-card').removeClass('active'); $('.sl-dropdowns').hide();
+        $('#box-' + uid).addClass('active').find('.sl-dropdowns').show();
+        $('#r-' + uid).prop('checked', true);
+
+        $('#final-courier-id').val(courierId);
+        $('#final-mode').val(mode);
+
+        if ((mode === 'office' || mode === 'locker') && !sl_MasterDB[courier]) {
+            $.getJSON("<?php echo admin_url('admin-ajax.php'); ?>", { action: 'sl_get_data_v6', type: courier }, function(res) {
+                sl_MasterDB[courier] = res;
+            });
+        }
+        $(document.body).trigger('update_checkout');
+    }
+
+    jQuery(document).on('click', '.office-trigger', function() {
+        var $ = jQuery;
+        var uid = $(this).data('uid');
+        var cityName = $(this).data('city'); // Взимаме града от атрибута
+
+        $('#input-' + uid).val($(this).data('text'));
+        $('#val-' + uid).val($(this).data('id'));
+        $('.mw-results-list').hide();
+
+        // Подаваме cityName на калкулатора
+        slTriggerRecalculate($(this).data('id'), '', cityName);
+    });
+
+		// Функция, която събира всичко и го праща към Billing
+function slGlobalSync() {
+    var $ = jQuery;
+    if (!sl_CurrentCourier || !sl_CurrentMode) return;
+
+    var uid = sl_CurrentCourier.toLowerCase() + '_' + sl_CurrentMode.toLowerCase();
+
+    var courierTag = sl_CurrentCourier.toUpperCase(); // SPEEDY, ECONT, BOXNOW
+    var modeTag = sl_CurrentMode.toUpperCase();       // OFFICE, LOCKER, ADDRESS
+
+    var city = "";
+    var pc = "";
+    var finalAddr = "";
+    var officeId = $('#val-' + uid).val() || "";
+
+    if (sl_CurrentMode === 'office' || sl_CurrentMode === 'locker') {
+        var officeName = $('#input-' + uid).val() || "";
+
+        // ФОРМАТ: [OFFICE] Име на обект [1234] [ECONT]
+        finalAddr = "[" + modeTag + "] " + officeName + " [" + officeId + "] [" + courierTag + "]";
+
+        city = $('#city-sync-' + uid).val() || officeName.split(' - ')[0] || "";
+        pc = $('#postcode-' + uid).val() || "";
+    } else {
+        // ДО АДРЕС
+        var street = $('input[name="sl_street_' + uid + '"]').val() || "";
+
+        // ФОРМАТ: [ADDRESS] ул. Име на улица 10 [] [ECONT]
+        // Оставяме празни скоби за ID, за да е еднакъв броят на групите за Regex
+        finalAddr = "[" + modeTag + "] " + street + " [] [" + courierTag + "]";
+
+        city = $('#city-hidden-' + uid).val() || "";
+        pc = $('#postcode-' + uid).val() || "";
+    }
+
+    // Пълним стандартните Billing полета
+    $('#billing_city').val(city.trim());
+    $('#billing_postcode').val(pc.trim());
+    $('#billing_address_1').val(finalAddr.trim());
+
+    // Пълним и Shipping (за да излиза и в двата обекта в GSON-а)
+    $('#shipping_city').val(city.trim());
+    $('#shipping_postcode').val(pc.trim());
+    $('#shipping_address_1').val(finalAddr.trim());
+
+//     console.log("--- SILIYAN ERP FINAL SYNC ---");
+//     console.log("Address_1: " + finalAddr);
+//     console.log("City: " + city);
+//     console.log("Postcode: " + pc);
+}
+// СЛЕДИМ ВСИЧКИ ВЪЗМОЖНИ ПРОМЕНИ
+// 1. Когато се пише в поле за търсене или улица
+jQuery(document).on('input', '.sl-search-input, .combined-search, .city-autocomplete', function() {
+    slGlobalSync();
+});
+
+// 2. Когато се избере нещо от списък (офис или град)
+jQuery(document).on('click', '.mw-item', function() {
+    // Малък delay, за да сме сигурни, че твоите скриптове първо са попълнили полетата
+    setTimeout(slGlobalSync, 100);
+});
+
+// 3. Когато се сменя метода (картите)
+jQuery(document).on('click', '.sl-card', function() {
+    setTimeout(slGlobalSync, 100);
+});
+
+    jQuery(document).on('click', '.city-select', function() {
+        var $ = jQuery;
+        var uid = $(this).data('uid');
+        var cityName = $(this).data('id'); // Тук id е самото име на града при адрес
+
+        $('#city-input-' + uid).val($(this).data('city') + ' (' + $(this).data('postcode') + ')');
+        $('#city-hidden-' + uid).val($(this).data('city'));
+        $('#postcode-' + uid).val($(this).data('postcode'));
+        $('.mw-results-list').hide();
+
+        slTriggerRecalculate(cityName, $(this).data('postcode'), cityName);
+    });
+
+    jQuery(document).on('input focus', '.city-autocomplete', function() {
+    var $ = jQuery;
+    var uid = this.id.replace('city-input-', '');
+    var term = $(this).val().trim().toLowerCase();
+    var resDiv = $('#city-results-' + uid);
+
+    if (!sl_CitiesList) return;
+
+    var html = ''; var count = 0;
+    $.each(sl_CitiesList, function(cityName, zipData) {
+        $.each(zipData, function(postCode, detailsArray) {
+            if (term === "" || cityName.toLowerCase().includes(term) || postCode.includes(term)) {
+                html += `<div class="mw-item city-select"
+                              data-uid="${uid}"
+                              data-city="${cityName}"
+                              data-postcode="${postCode}"
+                              data-id="${cityName}">📍 ${cityName} <b>(${postCode})</b></div>`;
+                count++;
+            }
+            if (count >= 15) return false;
+        });
+        if (count >= 15) return false;
+    });
+    resDiv.html(html).show();
+});
+
+    jQuery(document).on('input focus', '.combined-search', function() {
+        var $ = jQuery; var uid = this.id.replace('input-', '');
+        var courier = uid.split('_')[0]; var mode = uid.split('_')[1];
+        var term = $(this).val().trim().toLowerCase();
+        if (!sl_MasterDB[courier]) return;
+        var words = term.split(/\s+/).filter(w => w.length > 0);
+        var html = ''; var count = 0;
+        $.each(sl_MasterDB[courier], function(key, value) {
+            var offices = Array.isArray(value) ? value : [value];
+            $.each(offices, function(i, off) {
+                if (!off || !off.name) return;
+                var city = (off.city ? off.city : (typeof key === 'string' ? key : '')).toUpperCase().trim();
+                var label = (city ? city + " - " : "") + off.name;
+                if (!slCheckType(label, mode, courier)) return;
+                if (words.every(w => label.toLowerCase().includes(w))) {
+                    // ДОБАВИХМЕ data-city="${city}" за офисите
+                    html += `<div class="mw-item office-trigger"
+                                  data-uid="${uid}"
+                                  data-id="${off.code || off.id}"
+                                  data-city="${city}"
+                                  data-text="${label}">🏢 ${label}</div>`;
+                    count++;
+                }
+                if (count >= 30) return false;
+            });
+            if (count >= 30) return false;
+        });
+        $('#results-' + uid).html(html || '<div class="mw-item">Няма резултати</div>').show();
+    });
+
+    function slCheckType(name, mode, courier) {
+        if (courier === 'boxnow') return true;
+        if (mode !== 'locker') return true;
+        var n = name.toLowerCase();
+        return n.includes('автомат') || n.includes('apm') || n.includes('locker');
+    }
+
+    function slQuick(uid, city) { jQuery('#input-' + uid).val(city).trigger('input').focus(); }
+    jQuery(document).on('click', function(e) { if (!jQuery(e.target).closest('.sl-card').length) { jQuery('.mw-results-list').hide(); } });
+    </script>
+    <?php
+}
+
+add_action('wp_ajax_sl_get_data_v6', function() {
+    $u = ['speedy' => 'https://couriers.lynk.bg/new/bg-speedy-offices.txt', 'econt' => 'https://couriers.lynk.bg/new/bg-econt-offices.txt', 'boxnow' => 'https://couriers.lynk.bg/new/bg-boxnow-offices.txt'];
+    echo wp_remote_retrieve_body(wp_remote_get($u[$_GET['type']], ['timeout' => 30]));
+    wp_die();
+});
+
+add_action( 'woocommerce_checkout_update_order_meta', function($order_id) {
+    if (isset($_POST['siliyan_courier_id'])) update_post_meta($order_id, '_siliyan_courier_id', sanitize_text_field($_POST['siliyan_courier_id']));
+    if (isset($_POST['siliyan_mode'])) update_post_meta($order_id, '_siliyan_mode', sanitize_text_field($_POST['siliyan_mode']));
+    $uid = isset($_POST['siliyan_courier_full']) ? $_POST['siliyan_courier_full'] : '';
+    if ($uid) {
+        if (strpos($uid, 'address') === false) {
+            update_post_meta($order_id, '_siliyan_office_id', sanitize_text_field($_POST['sl_val_' . $uid]));
+        } else {
+            update_post_meta($order_id, '_siliyan_city', sanitize_text_field($_POST['sl_city_' . $uid]));
+            update_post_meta($order_id, '_siliyan_postcode', sanitize_text_field($_POST['sl_postcode_' . $uid]));
+            update_post_meta($order_id, '_siliyan_street', sanitize_text_field($_POST['sl_street_' . $uid]));
+        }
+    }
+});
+
+/**
+ * PROXY ЗА ПРЕИЗЧИСЛЯВАНЕ (HTTPS FIX)
+ */
+add_action('wp_ajax_sl_recalculate_proxy', 'sl_recalculate_proxy_func');
+add_action('wp_ajax_nopriv_sl_recalculate_proxy', 'sl_recalculate_proxy_func');
+
+function sl_recalculate_proxy_func() {
+    $json_data = file_get_contents('php://input');
+    $java_api_url = 'http://77.71.76.17:9494/erp/checkout/recalculate-price';
+
+    $response = wp_remote_post($java_api_url, array(
+        'body'    => $json_data,
+        'headers' => array('Content-Type' => 'application/json'),
+        'timeout' => 15
+    ));
+
+    if (is_wp_error($response)) {
+        wp_send_json_error($response->get_error_message());
+    } else {
+        echo wp_remote_retrieve_body($response);
+    }
+    wp_die();
+}
