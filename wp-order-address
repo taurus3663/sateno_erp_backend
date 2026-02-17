@@ -1,0 +1,22 @@
+Address_1: [LOCKER] СОФИЯ - София - АМП - New Avenue, ул. Проф. Храбър Попов 14, София - 24/7  ул. Проф. арх. Храбър Попов №14 [1840] [BOXNOW]
+checkout/:896 City: СОФИЯ
+//
+Address_1: [OFFICE] СОФИЯ - СОФИЯ - СОМАТ ул. АБАГАР No 22 [2] [SPEEDY]
+checkout/:896 City: СОФИЯ
+//
+Address_1: [ADDRESS] 123 [] [SPEEDY]
+checkout/:896 City: Айтос
+checkout/:897 Postcode: 8500
+//
+Address_1: [LOCKER] СОФИЯ - СОФИЯ - МЕТРО 1 (АВТОМАТ) бул. ЦАРИГРАДСКО ШОСЕ No 11А [9001] [SPEEDY]
+checkout/:896 City: СОФИЯ
+//
+Address_1: [ADDRESS] 321 [] [ECONT]
+checkout/:896 City: Айтос
+checkout/:897 Postcode: 8500
+//
+Address_1: [OFFICE] СОФИЯ - Еконт Точка София Дружба - Книжна борса -  София жк Дружба-1 ул. Поручик Христо Топракчиев №11 книжна борса Искър [10016] [ECONT]
+checkout/:896 City: СОФИЯ
+checkout/:897 Postcode:
+
+
