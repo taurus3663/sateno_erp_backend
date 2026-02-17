@@ -20,6 +20,7 @@ public class CourierSettingsDto {
 
     private Integer sortOrder;
     private Double freeShippingPriceMax;
+    private Boolean freeShippingPriceMaxBol = false;
     private Boolean autoShippingPrice = false;
     private Double fixedShippingPrice;
 }

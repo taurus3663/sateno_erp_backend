@@ -8,6 +8,7 @@ import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
+import com.sateno_b.www.service.BoxNowService;
 import com.sateno_b.www.service.EcontService;
 import com.sateno_b.www.service.SpeedyService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class CheckOutController {
     private final SiteRepository siteRepository;
     private final SpeedyService speedyService;
     private final EcontService econtService;
+    private final BoxNowService boxNowService;
 
     @PostMapping("/check-couriers")
     public ResponseEntity<CheckOutCourierListDto> check(@RequestBody CheckCourierRequest request) {
@@ -49,16 +51,24 @@ public class CheckOutController {
             courierDto.setFreeShippingPriceMax(courier.getFreeShippingPriceMax());
             courierDto.setAutoShippingPrice(courier.getAutoShippingPrice());
 
-            if(courier.getAutoShippingPrice() == true) {
+            if(courier.getFreeShippingPriceMaxBol() == true && courier.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())) {
+                courierDto.setFixedShippingPrice(0.0);
+            }
+            else if(courier.getAutoShippingPrice() == true) {
+
                 System.out.println("works");
                 if(courier.getCourierType() == CourierType.SPEEDY) {
-
-
-//                   double finalPrice = speedyService.calculatePrice(request.getCart_weight(), courier.getCourierShipmentType(), courier.getUsername(), courier.getPassword(), courier);
-//                    System.out.printf("fPrice: %f\n", finalPrice);
                     double finalPrice = speedyService.calculatePriceDefault(request.getCart_weight(),  courier.getCourierShipmentType());
                     courierDto.setFixedShippingPrice(finalPrice);
+                } else if (courier.getCourierType() == CourierType.ECONT) {
+                    double finalPrice = econtService.calculatePriceDefault(request.getCart_weight(), courier.getCourierShipmentType());
+                    courierDto.setFixedShippingPrice(finalPrice);
+
                 }
+//                else if (courier.getCourierType() == CourierType.BOX_NOW) {
+//                    double finalPrice = boxNowService.calculatePriceDefault(request.getCart_weight(), courier.getCourierShipmentType());
+//                    courierDto.setFixedShippingPrice(finalPrice);
+//                }
 
             }
 

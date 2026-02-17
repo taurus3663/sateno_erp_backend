@@ -46,9 +46,12 @@ public class CourierSettingsEntity extends BaseEntity {
 
     @Column
     private Integer sortOrder;
-    @Column
-    private Double freeShippingPriceMax;
-    @Column
+    @Column(nullable = false)
+    private Double freeShippingPriceMax = 0D;
+
+    @Column(nullable = false)
+    private Boolean freeShippingPriceMaxBol = false;
+    @Column(nullable = false)
     private Boolean autoShippingPrice = false;
     @Column
     private Double fixedShippingPrice;

@@ -40,6 +40,74 @@ public class EcontService implements ShippingProvider {
         return List.of();
     }
 
+    private CourierContractDetails getContract(String username, String password) {
+        var response = postToEcont("services/Profile/ProfileService.getClientProfiles.json", new HashMap<>(), username, password, false);
+//        System.out.println("00000000000000000000000000000000000000000000000000000000000");
+//        System.out.println(response);
+//        System.out.println("00000000000000000000000000000000000000000000000000000000000");
+        List<?> profilesList = (List<?>) response.get("profiles");
+        if (profilesList != null && !profilesList.isEmpty()) {
+            // 1. Взимаме първия профил
+            Map<String, Object> profileMap = (Map<String, Object>) profilesList.get(0);
+
+            // 2. Данните за клиента са вложени в ключ "client"
+            Map<String, Object> clientMap = (Map<String, Object>) profileMap.get("client");
+
+            if (clientMap != null) {
+                CourierContractDetails details = new CourierContractDetails();
+
+                // Мапваме ID-то (1488680848) и името
+                details.setClientId(Long.parseLong(clientMap.get("id").toString()));
+                details.setClientName((String) clientMap.get("name"));
+
+                // Еконт не връща "objectName" директно тук, ползваме името на фирмата
+                details.setObjectName((String) clientMap.get("name"));
+
+                // Ползваме molName за контактно лице
+                details.setContactName((String) clientMap.get("molName"));
+
+                // Имейлът е в основния client обект
+                details.setEmail(clientMap.get("email") != null ? clientMap.get("email").toString() : "");
+
+                List<CourierContractDetails.PhoneDetails> phoneDetails = new ArrayList<>();
+                for (String phones : (List<String>) clientMap.get("phones")) {
+                    CourierContractDetails.PhoneDetails phoneDetail = new CourierContractDetails.PhoneDetails();
+                    phoneDetail.setNumber(phones);
+                    phoneDetails.add(phoneDetail);
+                }
+                details.setPhones(phoneDetails);
+
+                // 3. Обработка на адреса (взимаме първия от списъка "addresses")
+                List<?> addressesList = (List<?>) profileMap.get("addresses");
+                if (addressesList != null && !addressesList.isEmpty()) {
+                    Map<String, Object> addrMap = (Map<String, Object>) addressesList.get(0);
+                    Map<String, Object> cityMap = (Map<String, Object>) addrMap.get("city");
+
+                    CourierContractDetails.AddressDetails addr = new CourierContractDetails.AddressDetails();
+                    if (cityMap != null) {
+                        addr.setSiteId(Long.parseLong(cityMap.get("id").toString()));
+                        addr.setSiteName((String) cityMap.get("name"));
+                        addr.setPostCode(cityMap.get("postCode") != null ? cityMap.get("postCode").toString() : "");
+
+                    }
+
+                    // Сглобяваме адрес за визуализация
+                    String fullAddr = (String) addrMap.get("street") + " " + (String) addrMap.get("num");
+                    addr.setNum(addrMap.get("num") != null ? addrMap.get("num").toString() : "");
+                    addr.setFullAddressString(fullAddr);
+
+
+                    details.setAddress(addr);
+                }
+                System.out.println("111111111111111111111111111111111111111111111111111111");
+                System.out.println(details);
+                System.out.println("111111111111111111111111111111111111111111111111111111");
+                return details;
+            }
+
+        }
+        return null;
+    }
 
     public boolean testLogin(String username, String password, Long courierId) {
         try {
@@ -90,11 +158,11 @@ public class EcontService implements ShippingProvider {
                     }
 
                     // 4. Запис в базата
-                    CourierSettingsEntity c = courierSettingsRepository.findById(courierId).orElse(null);
-                    if (c != null) {
-                        c.setCourierContractDetails(details);
-                        courierSettingsRepository.save(c);
-                    }
+//                    CourierSettingsEntity c = courierSettingsRepository.findById(courierId).orElse(null);
+//                    if (c != null) {
+//                        c.setCourierContractDetails(details);
+//                        courierSettingsRepository.save(c);
+//                    }
                     return true;
                 }
             }
@@ -113,9 +181,9 @@ public class EcontService implements ShippingProvider {
 
             if (settingsOpt.isPresent()) {
                 CourierSettingsEntity settings = settingsOpt.get();
-                var contract = settings.getCourierContractDetails();
+                var contract = getContract(settings.getUsername(), settings.getPassword());
 
-                if (settings.getFreeShippingPriceMax() != null &&
+                if (settings.getFreeShippingPriceMaxBol() == true &&
                         settings.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())) {
                     return 0.0;
                 }
@@ -124,56 +192,75 @@ public class EcontService implements ShippingProvider {
                 Map<String, Object> label = new HashMap<>();
 
                 // 1. ПОДАТЕЛ (Sender)
+//                Map<String, Object> senderAddress = new HashMap<>();
+//                Map<String, Object> senderCity = new HashMap<>();
+//                senderCity.put("id", (contract.getAddress() != null && contract.getAddress().getSiteId() != null)
+//                        ? contract.getAddress().getSiteId() : 23149);
+//                senderCity.put("country", Map.of("code3", "BGR"));
+//                senderCity.put("name", contract.getAddress().getSiteName());
+//                senderCity.put("postCode", contract.getAddress().getPostCode());
+//                senderAddress.put("city", senderCity);
+//                senderAddress.put("street", contract.getAddress().getFullAddressString());
+//                senderAddress.put("phones", contract.getPhones());
+//                label.put("senderAddress", senderAddress);
+//                label.put("senderClientNumber", contract.getClientId());
+
+                Map<String, Object> senderClient = new HashMap<>();
+                senderClient.put("name", contract.getClientName());
+                senderClient.put("phones", contract.getPhones().stream().map(CourierContractDetails.PhoneDetails::getNumber).toList());
+                senderClient.put("phone", contract.getPhones().get(0).getNumber());
+                label.put("senderClient",  senderClient);
+
                 Map<String, Object> senderAddress = new HashMap<>();
-                Map<String, Object> senderCity = new HashMap<>();
-                senderCity.put("id", (contract.getAddress() != null && contract.getAddress().getSiteId() != null)
-                        ? contract.getAddress().getSiteId() : 23149);
-                senderAddress.put("city", senderCity);
-                label.put("senderAddress", senderAddress);
-                label.put("senderClientNumber", contract.getClientId());
+                Map<String, Object> city = new HashMap<>();
+                city.put("country", Map.of("code3", "BGR"));
+                city.put("name", contract.getAddress().getSiteName());
+                city.put("postCode", contract.getAddress().getPostCode());
+                city.put("id", contract.getAddress().getSiteId());
+                senderAddress.put("city", city);
+                senderAddress.put("street", contract.getAddress().getFullAddressString());
+                label.put("senderAddress",  senderAddress);
 
                 // 2. ПОЛУЧАТЕЛ (Receiver)
                 Map<String, Object> receiverAddress = new HashMap<>();
                 Map<String, Object> receiverCity = new HashMap<>();
-                receiverCity.put("country", Map.of("code3", "BGR"));
-                receiverCity.put("name", request.getCityName());
-                receiverCity.put("postCode", request.getPostcode());
 
-                Map<String, Object> services = new HashMap<>();
-                services.put("shipmentSide", "receiver");
-                services.put("paySide", "receiver");
 
-                Map<String, Object> paySide2 = new HashMap<>();
-                paySide2.put("courierService", "receiver");
+//                receiverAddress.put("street", "ул. Централна");
+//                receiverAddress.put("num",  "1");
+//                receiverAddress.put("other",  "1 asd ads");
+//                label.put("courierService", "receiver");
                 if (request.getCourierShipmentType() == CourierShipmentType.OFFICE ||
                         request.getCourierShipmentType() == CourierShipmentType.LOCKER) {
 
-                    receiverAddress.put("officeCode", request.getTargetId());
+//                    receiverAddress.put("officeCode", request.getTargetId());
 
-                    label.put("receiverDeliveryType", "office"); // Малки букви спрямо документацията
+//                    label.put("receiverDeliveryType", "office"); // Малки букви спрямо документацията
+                    label.put("receiverOfficeCode", Integer.parseInt(request.getTargetId()));
 
                 } else {
                     // ДО АДРЕС
-                    label.put("receiverDeliveryType", "door"); // ТОВА ПРАВИ ПРАТКАТА "ДО АДРЕС"
+//                    label.put("receiverDeliveryType", "door"); // ТОВА ПРАВИ ПРАТКАТА "ДО АДРЕС"
 
-                    receiverAddress.put("street", "ул. Централна");
-                    receiverAddress.put("num",  "1");
+//                    receiverAddress.put("street", "ул. Централна");
+//                    receiverAddress.put("num",  "1");
+//                    receiverAddress.put("other",  "1 asd ads");
+                    receiverCity.put("country", Map.of("code3", "BGR"));
+                    receiverCity.put("name", request.getCityName());
+                    receiverCity.put("postCode", request.getPostcode());
+                    receiverAddress.put("city", receiverCity);
 
-                    services.put("payAfterTest", true); // Опция "Преглед"
 
-                    // ЗАДЪЛЖИТЕЛНО: Улица и Номер за калкулация "до врата"
-//                    receiverAddress.put("street", "Централна");
-//                    receiverAddress.put("num", "1");
+//                    services.put("payAfterTest", true); // Опция "Преглед"
                 }
-                receiverAddress.put("city", receiverCity);
+
                 label.put("receiverAddress", receiverAddress);
-                label.put("services", services);
-                label.put("paymentSide", paySide2);
                 // 3. ПАРАМЕТРИ НА ПРАТКАТА
                 label.put("packCount", Integer.parseInt(request.getItems_count()));
                 label.put("shipmentType", "pack");
-                label.put("weight", 4.0);
+                label.put("weight", request.getCart_weight());
                 label.put("shipmentDescription", "Текстилни изделия");
+                label.put("paymentReceiverMethod", "cash");
 
                 label.put("price", "2");
                 label.put("currency", "EUR");
@@ -185,8 +272,8 @@ public class EcontService implements ShippingProvider {
                     String jsonBody = new com.fasterxml.jackson.databind.ObjectMapper()
                             .writerWithDefaultPrettyPrinter()
                             .writeValueAsString(body);
-                    System.out.println("--- SENDING JSON TO ECONT ---");
-                    System.out.println(jsonBody);
+//                    System.out.println("--- SENDING JSON TO ECONT ---");
+//                    System.out.println(jsonBody);
                 } catch (Exception e) {
                     log.error("Error printing JSON body: {}", e.getMessage());
                 }
@@ -233,6 +320,30 @@ public class EcontService implements ShippingProvider {
                 .retrieve()
                 .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
 
+    }
+
+    public double calculatePriceDefault(double weight, CourierShipmentType type) {
+        double basePrice = 0;
+
+        if (type == CourierShipmentType.OFFICE) {
+            if (weight <= 3) basePrice = 4.05;
+            else if (weight <= 5) basePrice = 4.88;
+            else if (weight <= 10) basePrice = 6.44;
+            else basePrice = 6.44 + (weight - 10) * 0.50;
+        } else if (type == CourierShipmentType.ADDRESS) { // До адрес
+            if (weight <= 3) basePrice = 5.95;
+            else if (weight <= 5) basePrice = 7.20;
+            else if (weight <= 10) basePrice = 10.50;
+            else basePrice = 10.50 + (weight - 10) * 0.80;
+        } else if ( type == CourierShipmentType.LOCKER ) {
+            if (weight <= 3) basePrice = 3.20; // Примерна цена за малък пакет
+            else if (weight <= 20) basePrice = 4.50;
+            else basePrice = 6.00;
+        }
+
+        // Добавяме средна такса гориво (напр. 10%) и ДДС (20%)
+        double fuelSurcharge = 1.10;
+        return basePrice * fuelSurcharge * 1.20;
     }
 
 }

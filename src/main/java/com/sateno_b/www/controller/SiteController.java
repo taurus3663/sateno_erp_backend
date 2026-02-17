@@ -105,6 +105,7 @@ public class SiteController {
                     byId.get().setFixedShippingPrice(courier.getFixedShippingPrice());
                     byId.get().setFreeShippingPriceMax(courier.getFreeShippingPriceMax());
                     byId.get().setSortOrder(courier.getSortOrder());
+                    byId.get().setFreeShippingPriceMaxBol(courier.getFreeShippingPriceMaxBol());
                     courierSettingsRepository.save(byId.get());
                 }
             }

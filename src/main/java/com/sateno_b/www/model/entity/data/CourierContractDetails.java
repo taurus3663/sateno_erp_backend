@@ -21,12 +21,14 @@ public class CourierContractDetails {
     private Boolean privatePerson;
     private List<PhoneDetails> phones;
 
+
     @Data
     public static class AddressDetails {
         private Long siteId;
         private String siteName;
         private String fullAddressString;
         private String postCode;
+        private String num;
         // добави и другите полета, ако ти трябват
     }
 

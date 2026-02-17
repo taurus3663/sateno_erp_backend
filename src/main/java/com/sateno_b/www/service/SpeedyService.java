@@ -39,7 +39,7 @@ public class SpeedyService implements ShippingProvider {
 
 
 
-           if(courierSettings.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())){
+           if(courierSettings.getFreeShippingPriceMaxBol() == true && courierSettings.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())){
                return 0;
            }
 
@@ -64,9 +64,20 @@ public class SpeedyService implements ShippingProvider {
                body.put("payment", payment);
 
                Map<String, Object> service = new HashMap<>();
-               service.put("serviceIds", List.of(505L));
+
                service.put("autoAdjustPickupDate", true);
-               body.put("service", service);
+//               service.put("payerType", 1);
+
+               // 3. НАЛОЖЕН ПЛАТЕЖ (Cash on Delivery)
+               Map<String, Object> additionalServices = new HashMap<>();
+               Map<String, Object> cod = new HashMap<>();
+               cod.put("amount", Double.parseDouble(request.getCart_total())); // Сумата за събиране
+               cod.put("currency", "BGN");
+               additionalServices.put("cod", cod);
+
+               service.put("additionalServices", additionalServices);
+
+
 
                var contract = courierSettings.getCourierContractDetails();
                Map<String, Object> sender = new HashMap<>();
@@ -77,10 +88,12 @@ public class SpeedyService implements ShippingProvider {
                recipient.put("privatePerson", true);
                if (request.getCourierShipmentType() == CourierShipmentType.OFFICE ||
                        request.getCourierShipmentType() == CourierShipmentType.LOCKER) {
+                   service.put("serviceIds", List.of(505L));
 
                    // ВАЖНО: За офиси и автомати targetId е ID на офиса
                    recipient.put("pickupOfficeId", Long.parseLong(request.getTargetId()));
                } else if (request.getCourierShipmentType() == CourierShipmentType.ADDRESS) {
+                   service.put("serviceIds", List.of(505L));
 
                    // До адрес: Спиди предпочита да получи siteId вътре в addressLocation
                    Map<String, Object> addressLocation = new HashMap<>();
@@ -96,9 +109,11 @@ public class SpeedyService implements ShippingProvider {
                }
 //               recipient.put("siteId", request.getTargetId());
                body.put("recipient", recipient);
+               body.put("service", service);
 
 //               List<Map<String, Object>> parcels = new ArrayList<>();
                Map<String, Object> response = postToSpeedy("calculate", body);
+               System.out.println(response);
                if (response != null && response.containsKey("calculations")) {
                 List<Map<String, Object>> calculations =
                         (List<Map<String, Object>>) response.get("calculations");
