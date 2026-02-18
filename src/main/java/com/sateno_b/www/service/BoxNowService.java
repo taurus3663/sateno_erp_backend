@@ -17,10 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @RequiredArgsConstructor
 @Service
@@ -31,14 +28,101 @@ public class BoxNowService implements ShippingProvider {
     private final CourierSettingsRepository courierSettingsRepository;
 
     @Override
-    public List<ShipmentCityDto> getCities(String nameFilter, String username, String password) {
-        return List.of();
+    public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
+        try {
+            Map<String, Object> response = getToBoxNow("/api/v1/destinations", Map.of(), username, password);
+            if (response == null || !response.containsKey("data")) return List.of();
+
+            List<Map<String, Object>> destinations = (List<Map<String, Object>>) response.get("data");
+            Map<String, ShipmentCityDto> cities = new HashMap<>();
+
+            for (Map<String, Object> dest : destinations) {
+                Object cityObj = dest.get("addressLine2");
+                if (cityObj == null) continue; // игнорираме ако няма град
+                String cityName = cityObj.toString().trim();
+                if (cityName.isEmpty()) continue;
+
+                if (nameFilter != null && !nameFilter.isBlank() &&
+                        !cityName.toLowerCase().contains(nameFilter.toLowerCase())) {
+                    continue;
+                }
+
+                if (!cities.containsKey(cityName)) {
+                    ShipmentCityDto dto = new ShipmentCityDto();
+                    dto.setId((long) (cityName.hashCode() & 0xfffffff)); // генерираме уникално id
+                    dto.setName(cityName);
+                    cities.put(cityName, dto);
+                }
+
+                if (cities.size() >= 10) break; // лимит 10
+            }
+
+            return List.copyOf(cities.values());
+
+        } catch (Exception e) {
+            System.err.println("BoxNow getCities error: " + e.getMessage());
+            return List.of();
+        }
     }
+
 
     @Override
     public List<ShipmentOfficeDto> getOffices(String username, String password, Long cityId, String nameFilter) {
-        return List.of();
+        try {
+            // Вземаме всички автомати от BoxNow
+            Map<String, Object> response = getToBoxNow("/api/v1/destinations", Map.of(), username, password);
+            if (response == null || !response.containsKey("data")) return List.of();
+//            System.out.println(response);
+
+            List<Map<String, Object>> destinations = (List<Map<String, Object>>) response.get("data");
+            List<ShipmentOfficeDto> offices = new ArrayList<>();
+
+            for (Map<String, Object> dest : destinations) {
+                String cityName = ((String) dest.get("addressLine2")).trim();
+                if (cityName.isEmpty()) continue;
+
+                // Генерираме същия id, както в getCities()
+                long generatedCityId = cityName.hashCode() & 0xfffffff;
+
+                // Филтрираме по cityId
+                if (cityId != null && !generatedCityIdEquals(cityId, generatedCityId)) continue;
+
+                System.out.println(cityId == generatedCityId);
+
+                // Филтрираме по име, ако има
+                String officeName = ((String) dest.get("name")).trim();
+                if (nameFilter != null && !nameFilter.isBlank() &&
+                        !officeName.toLowerCase().contains(nameFilter.toLowerCase())) {
+                    continue;
+                }
+
+                ShipmentOfficeDto dto = new ShipmentOfficeDto();
+                dto.setId(Long.parseLong(dest.get("id").toString()));
+                dto.setName(officeName);
+                dto.setAddress((String) dest.get("addressLine1"));
+//                dto.setPostCode((String) dest.get("postalCode"));
+//                dto.setLatitude(dest.get("lat") != null ? Double.parseDouble(dest.get("lat").toString()) : null);
+//                dto.setLongitude(dest.get("lng") != null ? Double.parseDouble(dest.get("lng").toString()) : null);
+//                dto.setNote((String) dest.get("note"));
+
+                offices.add(dto);
+
+//                if (offices.size() >= 20) break; // лимит на брой офиси, ако искаш
+            }
+
+            return offices;
+
+        } catch (Exception e) {
+            System.err.println("BoxNow getOffices error: " + e.getMessage());
+            return List.of();
+        }
     }
+
+    // Метод за сравнение, за да се избегнат проблеми с отрицателни хешове
+    private boolean generatedCityIdEquals(Long requestedId, long generatedId) {
+        return requestedId == generatedId;
+    }
+
 
 
 
@@ -159,4 +243,16 @@ public class BoxNowService implements ShippingProvider {
                 .retrieve()
                 .body(new ParameterizedTypeReference<Map<String, Object>>() {});
     }
+    private Map<String, Object> getToBoxNow(String endpoint, Map<String, Object> body, String username, String password) {
+        String totalUrl = BASE_URL+ endpoint;
+
+        return restClient.get()
+                .uri(totalUrl)
+                .header("Authorization", "Bearer " + getAuthToken(username, password))
+//                .contentType(MediaType.APPLICATION_JSON)
+//                .body(body)
+                .retrieve()
+                .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+    }
+
 }

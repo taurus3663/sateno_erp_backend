@@ -41,17 +41,17 @@ public class EcontService implements ShippingProvider {
 //        body.put("city_name", nameFilter);
 //
 //        try {
-////            Map<String, Object> response = postToEcont(
-////                    "services/Nomenclatures/NomenclaturesService.getCities.json",
-////                    body,
-////                    username,
-////                    password
-////            );
+//            Map<String, Object> response = postToEcont(
+//                    "services/Nomenclatures/NomenclaturesService.getCities.json",
+//                    body,
+//                    username,
+//                    password
+//            );
 //            Map<String, Object> response = getToEcont(
 //                    "https://couriers.lynk.bg/new/bg-cities.txt"
 //            );
 //
-////            System.out.println(response);
+//            System.out.println(response);
 //
 //            if (response == null) {
 //                log.error("Econt getCities: null response");
@@ -65,17 +65,17 @@ public class EcontService implements ShippingProvider {
 //            return sitesList.stream()
 //                    .filter(item -> item instanceof Map)
 //                    .map(item -> (Map<String, Object>) item)
-////                    .filter(cityMap -> {
-////                        if (nameFilter == null || nameFilter.isBlank()) {
-////                            return true;
-////                        }
-////                        String cityName = (String) cityMap.get("name");
-////                        return cityName != null &&
-////                                cityName.toLowerCase().contains(nameFilter.toLowerCase());
-////                    })
+//                    .filter(cityMap -> {
+//                        if (nameFilter == null || nameFilter.isBlank()) {
+//                            return true;
+//                        }
+//                        String cityName = (String) cityMap.get("name");
+//                        return cityName != null &&
+//                                cityName.toLowerCase().contains(nameFilter.toLowerCase());
+//                 })
 //                    .map(cityMap -> {
 //                        ShipmentCityDto dto = new ShipmentCityDto();
-////                        System.out.println(cityMap.toString());
+//                        System.out.println(cityMap.toString());
 //                        dto.setId(
 //                                cityMap.get("id") != null
 //                                        ? Long.parseLong(cityMap.get("id").toString())
