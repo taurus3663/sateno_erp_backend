@@ -69,45 +69,45 @@ public class BoxNowService implements ShippingProvider {
     @Override
     public List<ShipmentOfficeDto> getOffices(String username, String password, Long cityId, String nameFilter) {
         try {
-            // Вземаме всички автомати от BoxNow
             Map<String, Object> response = getToBoxNow("/api/v1/destinations", Map.of(), username, password);
             if (response == null || !response.containsKey("data")) return List.of();
-//            System.out.println(response);
 
             List<Map<String, Object>> destinations = (List<Map<String, Object>>) response.get("data");
             List<ShipmentOfficeDto> offices = new ArrayList<>();
 
             for (Map<String, Object> dest : destinations) {
-                String cityName = ((String) dest.get("addressLine2")).trim();
+                // Град
+                Object cityObj = dest.get("addressLine2");
+                if (cityObj == null) continue;
+                String cityName = cityObj.toString().trim();
                 if (cityName.isEmpty()) continue;
 
-                // Генерираме същия id, както в getCities()
-                long generatedCityId = cityName.hashCode() & 0xfffffff;
+                // Сравняваме с cityId
+                long destCityId = cityName.hashCode() & 0xfffffff;
+                if (!destCityIdEquals(cityId, destCityId)) continue;
 
-                // Филтрираме по cityId
-                if (cityId != null && !generatedCityIdEquals(cityId, generatedCityId)) continue;
-
-                System.out.println(cityId == generatedCityId);
-
-                // Филтрираме по име, ако има
-                String officeName = ((String) dest.get("name")).trim();
+                // Филтър по име на офиса
+                Object nameObj = dest.get("name");
+                String officeName = (nameObj != null) ? nameObj.toString().trim() : "";
                 if (nameFilter != null && !nameFilter.isBlank() &&
                         !officeName.toLowerCase().contains(nameFilter.toLowerCase())) {
                     continue;
                 }
 
                 ShipmentOfficeDto dto = new ShipmentOfficeDto();
-                dto.setId(Long.parseLong(dest.get("id").toString()));
+                dto.setId(dest.get("id") != null ? Long.valueOf(dest.get("id").toString()) : null);
                 dto.setName(officeName);
-                dto.setAddress((String) dest.get("addressLine1"));
-//                dto.setPostCode((String) dest.get("postalCode"));
-//                dto.setLatitude(dest.get("lat") != null ? Double.parseDouble(dest.get("lat").toString()) : null);
-//                dto.setLongitude(dest.get("lng") != null ? Double.parseDouble(dest.get("lng").toString()) : null);
-//                dto.setNote((String) dest.get("note"));
+
+                // Адрес
+                Object addr1 = dest.get("addressLine1");
+                Object addr2 = dest.get("addressLine2");
+                String address = ((addr1 != null ? addr1.toString() : "") +
+                        (addr2 != null ? ", " + addr2.toString() : "")).trim();
+                dto.setAddress(address);
 
                 offices.add(dto);
 
-//                if (offices.size() >= 20) break; // лимит на брой офиси, ако искаш
+                if (offices.size() >= 10) break; // лимит
             }
 
             return offices;
@@ -117,6 +117,13 @@ public class BoxNowService implements ShippingProvider {
             return List.of();
         }
     }
+
+    // В помощна функция сравняваме cityId
+    private boolean destCityIdEquals(Long cityId, long destCityId) {
+        if (cityId == null) return true; // ако няма филтър по град, връщаме всички
+        return cityId == destCityId;
+    }
+
 
     // Метод за сравнение, за да се избегнат проблеми с отрицателни хешове
     private boolean generatedCityIdEquals(Long requestedId, long generatedId) {
