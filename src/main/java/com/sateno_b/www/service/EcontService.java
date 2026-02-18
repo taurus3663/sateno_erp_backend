@@ -31,17 +31,114 @@ public class EcontService implements ShippingProvider {
     private final CourierSettingsRepository courierSettingsRepository;
 
     @Override
-    public List<ShipmentCityDto> getCities(String nameFilter, String username, String password) {
-        return List.of();
+    public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
+        System.out.println("---");
+        System.out.println(username);
+        System.out.println(password);
+        System.out.println("---");
+        Map<String, Object> body = new HashMap<>();
+        body.put("countryCode", "BGR"); // ISO Alpha-3
+//        body.put("start", 0);
+//        body.put("count", 10);
+        body.put("name", nameFilter);
+
+        try {
+            Map<String, Object> response = postToEcont(
+                    "services/Nomenclatures/NomenclaturesService.getCities.json",
+                    body,
+                    username,
+                    password
+            );
+
+//            System.out.println(response);
+
+            if (response == null) {
+                log.error("Econt getCities: null response");
+                return List.of();
+            }
+
+            List<?> sitesList = (List<?>) response.get("cities");
+
+
+
+            return sitesList.stream()
+                    .filter(item -> item instanceof Map)
+                    .map(item -> (Map<String, Object>) item)
+//                    .filter(cityMap -> {
+//                        if (nameFilter == null || nameFilter.isBlank()) {
+//                            return true;
+//                        }
+//                        String cityName = (String) cityMap.get("name");
+//                        return cityName != null &&
+//                                cityName.toLowerCase().contains(nameFilter.toLowerCase());
+//                    })
+                    .map(cityMap -> {
+                        ShipmentCityDto dto = new ShipmentCityDto();
+//                        System.out.println(cityMap.toString());
+                        dto.setId(
+                                cityMap.get("id") != null
+                                        ? Long.parseLong(cityMap.get("id").toString())
+                                        : null
+                        );
+
+                        dto.setName((String) cityMap.getOrDefault("name", ""));
+
+                        dto.setPostCode(
+                                cityMap.get("postCode") != null
+                                        ? cityMap.get("postCode").toString()
+                                        : ""
+                        );
+
+                        return dto;
+                    })
+                    .limit(10)
+                    .toList();
+
+        } catch (Exception e) {
+            log.error("Econt getCities error", e);
+            return List.of();
+        }
     }
+
 
     @Override
     public List<ShipmentOfficeDto> getOffices(String username, String password, Long cityId, String nameFilter) {
-        return List.of();
+        Map<String, Object> body = new HashMap<>();
+        body.put("cityID", cityId);
+        body.put("name", nameFilter);
+
+        try {
+            Map<String, Object> response = postToEcont("services/Nomenclatures/NomenclaturesService.getOffices.json", body, username, password);
+
+//            System.out.println(response);
+            if (response == null || !response.containsKey("offices")) {
+                return List.of();
+            }
+
+            List<?> officesList = (List<?>) response.get("offices");
+            return officesList.stream()
+                    .map(item -> (Map<String, Object>) item)
+                    .map(o -> {
+                        System.out.println(o.toString());
+                        ShipmentOfficeDto dto = new ShipmentOfficeDto();
+                        dto.setId(Long.parseLong(o.get("id").toString()));
+                        dto.setName((String) o.get("name"));
+
+                        Map<String, Object> addressMap = (Map<String, Object>) o.get("address");
+                        if (addressMap != null) {
+                            dto.setAddress((String) addressMap.get("fullAddress"));
+                        }
+                        return dto;
+                    })
+                    .toList();
+        } catch (Exception e) {
+            log.error("Econt getOffices error: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     private CourierContractDetails getContract(String username, String password) {
-        var response = postToEcont("services/Profile/ProfileService.getClientProfiles.json", new HashMap<>(), username, password, false);
+        var response = postToEcont("services/Profile/ProfileService.getClientProfiles.json", new HashMap<>(), username, password);
 //        System.out.println("00000000000000000000000000000000000000000000000000000000000");
 //        System.out.println(response);
 //        System.out.println("00000000000000000000000000000000000000000000000000000000000");
@@ -111,7 +208,7 @@ public class EcontService implements ShippingProvider {
 
     public boolean testLogin(String username, String password, Long courierId) {
         try {
-            var response = postToEcont("services/Profile/ProfileService.getClientProfiles.json", new HashMap<>(), username, password, false);
+            var response = postToEcont("services/Profile/ProfileService.getClientProfiles.json", new HashMap<>(), username, password);
 
             List<?> profilesList = (List<?>) response.get("profiles");
             if (profilesList != null && !profilesList.isEmpty()) {
@@ -279,7 +376,7 @@ public class EcontService implements ShippingProvider {
                 }
                 // 5. ИЗПРАЩАНЕ
                 Map<String, Object> response = postToEcont("services/Shipments/LabelService.createLabel.json", body,
-                        settings.getUsername(), settings.getPassword(), false);
+                        settings.getUsername(), settings.getPassword());
 
                 System.out.println("DEBUG JSON2: " + response);
 
@@ -307,8 +404,13 @@ public class EcontService implements ShippingProvider {
     }
 
 
-    private Map<String, Object> postToEcont(String endpoint, Map<String, Object> body, String username, String password, boolean isCustom) {
-        String turl = isCustom ? endpoint: "https://ee.econt.com/" + endpoint;
+    private Map<String, Object> postToEcont(String endpoint, Map<String, Object> body, String username, String password) {
+
+        System.out.println(username);
+        System.out.println(password);
+
+
+        String turl = "https://ee.econt.com/" + endpoint;
         return restClient.post()
                 .uri(turl)
 //                .uri("https://ee.econt.com/ee/" + endpoint)

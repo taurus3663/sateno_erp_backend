@@ -5,6 +5,7 @@ import com.sateno_b.www.model.dto.ShipmentOfficeDto;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
+import com.sateno_b.www.service.EcontService;
 import com.sateno_b.www.service.SpeedyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ public class ShipmentController {
 
     private final SpeedyService speedyService;
     private final CourierSettingsRepository courierSettingsRepository;
+    private final EcontService econtService;
 
 
 
@@ -33,6 +35,10 @@ public class ShipmentController {
         List<ShipmentCityDto> rs = new ArrayList<>();
         if(courier.getCourierType() == CourierType.SPEEDY) {
               rs.addAll(speedyService.getCities(courier.getUsername(), courier.getPassword(), query));
+        }
+        else if (courier.getCourierType() == CourierType.ECONT) {
+            System.out.println(courier.toString());
+              rs.addAll(econtService.getCities(courier.getUsername(), courier.getPassword(), query));
         }
         return rs;
     }
@@ -49,6 +55,9 @@ public class ShipmentController {
         List<ShipmentOfficeDto> rs = new ArrayList<>();
         if(courier.getCourierType() == CourierType.SPEEDY) {
             rs.addAll(speedyService.getOffices(courier.getUsername(), courier.getPassword(), cityId, query));
+        }
+        else if (courier.getCourierType() == CourierType.ECONT) {
+            rs.addAll(econtService.getOffices(courier.getUsername(), courier.getPassword(), cityId, query));
         }
 
         return rs;

@@ -96,8 +96,8 @@ public class WpOrderController {
                             }))
                             .collect(Collectors.toList());
                     if(!allDuplicateLines.isEmpty()) {
-                        System.out.printf("Duplicates found: %s\n", allDuplicateLines.size());
-                        System.out.println(dto.getWpOrderId());
+//                        System.out.printf("Duplicates found: %s\n", allDuplicateLines.size());
+//                        System.out.println(dto.getWpOrderId());
                         dto.setShowDuplicateWarning(true);
                     }
 
@@ -179,6 +179,7 @@ public class WpOrderController {
     @PostMapping("/create")
     public void createWpOrder(@RequestHeader("x-wc-webhook-signature") String signature,
                               @RequestBody String rawPayload){
+        System.out.println("TEST !!!!!!!!!!");
 
             Long siteId = webHookService.validateAndGetSiteId(rawPayload, signature);
             if(siteId != null){

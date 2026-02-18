@@ -281,8 +281,10 @@ public class SpeedyService implements ShippingProvider {
             var body = createBaseBody(username, password);
             body.put("siteId", cityId); // Филтрираме офисите по избрания град
             body.put("name", nameFilter);
+//        System.out.println(body.toString());
 
         Map<String, Object> response = postToSpeedy("location/office", body);
+//        System.out.println(response);
         if (response == null || !response.containsKey("offices")) {
             return List.of();
         }
@@ -293,6 +295,10 @@ public class SpeedyService implements ShippingProvider {
                     ShipmentOfficeDto dto = new ShipmentOfficeDto();
                     dto.setId(Long.parseLong(s.get("id").toString()));
                     dto.setName(s.get("name").toString());
+
+                    Map<String, Object> address = (Map<String, Object>) s.get("address");
+                    dto.setAddress(address != null ? address.get("fullAddressString").toString() : "");
+
 //                    dto.setPostCode(s.get("postCode") != null ? s.get("postCode").toString() : "");
                     return dto;
                 })

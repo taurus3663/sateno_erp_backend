@@ -19,4 +19,17 @@ Address_1: [OFFICE] СОФИЯ - Еконт Точка София Дружба -
 checkout/:896 City: СОФИЯ
 checkout/:897 Postcode:
 
-
+EXAMPLE
+"billing": {
+            "first_name": "fisrt name",
+            "last_name": "last name",
+            "company": "",
+            "address_1": "[LOCKER] СОФИЯ - СОФИЯ - МЕТРО 1 (АВТОМАТ) бул. ЦАРИГРАДСКО ШОСЕ No 11А [9001] [SPEEDY]",
+            "address_2": "",
+            "city": "СОФИЯ",
+            "state": "",
+            "postcode": "1000",
+            "country": "BG",
+            "email": "taurus.ali47@gmail.com",
+            "phone": "+359894396766"
+        },
