@@ -30,75 +30,113 @@ public class EcontService implements ShippingProvider {
     private final SiteRepository siteRepository;
     private final CourierSettingsRepository courierSettingsRepository;
 
-    @Override
-    public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
-        System.out.println("---");
-        System.out.println(username);
-        System.out.println(password);
-        System.out.println("---");
-        Map<String, Object> body = new HashMap<>();
-        body.put("countryCode", "BGR"); // ISO Alpha-3
+//    @Override
+//    public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
+//        Map<String, Object> body = new HashMap<>();
+//        System.out.println(nameFilter);
+//        body.put("countryCode", "BGR"); // ISO Alpha-3
 //        body.put("start", 0);
 //        body.put("count", 10);
-        body.put("name", nameFilter);
-
-        try {
-            Map<String, Object> response = postToEcont(
-                    "services/Nomenclatures/NomenclaturesService.getCities.json",
-                    body,
-                    username,
-                    password
-            );
-
-//            System.out.println(response);
-
-            if (response == null) {
-                log.error("Econt getCities: null response");
-                return List.of();
-            }
-
-            List<?> sitesList = (List<?>) response.get("cities");
-
-
-
-            return sitesList.stream()
-                    .filter(item -> item instanceof Map)
-                    .map(item -> (Map<String, Object>) item)
-//                    .filter(cityMap -> {
-//                        if (nameFilter == null || nameFilter.isBlank()) {
-//                            return true;
-//                        }
-//                        String cityName = (String) cityMap.get("name");
-//                        return cityName != null &&
-//                                cityName.toLowerCase().contains(nameFilter.toLowerCase());
+//        body.put("name", nameFilter + "%");
+//        body.put("city_name", nameFilter);
+//
+//        try {
+////            Map<String, Object> response = postToEcont(
+////                    "services/Nomenclatures/NomenclaturesService.getCities.json",
+////                    body,
+////                    username,
+////                    password
+////            );
+//            Map<String, Object> response = getToEcont(
+//                    "https://couriers.lynk.bg/new/bg-cities.txt"
+//            );
+//
+////            System.out.println(response);
+//
+//            if (response == null) {
+//                log.error("Econt getCities: null response");
+//                return List.of();
+//            }
+//
+//            List<?> sitesList = (List<?>) response.get("cities");
+//
+//            System.out.println(sitesList.size());
+//
+//            return sitesList.stream()
+//                    .filter(item -> item instanceof Map)
+//                    .map(item -> (Map<String, Object>) item)
+////                    .filter(cityMap -> {
+////                        if (nameFilter == null || nameFilter.isBlank()) {
+////                            return true;
+////                        }
+////                        String cityName = (String) cityMap.get("name");
+////                        return cityName != null &&
+////                                cityName.toLowerCase().contains(nameFilter.toLowerCase());
+////                    })
+//                    .map(cityMap -> {
+//                        ShipmentCityDto dto = new ShipmentCityDto();
+////                        System.out.println(cityMap.toString());
+//                        dto.setId(
+//                                cityMap.get("id") != null
+//                                        ? Long.parseLong(cityMap.get("id").toString())
+//                                        : null
+//                        );
+//
+//                        dto.setName((String) cityMap.getOrDefault("name", ""));
+//
+//                        dto.setPostCode(
+//                                cityMap.get("postCode") != null
+//                                        ? cityMap.get("postCode").toString()
+//                                        : ""
+//                        );
+//
+//                        return dto;
 //                    })
-                    .map(cityMap -> {
-                        ShipmentCityDto dto = new ShipmentCityDto();
-//                        System.out.println(cityMap.toString());
-                        dto.setId(
-                                cityMap.get("id") != null
-                                        ? Long.parseLong(cityMap.get("id").toString())
-                                        : null
-                        );
+//                    .toList();
+//
+//        } catch (Exception e) {
+//            log.error("Econt getCities error", e);
+//            return List.of();
+//        }
+//    }
+@Override
+public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
+    try {
+        Map<String, Object> response = getToEcont("https://couriers.lynk.bg/new/bg-cities.txt");
+        if (response == null) return List.of();
 
-                        dto.setName((String) cityMap.getOrDefault("name", ""));
+        // Филтрираме по nameFilter и flatten-нем структурата
+        List<ShipmentCityDto> result = response.entrySet().stream()
+                // филтър по име на града
+                .filter(entry -> nameFilter == null || nameFilter.isBlank() ||
+                        entry.getKey().toLowerCase().contains(nameFilter.toLowerCase()))
+                // flatten zipMap
+                .flatMap(entry -> {
+                    Map<String, Object> zipMap = (Map<String, Object>) entry.getValue();
+                    return zipMap.values().stream()
+                            .flatMap(listObj -> ((List<Map<String, Object>>) listObj).stream());
+                })
+                // map към DTO
+                .map(c -> {
+                    ShipmentCityDto dto = new ShipmentCityDto();
+                    dto.setId(Long.parseLong(c.get("ext_id").toString()));
+                    dto.setName((String) c.get("name"));
+                    dto.setPostCode((String) c.get("zip"));
+                    return dto;
+                })
+                // лимит до 10
+                .limit(10)
+                .toList();
 
-                        dto.setPostCode(
-                                cityMap.get("postCode") != null
-                                        ? cityMap.get("postCode").toString()
-                                        : ""
-                        );
+        return result;
 
-                        return dto;
-                    })
-                    .limit(10)
-                    .toList();
-
-        } catch (Exception e) {
-            log.error("Econt getCities error", e);
-            return List.of();
-        }
+    } catch (Exception e) {
+        log.error("Econt getCities error", e);
+        return List.of();
     }
+}
+
+
 
 
     @Override
@@ -119,10 +157,11 @@ public class EcontService implements ShippingProvider {
             return officesList.stream()
                     .map(item -> (Map<String, Object>) item)
                     .map(o -> {
-                        System.out.println(o.toString());
+//                        System.out.println(o.toString());
                         ShipmentOfficeDto dto = new ShipmentOfficeDto();
                         dto.setId(Long.parseLong(o.get("id").toString()));
                         dto.setName((String) o.get("name"));
+                        dto.setCode(Long.parseLong(o.get("code").toString()));
 
                         Map<String, Object> addressMap = (Map<String, Object>) o.get("address");
                         if (addressMap != null) {
@@ -406,10 +445,6 @@ public class EcontService implements ShippingProvider {
 
     private Map<String, Object> postToEcont(String endpoint, Map<String, Object> body, String username, String password) {
 
-        System.out.println(username);
-        System.out.println(password);
-
-
         String turl = "https://ee.econt.com/" + endpoint;
         return restClient.post()
                 .uri(turl)
@@ -423,6 +458,23 @@ public class EcontService implements ShippingProvider {
                 .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
 
     }
+
+    private Map<String, Object> getToEcont(String endpoint) {
+        String responseStr = restClient.get()
+                .uri(endpoint)
+                .retrieve()
+                .body(String.class); // първо като String
+
+        try {
+            // след това превръщаме текста в Map чрез Jackson
+            return new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(responseStr, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.error("Error parsing JSON from Econt: {}", e.getMessage());
+            return Map.of();
+        }
+    }
+
 
     public double calculatePriceDefault(double weight, CourierShipmentType type) {
         double basePrice = 0;

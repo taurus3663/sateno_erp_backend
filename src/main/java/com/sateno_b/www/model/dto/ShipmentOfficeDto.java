@@ -7,4 +7,5 @@ public class ShipmentOfficeDto {
     private Long id;
     private String name;
     private String address;
+    private Long code;
 }
