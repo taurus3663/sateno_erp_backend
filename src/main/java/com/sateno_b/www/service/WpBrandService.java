@@ -97,7 +97,7 @@ public class WpBrandService {
             String totalPageHeader = response.getHeaders().getFirst("X-WP-TotalPages");
             if(totalPageHeader != null) {
                 totalPages = Integer.parseInt(totalPageHeader);
-                System.out.println("totalPAges: " + totalPages);
+//                System.out.println("totalPAges: " + totalPages);
             }
 
             currentPage++;

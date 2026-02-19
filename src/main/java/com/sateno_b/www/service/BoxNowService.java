@@ -220,7 +220,7 @@ public class BoxNowService implements ShippingProvider {
                 // Правим GET заявка, за да видим дали BoxNow връща активни автомати
                 Map<String, Object> response = postToBoxNow("/api/v1/destinations?requiredSize=" + size, body, settings.getApiKey(), settings.getApiSecret());
 
-                System.out.println(response);
+//                System.out.println(response);
                 if (response != null && response.containsKey("data")) {
                     // Ако API-то върне данни, значи услугата е налична.
                     // BoxNow не връщат цена в този JSON, защото тя е фиксирана по договор.

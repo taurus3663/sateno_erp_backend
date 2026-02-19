@@ -56,7 +56,7 @@ public class CheckOutController {
             }
             else if(courier.getAutoShippingPrice() == true) {
 
-                System.out.println("works");
+//                System.out.println("works");
                 if(courier.getCourierType() == CourierType.SPEEDY) {
                     double finalPrice = speedyService.calculatePriceDefault(request.getCart_weight(),  courier.getCourierShipmentType());
                     courierDto.setFixedShippingPrice(finalPrice);

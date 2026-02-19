@@ -292,7 +292,7 @@ public class WpOrderService {
             currentPage++;
         } while (currentPage <= totalPages);
 
-        System.out.println(allOrders.size());
+//        System.out.println(allOrders.size());
         return allOrders;
     }
 

@@ -74,7 +74,7 @@ public class CourierSettingsController {
         boolean isSucessful = false;
         String message;
 
-        System.out.println(courierSettingsDto.toString());
+//        System.out.println(courierSettingsDto.toString());
         try {
             if(courierSettingsDto.getCourierType() == CourierType.SPEEDY) {
                 isSucessful = speedyService.testLogin(courierSettingsDto.getUsername(), courierSettingsDto.getPassword(), courierSettingsDto.getId());

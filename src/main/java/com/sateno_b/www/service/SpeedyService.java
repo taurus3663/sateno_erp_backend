@@ -113,7 +113,7 @@ public class SpeedyService implements ShippingProvider {
 
 //               List<Map<String, Object>> parcels = new ArrayList<>();
                Map<String, Object> response = postToSpeedy("calculate", body);
-               System.out.println(response);
+//               System.out.println(response);
                if (response != null && response.containsKey("calculations")) {
                 List<Map<String, Object>> calculations =
                         (List<Map<String, Object>>) response.get("calculations");
@@ -132,7 +132,7 @@ public class SpeedyService implements ShippingProvider {
 
                     if (price != null && price.containsKey("total")) {
 //                        return Double.parseDouble(price.get("total").toString());
-                        System.out.println(Double.parseDouble(price.get("total").toString()));
+//                        System.out.println(Double.parseDouble(price.get("total").toString()));
                         return Double.parseDouble(price.get("total").toString());
                     }
                 }
@@ -282,8 +282,8 @@ public class SpeedyService implements ShippingProvider {
             body.put("siteId", cityId); // Филтрираме офисите по избрания град
             body.put("name", nameFilter);
 //        System.out.println(body.toString());
-        System.out.println(cityId);
-        System.out.println(nameFilter);
+//        System.out.println(cityId);
+//        System.out.println(nameFilter);
         Map<String, Object> response = postToSpeedy("location/office", body);
 //        System.out.println(response);
         if (response == null || !response.containsKey("offices")) {

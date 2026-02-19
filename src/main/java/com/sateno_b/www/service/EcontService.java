@@ -235,9 +235,9 @@ public List<ShipmentCityDto> getCities(String username, String password, String 
 
                     details.setAddress(addr);
                 }
-                System.out.println("111111111111111111111111111111111111111111111111111111");
-                System.out.println(details);
-                System.out.println("111111111111111111111111111111111111111111111111111111");
+//                System.out.println("111111111111111111111111111111111111111111111111111111");
+//                System.out.println(details);
+//                System.out.println("111111111111111111111111111111111111111111111111111111");
                 return details;
             }
 
@@ -417,7 +417,7 @@ public List<ShipmentCityDto> getCities(String username, String password, String 
                 Map<String, Object> response = postToEcont("services/Shipments/LabelService.createLabel.json", body,
                         settings.getUsername(), settings.getPassword());
 
-                System.out.println("DEBUG JSON2: " + response);
+//                System.out.println("DEBUG JSON2: " + response);
 
                 if (response != null && response.containsKey("label")) {
                     Map<String, Object> labelRes = (Map<String, Object>) response.get("label");
