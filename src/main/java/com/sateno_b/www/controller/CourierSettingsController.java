@@ -2,8 +2,10 @@ package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.CourierSettingsDto;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
+import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
+import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.service.BoxNowService;
 import com.sateno_b.www.service.EcontService;
 import com.sateno_b.www.service.SpeedyService;
@@ -27,6 +29,7 @@ public class CourierSettingsController {
     private final SpeedyService speedyService;
     private final EcontService econtService;
     private final BoxNowService boxNowService;
+    private final SiteRepository siteRepository;
 
     @PostMapping("/save")
     public ResponseEntity<CourierSettingsDto> save(@RequestBody CourierSettingsDto courierSettingsDto) {
@@ -47,6 +50,9 @@ public class CourierSettingsController {
                     // 1. Ръчно се справяме с референцията към обекта
                     if (courierSettingsDto.getSite() == null) {
                         en.setSite(null); // Казваме на JPA, че връзката е премахната
+                    } else {
+                        SiteEntity referenceById = siteRepository.getReferenceById(courierSettingsDto.getSite().getId());
+                        en.setSite(referenceById);
                     }
 
                     // 2. Мапваме останалите полета

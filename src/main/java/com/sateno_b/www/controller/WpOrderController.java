@@ -205,4 +205,12 @@ public class WpOrderController {
             }
 
     }
+
+//    @PostMapping("/create/waybill")
+//    public Boolean createWayBill(@RequestBody) {
+//
+//
+//
+//        return true;
+//    }
 }
