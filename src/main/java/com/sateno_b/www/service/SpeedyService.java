@@ -282,7 +282,8 @@ public class SpeedyService implements ShippingProvider {
             body.put("siteId", cityId); // Филтрираме офисите по избрания град
             body.put("name", nameFilter);
 //        System.out.println(body.toString());
-
+        System.out.println(cityId);
+        System.out.println(nameFilter);
         Map<String, Object> response = postToSpeedy("location/office", body);
 //        System.out.println(response);
         if (response == null || !response.containsKey("offices")) {

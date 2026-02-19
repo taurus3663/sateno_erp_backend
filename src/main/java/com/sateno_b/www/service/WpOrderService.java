@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sateno_b.www.model.dto.WoOrderDto;
 import com.sateno_b.www.model.dto.WoPaoIdValueValueDto;
+import com.sateno_b.www.model.dto.WooProductDto;
 import com.sateno_b.www.model.entity.CustomerEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
@@ -40,6 +41,7 @@ public class WpOrderService {
     private final ObjectMapper objectMapper;
     @PersistenceContext
     private final EntityManager entityManager;
+    private final WpProductService wpProductService;
 
     private static final String ORDER_URL = "/wp-json/wc/v3/orders/";
     private final CustomerRepository customerRepository;
@@ -49,10 +51,10 @@ public class WpOrderService {
         SiteEntity site = siteRepository.findById(siteId).orElse(null);
         if(site == null) {return;}
 
-        String auth = AuthTool.getAuth(site.getConsumerKey(), site.getConsumerSecret());
 
 
-        List<WoOrderDto> all = fetchAllOrders(site, auth);
+
+        List<WoOrderDto> all = fetchAllOrders(site);
 
         saveAllToDb(all, siteId);
 
@@ -145,6 +147,7 @@ public class WpOrderService {
             wpOrderEntity.setTotalPrice(new BigDecimal(dto.getTotal()));
             wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
             wpOrderEntity.setTransactionId(dto.getTransactionId());
+            wpOrderEntity.setShippingLines(dto.getShippingLines());
             LocalDateTime ldt = LocalDateTime.parse(dto.getDateCreated());
             Instant instant = ldt.atZone(ZoneId.of("Europe/Sofia")).toInstant();
             wpOrderEntity.setWpOrderTime(instant);
@@ -181,7 +184,7 @@ public class WpOrderService {
                     return customerRepository.save(customerEntity);
                 });
 
-        SiteEntity siteEntity = siteRepository.getReferenceById(siteId);
+        SiteEntity siteEntity = siteRepository.findById(siteId).get();
 
 
         WpOrderEntity wpOrderEntity = new WpOrderEntity();
@@ -237,6 +240,10 @@ public class WpOrderService {
                                 return paoIdValue;
                             }).toList());
                     orderLineItem.setProductName(woOrderLineItemDto.getProductName());
+
+                    WooProductDto product = wpProductService.getProductId(siteEntity, woOrderLineItemDto.getProductId());
+                    orderLineItem.setWeight(product.getWeight());
+                    orderLineItem.setDimensions(product.getDimensions());
                     return orderLineItem;
                 }).toList());
         wpOrderEntity.setBilling(dto.getBilling());
@@ -249,13 +256,15 @@ public class WpOrderService {
         wpOrderEntity.setTotalPrice(new BigDecimal(dto.getTotal()));
         wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
         wpOrderEntity.setTransactionId(dto.getTransactionId());
+        wpOrderEntity.setShippingLines(dto.getShippingLines());
         LocalDateTime ldt = LocalDateTime.parse(dto.getDateCreated());
         Instant instant = ldt.atZone(ZoneId.of("Europe/Sofia")).toInstant();
         wpOrderEntity.setWpOrderTime(instant);
         wpOrderRepository.save(wpOrderEntity);
     }
 
-    private List<WoOrderDto> fetchAllOrders(SiteEntity site, String auth){
+    private List<WoOrderDto> fetchAllOrders(SiteEntity site){
+        String auth = AuthTool.getAuth(site.getConsumerKey(), site.getConsumerSecret());
         List<WoOrderDto> allOrders = new ArrayList<>();
 
         int currentPage = 1;
@@ -264,7 +273,7 @@ public class WpOrderService {
         do {
 
             var response = restClient.get()
-                    .uri(site.getUrl() + ORDER_URL + "?per_page=100&page=" + currentPage + "&orderby=id&order=desc")
+                    .uri(site.getUrlWithHttps() + ORDER_URL + "?per_page=100&page=" + currentPage + "&orderby=id&order=desc")
                     .header("Authorization", "Basic " + auth)
                     .retrieve()
                     .toEntity(new ParameterizedTypeReference<List<WoOrderDto>>() {});
@@ -286,5 +295,7 @@ public class WpOrderService {
         System.out.println(allOrders.size());
         return allOrders;
     }
+
+
 
 }

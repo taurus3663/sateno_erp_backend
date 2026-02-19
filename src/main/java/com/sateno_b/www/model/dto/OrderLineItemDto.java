@@ -18,4 +18,7 @@ public class OrderLineItemDto {
 
     private Long orderId;
     private Long wpOrderId;
+
+    private String weight;
+    private DimensionsDto dimensions;
 }

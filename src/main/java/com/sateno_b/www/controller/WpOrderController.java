@@ -179,7 +179,6 @@ public class WpOrderController {
     @PostMapping("/create")
     public void createWpOrder(@RequestHeader("x-wc-webhook-signature") String signature,
                               @RequestBody String rawPayload){
-        System.out.println("TEST !!!!!!!!!!");
 
             Long siteId = webHookService.validateAndGetSiteId(rawPayload, signature);
             if(siteId != null){

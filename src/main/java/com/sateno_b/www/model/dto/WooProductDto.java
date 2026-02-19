@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.dto;
 
+import com.sateno_b.www.model.entity.data.Dimensions;
 import com.sateno_b.www.model.enums.ProductStatus;
 import lombok.Data;
 
@@ -24,5 +25,6 @@ public class WooProductDto {
     private List<WooProductCategoryDto> categories;
     private List<WooBrandDto> brands;
     private List<WooAddonDto> addons;
+    private Dimensions dimensions;
 
 }

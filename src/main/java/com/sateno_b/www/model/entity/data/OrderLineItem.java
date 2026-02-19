@@ -16,4 +16,6 @@ public class OrderLineItem {
     private BigDecimal totalPrice;
     private List<PaoIdValue> paoIdValue;
     private WoOrderLineItemImageDto image;
+    private String weight;
+    private Dimensions dimensions;
 }

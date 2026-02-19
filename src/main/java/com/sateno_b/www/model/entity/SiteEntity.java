@@ -9,8 +9,6 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Getter
-@Setter
 @Entity
 @Table(name = "site")
 public class SiteEntity extends BaseEntity {
@@ -44,5 +42,12 @@ public class SiteEntity extends BaseEntity {
 //    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 //    private List<CourierSettingsEntity> couriers;
 
+public String getUrlWithHttps() {
+    if (url == null) return "";
+    if (url.startsWith("http")) { // Хваща и http, и https
+        return url;
+    }
+    return "https://" + url;
+}
 
 }

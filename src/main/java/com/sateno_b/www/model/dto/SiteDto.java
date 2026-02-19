@@ -1,9 +1,6 @@
 package com.sateno_b.www.model.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,4 +20,15 @@ public class SiteDto {
     private String orderCreateApiKey;
 
     private List<CourierSettingsDto> couriers = new ArrayList<>();
+
+    public void setUrl(String url) {
+        if (url != null) {
+            if (url.startsWith("https://")) {
+                url = url.replace("https://", "");
+            } else if (url.startsWith("http://")) {
+                url = url.replace("http://", "");
+            }
+        }
+        this.url = url;
+    }
 }

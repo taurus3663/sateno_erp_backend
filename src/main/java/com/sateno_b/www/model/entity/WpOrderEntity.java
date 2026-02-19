@@ -1,7 +1,9 @@
 package com.sateno_b.www.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
+import com.sateno_b.www.model.entity.data.ShippingLines;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
 import jakarta.persistence.*;
@@ -11,6 +13,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
@@ -66,7 +69,7 @@ public class WpOrderEntity extends BaseEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private List<OrderLineItem> orderLine; // line_items
+    private List<OrderLineItem> orderLine = new ArrayList<>(); // line_items
 
     @Column
     private BigDecimal totalPrice;
@@ -75,4 +78,8 @@ public class WpOrderEntity extends BaseEntity {
     private String currency;
     @Column
     private String currency_symbol;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<ShippingLines> shippingLines = new ArrayList<>();
 }

@@ -2,6 +2,7 @@ package com.sateno_b.www.model.dto;
 
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
+import com.sateno_b.www.model.entity.data.ShippingLines;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
 import lombok.Data;
@@ -36,4 +37,5 @@ public class WpOrderDto {
     private Boolean showDuplicateWarning = false;
     private List<Long> ordersToMerge;
     private Long customerOrderCount;
+    private List<ShippingLines> shippingLines;
 }

@@ -463,4 +463,15 @@ public class WpProductService {
         return modelMapper.map(entity, WpProductDto.class);
     }
 
+    public WooProductDto getProductId(SiteEntity site, Long productId) {
+        String auth = AuthTool.getAuth(site.getConsumerKey(), site.getConsumerSecret());
+
+        var response = restClient.get()
+                .uri(site.getUrlWithHttps() + PRODUCTS_URL + "/" + productId)
+                .header("Authorization", "Basic " + auth)
+                .retrieve()
+                .toEntity(new ParameterizedTypeReference<WooProductDto>() {});
+        return response.getBody();
+    }
+
 }

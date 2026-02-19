@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
+import com.sateno_b.www.model.entity.data.ShippingLines;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
 import lombok.Data;
@@ -53,4 +54,7 @@ public class WoOrderDto {
 
     @JsonProperty("date_created")
     private String dateCreated;
+
+    @JsonProperty("shipping_lines")
+    private List<ShippingLines> shippingLines;
 }

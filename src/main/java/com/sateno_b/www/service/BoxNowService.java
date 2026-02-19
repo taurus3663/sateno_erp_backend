@@ -106,8 +106,6 @@ public class BoxNowService implements ShippingProvider {
                 dto.setAddress(address);
 
                 offices.add(dto);
-
-                if (offices.size() >= 10) break; // лимит
             }
 
             return offices;
