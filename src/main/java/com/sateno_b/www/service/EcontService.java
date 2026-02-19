@@ -1,6 +1,7 @@
 package com.sateno_b.www.service;
 
 import com.sateno_b.www.model.dto.CheckCourierRequest;
+import com.sateno_b.www.model.dto.CreateLabelDto;
 import com.sateno_b.www.model.dto.ShipmentCityDto;
 import com.sateno_b.www.model.dto.ShipmentOfficeDto;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
@@ -15,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
@@ -99,8 +101,8 @@ public class EcontService implements ShippingProvider {
 //            return List.of();
 //        }
 //    }
-@Override
-public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
+    @Override
+    public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
     try {
         Map<String, Object> response = getToEcont("https://couriers.lynk.bg/new/bg-cities.txt");
         if (response == null) return List.of();
@@ -135,9 +137,6 @@ public List<ShipmentCityDto> getCities(String username, String password, String 
         return List.of();
     }
 }
-
-
-
 
     @Override
     public List<ShipmentOfficeDto> getOffices(String username, String password, Long cityId, String nameFilter) {
@@ -176,73 +175,72 @@ public List<ShipmentCityDto> getCities(String username, String password, String 
         }
     }
 
-    private CourierContractDetails getContract(String username, String password) {
-        var response = postToEcont("services/Profile/ProfileService.getClientProfiles.json", new HashMap<>(), username, password);
-//        System.out.println("00000000000000000000000000000000000000000000000000000000000");
-//        System.out.println(response);
-//        System.out.println("00000000000000000000000000000000000000000000000000000000000");
-        List<?> profilesList = (List<?>) response.get("profiles");
-        if (profilesList != null && !profilesList.isEmpty()) {
-            // 1. Взимаме първия профил
-            Map<String, Object> profileMap = (Map<String, Object>) profilesList.get(0);
+    public boolean createWayBill(@RequestBody CreateLabelDto createLabelDto) {
+        CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findById(createLabelDto.getCourierId()).get();
+        var contract = getContract(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
+        System.out.println(contract.toString());
 
-            // 2. Данните за клиента са вложени в ключ "client"
-            Map<String, Object> clientMap = (Map<String, Object>) profileMap.get("client");
+        Map<String, Object> body = new HashMap<>();
+        Map<String, Object> label =  new HashMap<>();
 
-            if (clientMap != null) {
-                CourierContractDetails details = new CourierContractDetails();
+//        SENDER
+        Map<String, Object> senderClient = new HashMap<>();
+        senderClient.put("name", contract.getContactName());
+//        senderClient.put("id", contract.getClientId());
+//        senderClient.put("authorizedPerson", contract.getClientName());
+        senderClient.put("phones", contract.getPhones().stream().map(CourierContractDetails.PhoneDetails::getNumber).toList());
+//        senderClient.put("phones", List.of("0877706656"));
+//        senderClient.put("phone", contract.getPhones().get(0).getNumber());
+//        senderClient.put("phone", "0877706656");
+        label.put("senderClient",  senderClient);
 
-                // Мапваме ID-то (1488680848) и името
-                details.setClientId(Long.parseLong(clientMap.get("id").toString()));
-                details.setClientName((String) clientMap.get("name"));
+        Map<String, Object> senderAddress = new HashMap<>();
+        Map<String, Object> city = new HashMap<>();
+        city.put("country", Map.of("code3", "BGR"));
+        city.put("name", contract.getAddress().getSiteName());
+        city.put("postCode", contract.getAddress().getPostCode());
+        city.put("id", contract.getAddress().getSiteId());
+        senderAddress.put("city", city);
+        senderAddress.put("street", contract.getAddress().getFullAddressString());
+        label.put("senderAddress",  senderAddress);
 
-                // Еконт не връща "objectName" директно тук, ползваме името на фирмата
-                details.setObjectName((String) clientMap.get("name"));
-
-                // Ползваме molName за контактно лице
-                details.setContactName((String) clientMap.get("molName"));
-
-                // Имейлът е в основния client обект
-                details.setEmail(clientMap.get("email") != null ? clientMap.get("email").toString() : "");
-
-                List<CourierContractDetails.PhoneDetails> phoneDetails = new ArrayList<>();
-                for (String phones : (List<String>) clientMap.get("phones")) {
-                    CourierContractDetails.PhoneDetails phoneDetail = new CourierContractDetails.PhoneDetails();
-                    phoneDetail.setNumber(phones);
-                    phoneDetails.add(phoneDetail);
-                }
-                details.setPhones(phoneDetails);
-
-                // 3. Обработка на адреса (взимаме първия от списъка "addresses")
-                List<?> addressesList = (List<?>) profileMap.get("addresses");
-                if (addressesList != null && !addressesList.isEmpty()) {
-                    Map<String, Object> addrMap = (Map<String, Object>) addressesList.get(0);
-                    Map<String, Object> cityMap = (Map<String, Object>) addrMap.get("city");
-
-                    CourierContractDetails.AddressDetails addr = new CourierContractDetails.AddressDetails();
-                    if (cityMap != null) {
-                        addr.setSiteId(Long.parseLong(cityMap.get("id").toString()));
-                        addr.setSiteName((String) cityMap.get("name"));
-                        addr.setPostCode(cityMap.get("postCode") != null ? cityMap.get("postCode").toString() : "");
-
-                    }
-
-                    // Сглобяваме адрес за визуализация
-                    String fullAddr = (String) addrMap.get("street") + " " + (String) addrMap.get("num");
-                    addr.setNum(addrMap.get("num") != null ? addrMap.get("num").toString() : "");
-                    addr.setFullAddressString(fullAddr);
+//        RECEIVER
+        Map<String, Object> receiverClient = new HashMap<>();
+        receiverClient.put("name", "Али Зинал");
+        receiverClient.put("phones", List.of("0894396766"));
+        label.put("receiverClient", receiverClient);
 
 
-                    details.setAddress(addr);
-                }
-//                System.out.println("111111111111111111111111111111111111111111111111111111");
-//                System.out.println(details);
-//                System.out.println("111111111111111111111111111111111111111111111111111111");
-                return details;
-            }
 
-        }
-        return null;
+        Map<String, Object> receiverAddress = new HashMap<>();
+        Map<String, Object> receiverCity = new HashMap<>();
+//        if (createLabelDto.getCourierShipmentType() == CourierShipmentType.OFFICE ||
+//                createLabelDto.getCourierShipmentType() == CourierShipmentType.LOCKER) {
+//            label.put("receiverOfficeCode", createLabelDto.getOffice().getId());
+//        } else {
+            receiverCity.put("country", Map.of("code3", "BGR"));
+            receiverCity.put("name", "Медовец");
+            receiverCity.put("postCode", "9238");
+//            receiverCity.put("id", createLabelDto.getOffice().getId());
+            receiverAddress.put("city", receiverCity);
+            receiverAddress.put("street", "Седемнадесет");
+            receiverAddress.put("num", "9");
+//            receiverAddress.put("other", "bl. 5");
+//        }
+        label.put("receiverAddress", receiverAddress);
+        label.put("packCount", createLabelDto.getPackCount());
+        label.put("shipmentType", "PACK");
+        label.put("weight", createLabelDto.getWeight());
+        label.put("shipmentDescription", "Текстилни изделия");
+        label.put("paymentReceiverMethod", "cash");
+
+
+        body.put("label", label);
+        body.put("mode", "create");
+
+        Map<String, Object> response = postToEcont("services/Shipments/LabelService.createLabel.json", body, courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
+        System.out.println(response);
+        return true;
     }
 
     public boolean testLogin(String username, String password, Long courierId) {
@@ -405,9 +403,9 @@ public List<ShipmentCityDto> getCities(String username, String password, String 
                 body.put("mode", "calculate");
 
                 try {
-                    String jsonBody = new com.fasterxml.jackson.databind.ObjectMapper()
-                            .writerWithDefaultPrettyPrinter()
-                            .writeValueAsString(body);
+//                    String jsonBody = new com.fasterxml.jackson.databind.ObjectMapper()
+//                            .writerWithDefaultPrettyPrinter()
+//                            .writeValueAsString(body);
 //                    System.out.println("--- SENDING JSON TO ECONT ---");
 //                    System.out.println(jsonBody);
                 } catch (Exception e) {
@@ -442,40 +440,6 @@ public List<ShipmentCityDto> getCities(String username, String password, String 
         return -1.0;
     }
 
-
-    private Map<String, Object> postToEcont(String endpoint, Map<String, Object> body, String username, String password) {
-
-        String turl = "https://ee.econt.com/" + endpoint;
-        return restClient.post()
-                .uri(turl)
-//                .uri("https://ee.econt.com/ee/" + endpoint)
-                .headers(httpHeaders -> {
-                    httpHeaders.setBasicAuth(username, password);
-                    httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-                })
-                .body(body)
-                .retrieve()
-                .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
-
-    }
-
-    private Map<String, Object> getToEcont(String endpoint) {
-        String responseStr = restClient.get()
-                .uri(endpoint)
-                .retrieve()
-                .body(String.class); // първо като String
-
-        try {
-            // след това превръщаме текста в Map чрез Jackson
-            return new com.fasterxml.jackson.databind.ObjectMapper()
-                    .readValue(responseStr, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
-        } catch (Exception e) {
-            log.error("Error parsing JSON from Econt: {}", e.getMessage());
-            return Map.of();
-        }
-    }
-
-
     public double calculatePriceDefault(double weight, CourierShipmentType type) {
         double basePrice = 0;
 
@@ -499,5 +463,117 @@ public List<ShipmentCityDto> getCities(String username, String password, String 
         double fuelSurcharge = 1.10;
         return basePrice * fuelSurcharge * 1.20;
     }
+
+    private Map<String, Object> postToEcont(String endpoint, Map<String, Object> body, String username, String password) {
+
+//        String turl = "https://ee.econt.com/" + endpoint;
+        String turl = "https://demo.econt.com/ee/" + endpoint;
+        return restClient.post()
+                .uri(turl)
+//                .uri("https://ee.econt.com/ee/" + endpoint)
+                .headers(httpHeaders -> {
+                    httpHeaders.setBasicAuth(username, password);
+                    httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+                })
+                .body(body)
+                .retrieve()
+                .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
+
+    }
+    private Map<String, Object> getToEcont(String endpoint) {
+        String responseStr = restClient.get()
+                .uri(endpoint)
+                .retrieve()
+                .body(String.class); // първо като String
+
+        try {
+            // след това превръщаме текста в Map чрез Jackson
+            return new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(responseStr, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.error("Error parsing JSON from Econt: {}", e.getMessage());
+            return Map.of();
+        }
+    }
+    private CourierContractDetails getContract(String username, String password) {
+        var response = postToEcont("services/Profile/ProfileService.getClientProfiles.json", new HashMap<>(), username, password);
+//        System.out.println("00000000000000000000000000000000000000000000000000000000000");
+//        System.out.println(response);
+//        System.out.println("00000000000000000000000000000000000000000000000000000000000");
+        List<?> profilesList = (List<?>) response.get("profiles");
+//        System.out.println(profilesList.size());
+//        for (Object o : profilesList) {
+//            System.out.println("1111111111111111111111111111");
+//            System.out.println(o.toString());
+//            System.out.println("1111111111111111111111111111");
+//        }
+//        System.out.println(profilesList.size());
+        if (profilesList != null && !profilesList.isEmpty()) {
+
+            // 1. Взимаме първия профил
+            Map<String, Object> profileMap = (Map<String, Object>) profilesList.get(0);
+//            System.out.println(profileMap);
+//            System.out.println("00000000000000000");
+            // 2. Данните за клиента са вложени в ключ "client"
+            Map<String, Object> clientMap = (Map<String, Object>) profileMap.get("client");
+            System.out.println(clientMap.toString());
+            if (clientMap != null) {
+                CourierContractDetails details = new CourierContractDetails();
+
+                // Мапваме ID-то (1488680848) и името
+                details.setClientId(Long.parseLong(clientMap.get("id").toString()));
+                details.setClientName((String) clientMap.get("name"));
+
+                // Еконт не връща "objectName" директно тук, ползваме името на фирмата
+//                details.setObjectName((String) clientMap.get("objectName"));
+
+                // Ползваме molName за контактно лице
+                details.setContactName((String) clientMap.get("molName"));
+
+                // Имейлът е в основния client обект
+                details.setEmail(clientMap.get("email") != null ? clientMap.get("email").toString() : "");
+
+                List<CourierContractDetails.PhoneDetails> phoneDetails = new ArrayList<>();
+                for (String phones : (List<String>) clientMap.get("phones")) {
+                    CourierContractDetails.PhoneDetails phoneDetail = new CourierContractDetails.PhoneDetails();
+                    phoneDetail.setNumber(phones);
+                    phoneDetails.add(phoneDetail);
+                }
+                details.setPhones(phoneDetails);
+
+                // 3. Обработка на адреса (взимаме първия от списъка "addresses")
+                List<?> addressesList = (List<?>) profileMap.get("addresses");
+                if (addressesList != null && !addressesList.isEmpty()) {
+                    Map<String, Object> addrMap = (Map<String, Object>) addressesList.get(0);
+                    Map<String, Object> cityMap = (Map<String, Object>) addrMap.get("city");
+
+                    CourierContractDetails.AddressDetails addr = new CourierContractDetails.AddressDetails();
+                    if (cityMap != null) {
+                        addr.setSiteId(Long.parseLong(cityMap.get("id").toString()));
+                        addr.setSiteName((String) cityMap.get("name"));
+                        addr.setPostCode(cityMap.get("postCode") != null ? cityMap.get("postCode").toString() : "");
+
+                    }
+
+                    // Сглобяваме адрес за визуализация
+                    String fullAddr = (String) addrMap.get("street") + " " + (String) addrMap.get("num");
+                    addr.setNum(addrMap.get("num") != null ? addrMap.get("num").toString() : "");
+                    addr.setFullAddressString(fullAddr);
+
+
+                    details.setAddress(addr);
+                }
+//                System.out.println("111111111111111111111111111111111111111111111111111111");
+//                System.out.println(details);
+//                System.out.println("111111111111111111111111111111111111111111111111111111");
+                return details;
+            }
+
+        }
+        return null;
+    }
+
+
+
 
 }

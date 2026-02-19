@@ -2,17 +2,16 @@ package com.sateno_b.www.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sateno_b.www.model.dto.OrderLineItemDto;
-import com.sateno_b.www.model.dto.WoOrderDto;
-import com.sateno_b.www.model.dto.WoOrderLineItemDto;
-import com.sateno_b.www.model.dto.WpOrderDto;
+import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.CustomerEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
+import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
 import com.sateno_b.www.model.enums.WsAction;
 import com.sateno_b.www.model.repository.WpOrderRepository;
+import com.sateno_b.www.service.EcontService;
 import com.sateno_b.www.service.NotificationService;
 import com.sateno_b.www.service.WebHookService;
 import com.sateno_b.www.service.WpOrderService;
@@ -40,6 +39,7 @@ public class WpOrderController {
     private final WebHookService webHookService;
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
+    private final EcontService econtService;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status,
@@ -206,11 +206,20 @@ public class WpOrderController {
 
     }
 
-//    @PostMapping("/create/waybill")
-//    public Boolean createWayBill(@RequestBody) {
-//
-//
-//
-//        return true;
-//    }
+    @PostMapping("/create/waybill")
+    public ResponseEntity<?> createWayBill(@RequestBody CreateLabelDto createLabelDto) {
+
+        System.out.println(createLabelDto.toString());
+        Object rs = new Object();
+    try {
+        if(createLabelDto.getCourierType() == CourierType.ECONT){
+            rs = econtService.createWayBill(createLabelDto);
+        }
+
+        return ResponseEntity.ok(rs);
+    } catch (Exception e) {
+        log.error(e.getMessage());
+        return ResponseEntity.internalServerError().body(e.getMessage());
+    }
+    }
 }
