@@ -93,6 +93,7 @@ public class CourierSettingsController {
             }
             message = isSucessful ? "Връзката е успешна!" : "Неуспешен вход. Проверете данните.";
         } catch (Exception e) {
+            System.out.println(e.getMessage());
             message = e.getMessage();
         }
 

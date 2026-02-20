@@ -1,21 +1,27 @@
 package com.sateno_b.www.service;
 
 import com.sateno_b.www.model.dto.CheckCourierRequest;
+import com.sateno_b.www.model.dto.CreateLabelDto;
 import com.sateno_b.www.model.dto.ShipmentCityDto;
 import com.sateno_b.www.model.dto.ShipmentOfficeDto;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
+import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.CourierContractDetails;
+import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
+import com.sateno_b.www.model.repository.WpOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -24,6 +30,7 @@ public class SpeedyService implements ShippingProvider {
     private final RestClient restClient;
     private final CourierSettingsRepository courierSettingsRepository;
     private final SiteRepository siteRepository;
+    private final WpOrderRepository wpOrderRepository;
 
     public double calculatePrice(CheckCourierRequest request) {
 
@@ -72,7 +79,7 @@ public class SpeedyService implements ShippingProvider {
                Map<String, Object> additionalServices = new HashMap<>();
                Map<String, Object> cod = new HashMap<>();
                cod.put("amount", Double.parseDouble(request.getCart_total())); // Сумата за събиране
-               cod.put("currency", "BGN");
+               cod.put("currency", "EUR");
                additionalServices.put("cod", cod);
 
                service.put("additionalServices", additionalServices);
@@ -150,6 +157,134 @@ public class SpeedyService implements ShippingProvider {
 
 
         return 0;
+    }
+
+    public boolean createWayBill(CreateLabelDto createLabelDto) {
+
+        CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findById(createLabelDto.getCourierId()).get();
+        WpOrderEntity order = wpOrderRepository.findById(createLabelDto.getId()).get();
+        Map<String, Object> body = createBaseBody(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
+
+        Map<String, Object> content = new HashMap<>();
+        content.put("contents", order.getOrderLine().stream()
+                .map(OrderLineItem::getProductName)
+                .collect(Collectors.joining(", ")));
+        content.put("totalWeight", createLabelDto.getWeight());
+        content.put("parcelsCount", order.getOrderLine().size());
+        content.put("package", "STANDARD");
+
+        List<Map<String, Object>> parcels = new ArrayList<>();
+
+        int i = 0;
+        for (OrderLineItem orderLineItem : order.getOrderLine()) {
+            Map<String, Object> p = new HashMap<>();
+            p.put("seqNo", ++i);
+            p.put("weight", orderLineItem.getWeight());
+            p.put("ref1", orderLineItem.getProductName());
+            p.put("ref2", orderLineItem.getSku());
+            parcels.add(p);
+        }
+        body.put("parcels", parcels);
+        body.put("content", content);
+
+
+
+        //        if(request.getCourierShipmentType() == CourierShipmentType.LOCKER){
+//            content.put("parcelsCount", 1);
+//        } else {
+//            content.put("parcelsCount", request.getItems().size());
+//        }
+
+
+
+
+
+        Map<String, Object> payment = new HashMap<>();
+        payment.put("courierServicePayer", "RECIPIENT");
+        payment.put("declaredValuePayer", "RECIPIENT");
+        body.put("payment", payment);
+
+        Map<String, Object> service = new HashMap<>();
+        service.put("autoAdjustPickupDate", true);
+
+        // 3. НАЛОЖЕН ПЛАТЕЖ (Cash on Delivery)
+        Map<String, Object> additionalServices = new HashMap<>();
+        Map<String, Object> cod = new HashMap<>();
+        cod.put("amount", order.getTotalPrice()); // Сумата за събиране
+        cod.put("currency", order.getCurrency());
+        additionalServices.put("cod", cod);
+
+        Map<String, Object> declaredValue = new HashMap<>();
+        declaredValue.put("amount", order.getTotalPrice());
+        declaredValue.put("currency", order.getCurrency());
+
+        additionalServices.put("declaredValue", declaredValue);
+
+        service.put("additionalServices", additionalServices);
+
+        body.put("service", service);
+
+        var contract = getContract(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
+        Map<String, Object> sender = new HashMap<>();
+        sender.put("clientId", contract.getClientId());
+        body.put("sender", sender);
+        Map<String, Object> recipient = new HashMap<>();
+        recipient.put("privatePerson", true);
+
+        String fullName = order.getBilling().getFirstName() + " " + order.getBilling().getLastName();
+        recipient.put("clientName", fullName);
+        Map<String, Object> phone = new HashMap<>();
+        phone.put("number", order.getBilling().getPhone());
+        recipient.put("phone1", phone);
+        service.put("serviceIds", List.of(505L));
+        service.put("serviceId", 505L);
+
+        if(createLabelDto.getCourierShipmentType() == CourierShipmentType.OFFICE ||
+                createLabelDto.getCourierShipmentType() == CourierShipmentType.LOCKER) {
+//            service.put("serviceIds", List.of(505L));
+//            service.put("serviceId", 505L);
+            recipient.put("pickupOfficeId", createLabelDto.getOffice().getCode());
+        } else if(createLabelDto.getCourierShipmentType() == CourierShipmentType.ADDRESS) {
+//            Map<String, Object> address = new HashMap<>();
+//
+//            // Спиди изисква siteId (Long) за 100% валидация (Секция 3.13)
+//            address.put("siteId", createLabelDto.getCity().getId());
+//            address.put("postCode", createLabelDto.getCity().getPostalCode());
+//            address.put("streetName", createLabelDto.getStreet());
+//            address.put("streetNo", "1");
+//
+//            // Важно: тук ключът е "address"
+//            recipient.put("address", address);
+            // 1️⃣ LOCATION (задължително!)
+//            service.put("serviceId", 502L);
+            Map<String, Object> addressLocation = new HashMap<>();
+            addressLocation.put("siteId", createLabelDto.getCity().getId());
+            recipient.put("addressLocation", addressLocation);
+
+            // 2️⃣ ADDRESS
+            Map<String, Object> address = new HashMap<>();
+//            address.put("siteId", createLabelDto.getCity().getId());
+//            address.put("postCode", createLabelDto.getCity().getPostalCode());
+            address.put("postCode", 9238);
+            address.put("streetName", createLabelDto.getStreet());
+            address.put("additionalDetails", createLabelDto.getStreet());
+            address.put("streetNo", 9);
+
+            recipient.put("address", address);
+        }
+        body.put("recipient", recipient);
+        body.put("shippingDate", LocalDate.now().toString());
+
+        System.out.println(body.toString());
+
+        Map<String, Object> response = postToSpeedy("shipment", body);
+//        Map<String, Object> response = postToSpeedy("calculate", body);
+
+        System.out.println(response);
+
+
+
+        return true;
     }
 
 //    public double calculatePrice(double weight, CourierShipmentType shipmentType, String username, String password, CourierSettingsEntity courierSettings) {
@@ -253,6 +388,49 @@ public class SpeedyService implements ShippingProvider {
 //        return 0.00;
 //    }
 
+    private CourierContractDetails getContract(String username, String password) {
+        Map<String, Object> body = createBaseBody(username, password);
+
+        var response = postToSpeedy("client/contract", body);
+
+
+        if(response != null && response.containsKey("clients")) {
+            List<?> clientsList = (List<?>) response.get("clients");
+            if (!clientsList.isEmpty()) {
+                // Взимаме първия клиент (обикновено е един за тези данни)
+                Map<String, Object> clientMap = (Map<String, Object>) clientsList.get(0);
+
+                // Мапваме към нашето DTO (можеш да ползваш Jackson ObjectMapper за по-лесно)
+                CourierContractDetails details = new CourierContractDetails();
+                details.setClientId(Long.parseLong(clientMap.get("clientId").toString()));
+                details.setClientName(clientMap.get("clientName").toString());
+                details.setObjectName(clientMap.get("objectName").toString());
+                details.setContactName(clientMap.get("contactName").toString());
+                details.setEmail(clientMap.get("email") != null ? clientMap.get("email").toString() : "");
+
+                // Мапване на адреса
+                if (clientMap.containsKey("address")) {
+                    Map<String, Object> addrMap = (Map<String, Object>) clientMap.get("address");
+                    CourierContractDetails.AddressDetails addr = new CourierContractDetails.AddressDetails();
+                    addr.setSiteId(Long.parseLong(addrMap.get("siteId").toString()));
+                    addr.setSiteName(addrMap.get("siteName").toString());
+                    addr.setFullAddressString(addrMap.get("fullAddressString").toString());
+                    addr.setPostCode(addrMap.get("postCode") != null ? addrMap.get("postCode").toString() : "");
+                    details.setAddress(addr);
+                }
+                return details;
+//                CourierSettingsEntity c = courierSettingsRepository.findById(courierId).orElse(null);
+//                if (c != null) {
+//                    c.setCourierContractDetails(details);
+//                    courierSettingsRepository.save(c);
+//                }
+            }
+        }
+
+            return null;
+
+    }
+
     @Override
     public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
         var body = createBaseBody(username, password);
@@ -325,7 +503,7 @@ public class SpeedyService implements ShippingProvider {
 //                    .retrieve()
 //                    .toEntity(Object.class);
             var response =  postToSpeedy("client/contract", body);
-
+            System.out.println(response);
 
             if (response != null && response.containsKey("clients")) {
 
@@ -386,6 +564,7 @@ public class SpeedyService implements ShippingProvider {
     private Map<String, Object> postToSpeedy(String endpoint, Map<String, Object> body) {
         return restClient.post()
                 .uri("https://api.speedy.bg/v1/" + endpoint)
+//                .uri("https://demo.speedy.bg/v1/" + endpoint)
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON) // Задължително за Спиди
                 .body(body)
                 .retrieve()

@@ -180,7 +180,7 @@ public class EcontService implements ShippingProvider {
         }
     }
 
-    public boolean createWayBill(@RequestBody CreateLabelDto createLabelDto) {
+    public boolean createWayBill(CreateLabelDto createLabelDto) {
         CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findById(createLabelDto.getCourierId()).get();
         var contract = getContract(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
 //        System.out.println(contract.toString());

@@ -11,10 +11,7 @@ import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
 import com.sateno_b.www.model.enums.WsAction;
 import com.sateno_b.www.model.repository.WpOrderRepository;
-import com.sateno_b.www.service.EcontService;
-import com.sateno_b.www.service.NotificationService;
-import com.sateno_b.www.service.WebHookService;
-import com.sateno_b.www.service.WpOrderService;
+import com.sateno_b.www.service.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +37,7 @@ public class WpOrderController {
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
     private final EcontService econtService;
+    private final SpeedyService speedyService;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status,
@@ -214,6 +212,8 @@ public class WpOrderController {
     try {
         if(createLabelDto.getCourierType() == CourierType.ECONT){
             rs = econtService.createWayBill(createLabelDto);
+        } else if(createLabelDto.getCourierType() == CourierType.SPEEDY) {
+            rs = speedyService.createWayBill(createLabelDto);
         }
         return ResponseEntity.ok(rs);
     } catch (Exception e) {
