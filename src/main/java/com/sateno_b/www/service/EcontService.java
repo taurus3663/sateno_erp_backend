@@ -1,9 +1,7 @@
 package com.sateno_b.www.service;
 
-import com.sateno_b.www.model.dto.CheckCourierRequest;
-import com.sateno_b.www.model.dto.CreateLabelDto;
-import com.sateno_b.www.model.dto.ShipmentCityDto;
-import com.sateno_b.www.model.dto.ShipmentOfficeDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
@@ -279,13 +277,13 @@ public class EcontService implements ShippingProvider {
 //        returnParams.put("rejectAction", "return"); // Какво да се прави при отказ
         returnParams.put("rejectOriginalParcelPaySide", "receiver"); // Кой плаща отиването
         returnParams.put("rejectReturnParcelPaySide", "receiver");   // Кой плаща връщането
-//        returnParams.put("rejectInstruction", "return");
+        returnParams.put("rejectInstruction", "return");
 // Можеш да добавиш и това от схемата, ако искаш автоматично връщане при непотърсена пратка
 //        returnParams.put("daysUntilReturn", 7);
 
 // 2. Опаковаме ги в обекта Instruction
         Map<String, Object> instruction = new HashMap<>();
-//        instruction.put("type", "return");
+        instruction.put("type", "return");
         instruction.put("returnInstructionParams", returnParams); // ТУК СЕ ВЛАГАТ ПАРАМЕТРИТЕ
 
 // 3. Слагаме масива в лейбъла
@@ -297,7 +295,18 @@ public class EcontService implements ShippingProvider {
 //        System.out.println(label.toString());
         Map<String, Object> response = postToEcont("services/Shipments/LabelService.createLabel.json", body, courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
         System.out.println(response);
+
+        EcontCreateLabelResponse labelResponse = getLabelResponse(response);
+        order.setWayBillUrl(labelResponse.getLabel().getPdfURL());
+        order.setWayBillShipmentNumber(Long.parseLong(labelResponse.getLabel().getShipmentNumber()));
+        wpOrderRepository.save(order);
         return true;
+    }
+
+    private EcontCreateLabelResponse getLabelResponse(Map<String, Object> response) {
+        ObjectMapper mapper = new ObjectMapper();
+        // Конвертира Map директно към твоя DTO клас
+        return mapper.convertValue(response, EcontCreateLabelResponse.class);
     }
 
     public boolean testLogin(String username, String password, Long courierId) {

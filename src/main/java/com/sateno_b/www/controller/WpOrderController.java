@@ -215,8 +215,7 @@ public class WpOrderController {
         if(createLabelDto.getCourierType() == CourierType.ECONT){
             rs = econtService.createWayBill(createLabelDto);
         }
-        return ResponseEntity.notFound().build();
-//        return ResponseEntity.ok(rs);
+        return ResponseEntity.ok(rs);
     } catch (Exception e) {
         log.error(e.getMessage());
         return ResponseEntity.internalServerError().body(e.getMessage());

@@ -5,6 +5,7 @@ import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
 import com.sateno_b.www.model.entity.data.ShippingLines;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
+import jakarta.persistence.Column;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -38,4 +39,6 @@ public class WpOrderDto {
     private List<Long> ordersToMerge;
     private Long customerOrderCount;
     private List<ShippingLines> shippingLines;
+    private String wayBillUrl;
+    private Long wayBillShipmentNumber;
 }

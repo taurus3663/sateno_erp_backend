@@ -82,4 +82,9 @@ public class WpOrderEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private List<ShippingLines> shippingLines = new ArrayList<>();
+
+    @Column
+    private String wayBillUrl;
+    @Column
+    private Long wayBillShipmentNumber;
 }
