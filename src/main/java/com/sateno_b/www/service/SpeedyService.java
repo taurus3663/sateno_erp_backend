@@ -19,8 +19,11 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -160,7 +163,7 @@ public class SpeedyService implements ShippingProvider {
     }
 
     public boolean createWayBill(CreateLabelDto createLabelDto) {
-
+        System.out.println(createLabelDto.toString());
         CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findById(createLabelDto.getCourierId()).get();
         WpOrderEntity order = wpOrderRepository.findById(createLabelDto.getId()).get();
         Map<String, Object> body = createBaseBody(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
@@ -172,6 +175,7 @@ public class SpeedyService implements ShippingProvider {
         content.put("totalWeight", createLabelDto.getWeight());
         content.put("parcelsCount", order.getOrderLine().size());
         content.put("package", "STANDARD");
+        content.put("valueOfGoods", order.getTotalPrice());
 
         List<Map<String, Object>> parcels = new ArrayList<>();
 
@@ -189,13 +193,6 @@ public class SpeedyService implements ShippingProvider {
 
 
 
-        //        if(request.getCourierShipmentType() == CourierShipmentType.LOCKER){
-//            content.put("parcelsCount", 1);
-//        } else {
-//            content.put("parcelsCount", request.getItems().size());
-//        }
-
-
 
 
 
@@ -207,11 +204,45 @@ public class SpeedyService implements ShippingProvider {
         Map<String, Object> service = new HashMap<>();
         service.put("autoAdjustPickupDate", true);
 
+
+        Map<String, Object> cod = new HashMap<>();
+
+        if(createLabelDto.getFiscalReceipt() == true){
+        List<Map<String, Object>> fiscalReceiptItems = new ArrayList<>();
+        double checkSum = 0.0;
+        for (OrderLineItem item : order.getOrderLine()) {
+            Map<String, Object> fiscalItem = new HashMap<>();
+            String name = item.getProductName();
+            fiscalItem.put("description", name.length() > 50 ? name.substring(0, 47) + "..." : name);
+            fiscalItem.put("vatGroup", "Б"); // Стандартно 20% ДДС
+            double itemTotalWithVat = Double.parseDouble(item.getPrice().toString()) * item.getQuantity();
+            double itemTotalWithoutVat = itemTotalWithVat / 1.2;
+            fiscalItem.put("amountWithVat", itemTotalWithVat);
+            fiscalItem.put("amount", Math.round(itemTotalWithoutVat * 100.0) / 100.0);
+            fiscalReceiptItems.add(fiscalItem);
+            checkSum += itemTotalWithVat;
+        }
+        // 2. Добавяне на доставката като отделен ред, ако клиентът я плаща
+        if (Double.parseDouble(order.getTotalPrice().toString()) > checkSum) {
+            double deliveryPrice = Double.parseDouble(order.getTotalPrice().toString()) - checkSum;
+            Map<String, Object> deliveryLine = new HashMap<>();
+            deliveryLine.put("description", "Доставка");
+            deliveryLine.put("vatGroup", "Б");
+            deliveryLine.put("amountWithVat", deliveryPrice);
+            deliveryLine.put("amount", Math.round((deliveryPrice / 1.2) * 100.0) / 100.0);
+            fiscalReceiptItems.add(deliveryLine);
+        }
+
+            cod.put("fiscalReceiptItems", fiscalReceiptItems);
+        }
+
         // 3. НАЛОЖЕН ПЛАТЕЖ (Cash on Delivery)
         Map<String, Object> additionalServices = new HashMap<>();
-        Map<String, Object> cod = new HashMap<>();
+
         cod.put("amount", order.getTotalPrice()); // Сумата за събиране
         cod.put("currency", order.getCurrency());
+        cod.put("processingType", "CASH");
+
         additionalServices.put("cod", cod);
 
         Map<String, Object> declaredValue = new HashMap<>();
@@ -219,6 +250,17 @@ public class SpeedyService implements ShippingProvider {
         declaredValue.put("currency", order.getCurrency());
 
         additionalServices.put("declaredValue", declaredValue);
+
+        Map<String, Object> obpd = new HashMap<>();
+        obpd.put("option", "OPEN");   // само преглед (отваряне)
+        obpd.put("payer", "RECIPIENT");
+        obpd.put("returnShipmentServiceId", 505L);
+        obpd.put("returnShipmentPayer", "RECIPIENT");
+
+        if(createLabelDto.getCourierShipmentType() == CourierShipmentType.OFFICE){
+            additionalServices.put("obpd", obpd);
+        }
+
 
         service.put("additionalServices", additionalServices);
 
@@ -241,34 +283,19 @@ public class SpeedyService implements ShippingProvider {
 
         if(createLabelDto.getCourierShipmentType() == CourierShipmentType.OFFICE ||
                 createLabelDto.getCourierShipmentType() == CourierShipmentType.LOCKER) {
-//            service.put("serviceIds", List.of(505L));
-//            service.put("serviceId", 505L);
-            recipient.put("pickupOfficeId", createLabelDto.getOffice().getCode());
+            recipient.put("pickupOfficeId", createLabelDto.getOffice().getId());
         } else if(createLabelDto.getCourierShipmentType() == CourierShipmentType.ADDRESS) {
-//            Map<String, Object> address = new HashMap<>();
-//
-//            // Спиди изисква siteId (Long) за 100% валидация (Секция 3.13)
-//            address.put("siteId", createLabelDto.getCity().getId());
-//            address.put("postCode", createLabelDto.getCity().getPostalCode());
-//            address.put("streetName", createLabelDto.getStreet());
-//            address.put("streetNo", "1");
-//
-//            // Важно: тук ключът е "address"
-//            recipient.put("address", address);
-            // 1️⃣ LOCATION (задължително!)
-//            service.put("serviceId", 502L);
             Map<String, Object> addressLocation = new HashMap<>();
             addressLocation.put("siteId", createLabelDto.getCity().getId());
             recipient.put("addressLocation", addressLocation);
-
             // 2️⃣ ADDRESS
             Map<String, Object> address = new HashMap<>();
-//            address.put("siteId", createLabelDto.getCity().getId());
-//            address.put("postCode", createLabelDto.getCity().getPostalCode());
-            address.put("postCode", 9238);
-            address.put("streetName", createLabelDto.getStreet());
+            address.put("siteId", createLabelDto.getCity().getId());
+            address.put("postCode", createLabelDto.getCity().getPostCode());
             address.put("additionalDetails", createLabelDto.getStreet());
-            address.put("streetNo", 9);
+            address.put("streetNo", " ");
+            address.put("streetName", createLabelDto.getStreet());
+
 
             recipient.put("address", address);
         }

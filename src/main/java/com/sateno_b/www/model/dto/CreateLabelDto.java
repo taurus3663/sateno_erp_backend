@@ -22,6 +22,7 @@ public class CreateLabelDto {
     private City city;
     private String street;
     private BoxNowPacketSize boxNowPacketSize;
+    private Boolean fiscalReceipt;
 
     @Data
     public static class Office {
@@ -35,6 +36,7 @@ public class CreateLabelDto {
         private Long id;
         private String name;
         private String postalCode;
+        private String postCode;
     }
 
 }
