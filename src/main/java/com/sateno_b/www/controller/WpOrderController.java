@@ -209,14 +209,14 @@ public class WpOrderController {
     @PostMapping("/create/waybill")
     public ResponseEntity<?> createWayBill(@RequestBody CreateLabelDto createLabelDto) {
 
-        System.out.println(createLabelDto.toString());
+//        System.out.println(createLabelDto.toString());
         Object rs = new Object();
     try {
         if(createLabelDto.getCourierType() == CourierType.ECONT){
             rs = econtService.createWayBill(createLabelDto);
         }
-
-        return ResponseEntity.ok(rs);
+        return ResponseEntity.notFound().build();
+//        return ResponseEntity.ok(rs);
     } catch (Exception e) {
         log.error(e.getMessage());
         return ResponseEntity.internalServerError().body(e.getMessage());

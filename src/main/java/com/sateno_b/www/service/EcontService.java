@@ -6,11 +6,14 @@ import com.sateno_b.www.model.dto.ShipmentCityDto;
 import com.sateno_b.www.model.dto.ShipmentOfficeDto;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
+import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.CourierContractDetails;
+import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
+import com.sateno_b.www.model.repository.WpOrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +23,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.function.Consumer;
 
@@ -31,8 +37,9 @@ public class EcontService implements ShippingProvider {
     private final RestClient restClient;
     private final SiteRepository siteRepository;
     private final CourierSettingsRepository courierSettingsRepository;
+    private final WpOrderRepository wpOrderRepository;
 
-//    @Override
+    //    @Override
 //    public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
 //        Map<String, Object> body = new HashMap<>();
 //        System.out.println(nameFilter);
@@ -178,7 +185,9 @@ public class EcontService implements ShippingProvider {
     public boolean createWayBill(@RequestBody CreateLabelDto createLabelDto) {
         CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findById(createLabelDto.getCourierId()).get();
         var contract = getContract(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
-        System.out.println(contract.toString());
+//        System.out.println(contract.toString());
+        System.out.println(createLabelDto.toString());
+        WpOrderEntity order = wpOrderRepository.findById(createLabelDto.getId()).get();
 
         Map<String, Object> body = new HashMap<>();
         Map<String, Object> label =  new HashMap<>();
@@ -206,38 +215,86 @@ public class EcontService implements ShippingProvider {
 
 //        RECEIVER
         Map<String, Object> receiverClient = new HashMap<>();
-        receiverClient.put("name", "Али Зинал");
-        receiverClient.put("phones", List.of("0894396766"));
+        receiverClient.put("name", order.getBilling().getFirstName() + " " + order.getBilling().getLastName());
+        receiverClient.put("phones", List.of(order.getBilling().getPhone()));
         label.put("receiverClient", receiverClient);
 
 
 
         Map<String, Object> receiverAddress = new HashMap<>();
         Map<String, Object> receiverCity = new HashMap<>();
-//        if (createLabelDto.getCourierShipmentType() == CourierShipmentType.OFFICE ||
-//                createLabelDto.getCourierShipmentType() == CourierShipmentType.LOCKER) {
-//            label.put("receiverOfficeCode", createLabelDto.getOffice().getId());
-//        } else {
+        System.out.println(createLabelDto.getCourierShipmentType());
+        if (createLabelDto.getCourierShipmentType() == CourierShipmentType.OFFICE ||
+                createLabelDto.getCourierShipmentType() == CourierShipmentType.LOCKER) {
+            System.out.println("here");
+            label.put("receiverOfficeCode", createLabelDto.getOffice().getCode());
+//            receiverCity.put("id", createLabelDto.getCity().getId());
+//            receiverAddress.put("street", createLabelDto.getOffice().getAddress());
+        } else {
             receiverCity.put("country", Map.of("code3", "BGR"));
-            receiverCity.put("name", "Медовец");
-            receiverCity.put("postCode", "9238");
+            receiverCity.put("name", createLabelDto.getCity().getName());
+            receiverCity.put("postCode", createLabelDto.getCity().getPostalCode());
 //            receiverCity.put("id", createLabelDto.getOffice().getId());
-            receiverAddress.put("city", receiverCity);
-            receiverAddress.put("street", "Седемнадесет");
-            receiverAddress.put("num", "9");
+            receiverAddress.put("street", createLabelDto.getStreet());
+//            receiverAddress.put("num", "9");
 //            receiverAddress.put("other", "bl. 5");
-//        }
-        label.put("receiverAddress", receiverAddress);
+            receiverAddress.put("city", receiverCity);
+            label.put("receiverAddress", receiverAddress);
+        }
+//        label.put("sendDate", toString());
+        label.put("holidayDeliveryDay", "workday");
+
         label.put("packCount", createLabelDto.getPackCount());
         label.put("shipmentType", "PACK");
         label.put("weight", createLabelDto.getWeight());
-        label.put("shipmentDescription", "Текстилни изделия");
-        label.put("paymentReceiverMethod", "cash");
+//        label.put("shipmentDescription", "Текстилни изделия");
+        label.put("shipmentDescription", String.join(
+                ", ",
+                order.getOrderLine()
+                        .stream()
+                        .map(OrderLineItem::getProductName)
+                        .toList()
+        ));
+
+        Map<String, Object> services = new HashMap<>();
+
+
+        services.put("cdAmount", order.getTotalPrice());
+        services.put("cdCurrency", order.getCurrency());
+        services.put("cdType", "get"); // 'get' е стандартната стойност за събиране на сумата
+
+// 2. Слагаме services в label
+        label.put("services", services);
+
+// 3. Други важни полета от спецификацията:
+        label.put("paymentReceiverMethod", "cash"); // Получателят плаща в брой
+        label.put("sendDate", LocalDate.now(ZoneId.of("Europe/Sofia")).toString());
+        label.put("holidayDeliveryDay", "workday");
+
+// 4. Опция "Преглед" (по желание)
+        label.put("payAfterAccept", true);
+        label.put("payAfterTest", true);
+
+        Map<String, Object> returnParams = new HashMap<>();
+//        returnParams.put("rejectAction", "return"); // Какво да се прави при отказ
+        returnParams.put("rejectOriginalParcelPaySide", "receiver"); // Кой плаща отиването
+        returnParams.put("rejectReturnParcelPaySide", "receiver");   // Кой плаща връщането
+//        returnParams.put("rejectInstruction", "return");
+// Можеш да добавиш и това от схемата, ако искаш автоматично връщане при непотърсена пратка
+//        returnParams.put("daysUntilReturn", 7);
+
+// 2. Опаковаме ги в обекта Instruction
+        Map<String, Object> instruction = new HashMap<>();
+//        instruction.put("type", "return");
+        instruction.put("returnInstructionParams", returnParams); // ТУК СЕ ВЛАГАТ ПАРАМЕТРИТЕ
+
+// 3. Слагаме масива в лейбъла
+        label.put("instructions", List.of(instruction));
 
 
         body.put("label", label);
         body.put("mode", "create");
-
+//        System.out.println(label.toString());
         Map<String, Object> response = postToEcont("services/Shipments/LabelService.createLabel.json", body, courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
         System.out.println(response);
         return true;

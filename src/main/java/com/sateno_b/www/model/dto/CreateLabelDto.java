@@ -27,6 +27,7 @@ public class CreateLabelDto {
     public static class Office {
         private String address;
         private Long id;
+        private Long code;
     }
 
     @Data
