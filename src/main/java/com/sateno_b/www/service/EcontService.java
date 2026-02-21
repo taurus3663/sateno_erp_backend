@@ -184,7 +184,7 @@ public class EcontService implements ShippingProvider {
         CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findById(createLabelDto.getCourierId()).get();
         var contract = getContract(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
 //        System.out.println(contract.toString());
-        System.out.println(createLabelDto.toString());
+//        System.out.println(createLabelDto.toString());
         WpOrderEntity order = wpOrderRepository.findById(createLabelDto.getId()).get();
 
         Map<String, Object> body = new HashMap<>();
@@ -221,10 +221,10 @@ public class EcontService implements ShippingProvider {
 
         Map<String, Object> receiverAddress = new HashMap<>();
         Map<String, Object> receiverCity = new HashMap<>();
-        System.out.println(createLabelDto.getCourierShipmentType());
+//        System.out.println(createLabelDto.getCourierShipmentType());
         if (createLabelDto.getCourierShipmentType() == CourierShipmentType.OFFICE ||
                 createLabelDto.getCourierShipmentType() == CourierShipmentType.LOCKER) {
-            System.out.println("here");
+//            System.out.println("here");
             label.put("receiverOfficeCode", createLabelDto.getOffice().getCode());
 //            receiverCity.put("id", createLabelDto.getCity().getId());
 //            receiverAddress.put("street", createLabelDto.getOffice().getAddress());

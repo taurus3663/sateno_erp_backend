@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @RestController
@@ -221,4 +223,41 @@ public class WpOrderController {
         return ResponseEntity.internalServerError().body(e.getMessage());
     }
     }
+
+    private static final Pattern REGEX_1 = Pattern.compile("^\\[(OFFICE|LOCKER|ADDRESS)\\]\\s*(.*)\\s*\\[(.*?)\\]\\s*\\[(SPEEDY|ECONT|BOXNOW)\\]$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern REGEX_2 = Pattern.compile("До\\s+(офис|адрес|автомат)\\s+(speedy|econt|boxnow)\\[(.*?)\\]:\\s*(.*)", Pattern.CASE_INSENSITIVE);
+
+    @PostMapping("generate/waybill/{orderId}/{id}")
+    public ResponseEntity<byte[]> generateWayBill(@PathVariable("orderId") Long orderId, @PathVariable("id") Long id){
+
+        Optional<WpOrderEntity> byId = wpOrderRepository.findById(orderId);
+
+        if(byId.isPresent()){
+            WpOrderEntity order = byId.get();
+            String shippingMethod = order.getBilling().getAddress1();
+            String courierName = "";
+            String deliveryType = "";
+            Matcher m1 = REGEX_1.matcher(shippingMethod);
+            if (m1.find()) {
+                deliveryType = m1.group(1);
+                courierName = m1.group(4);
+            } else {
+                // Опит за парсване с Regex 2
+                Matcher m2 = REGEX_2.matcher(shippingMethod);
+                if (m2.find()) {
+                    courierName = m2.group(2);
+                    deliveryType = m2.group(1);
+                }
+            }
+
+            if(courierName.equalsIgnoreCase(CourierType.SPEEDY.name())) {
+                System.out.println(courierName);
+            }
+
+
+//            db.
+        }
+    return null;
+    }
+
 }

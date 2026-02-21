@@ -87,4 +87,6 @@ public class WpOrderEntity extends BaseEntity {
     private String wayBillUrl;
     @Column
     private Long wayBillShipmentNumber;
+    @Column
+    private List<String> parcelIds = new ArrayList<>();
 }

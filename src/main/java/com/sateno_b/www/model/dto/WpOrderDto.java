@@ -10,6 +10,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -41,4 +42,5 @@ public class WpOrderDto {
     private List<ShippingLines> shippingLines;
     private String wayBillUrl;
     private Long wayBillShipmentNumber;
+    private List<String> parcelIds = new ArrayList<>();
 }

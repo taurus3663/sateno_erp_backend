@@ -1,9 +1,7 @@
 package com.sateno_b.www.service;
 
-import com.sateno_b.www.model.dto.CheckCourierRequest;
-import com.sateno_b.www.model.dto.CreateLabelDto;
-import com.sateno_b.www.model.dto.ShipmentCityDto;
-import com.sateno_b.www.model.dto.ShipmentOfficeDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
@@ -16,10 +14,13 @@ import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -173,7 +174,7 @@ public class SpeedyService implements ShippingProvider {
                 .map(OrderLineItem::getProductName)
                 .collect(Collectors.joining(", ")));
         content.put("totalWeight", createLabelDto.getWeight());
-        content.put("parcelsCount", order.getOrderLine().size());
+        content.put("parcelsCount", createLabelDto.getPackCount());
         content.put("package", "STANDARD");
         content.put("valueOfGoods", order.getTotalPrice());
 
@@ -302,17 +303,47 @@ public class SpeedyService implements ShippingProvider {
         body.put("recipient", recipient);
         body.put("shippingDate", LocalDate.now().toString());
 
-        System.out.println(body.toString());
+//        System.out.println(body.toString());
 
         Map<String, Object> response = postToSpeedy("shipment", body);
 //        Map<String, Object> response = postToSpeedy("calculate", body);
 
         System.out.println(response);
+        SpeedyCreateLabelResponse labelResponse = getLabelResponse(response);
+        System.out.println(labelResponse.toString());
 
-
-
+        order.setWayBillShipmentNumber(Long.parseLong(labelResponse.getId()));
+        for (SpeedyCreateLabelResponse.Parcel parcel : labelResponse.getParcels()) {
+            order.getParcelIds().add(parcel.getId());
+        }
+        wpOrderRepository.save(order);
         return true;
     }
+
+//    private byte[] getWaybillPdf(SpeedyCreateLabelResponse labelResponse, Map<String, Object> body) {
+//        String url = "https://api.speedy.bg/v1/print";
+//
+//        body.put("paperSize", "A4_4xA6"); // Избор между A4, A6 или A4_4xA6
+//        body.put("additionalWaybillSenderCopy", "NONE");
+//
+//        // Списък от товарителници за печат
+//        List<Map<String, Object>> parcels = labelResponse.getParcels().stream()
+//                .map(parcel -> Map.of("id", (Object) parcel.getId()))
+//                .toList();
+//        body.put("parcels", parcels);
+//
+//        // Важно: Използваме RestClient за извличане на байтове
+//        return restClient.post()
+//                .uri(url)
+//                .contentType(MediaType.APPLICATION_JSON)
+//                .body(body)
+//                .retrieve()
+//                .onStatus(HttpStatusCode::isError, (request, response) -> {
+//                    // Логваме ако Спиди върне 4xx или 5xx
+//                    System.err.println("Speedy Print Error Status: " + response.getStatusCode());
+//                })
+//                .body(byte[].class); // Връщаме масив от байтове (PDF-а)
+//    }
 
 //    public double calculatePrice(double weight, CourierShipmentType shipmentType, String username, String password, CourierSettingsEntity courierSettings) {
 //        try {
@@ -414,6 +445,11 @@ public class SpeedyService implements ShippingProvider {
 //        }
 //        return 0.00;
 //    }
+
+    private SpeedyCreateLabelResponse getLabelResponse(Map<String, Object> response) {
+        ObjectMapper mapper = new ObjectMapper();
+        return mapper.convertValue(response, SpeedyCreateLabelResponse.class);
+    }
 
     private CourierContractDetails getContract(String username, String password) {
         Map<String, Object> body = createBaseBody(username, password);
