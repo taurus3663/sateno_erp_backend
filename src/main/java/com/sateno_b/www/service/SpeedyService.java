@@ -324,7 +324,7 @@ public class SpeedyService implements ShippingProvider {
         String url = "https://api.speedy.bg/v1/print";
 
         Map<String, Object> body = createBaseBody(username, password);
-        body.put("paperSize", "A4_4xA6"); // Избор между A4, A6 или A4_4xA6
+        body.put("paperSize", paperSize); // Избор между A4, A6 или A4_4xA6
         body.put("additionalWaybillSenderCopy", "NONE");
 
         // Списък от товарителници за печат

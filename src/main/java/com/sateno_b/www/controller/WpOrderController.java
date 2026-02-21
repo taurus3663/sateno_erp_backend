@@ -266,14 +266,10 @@ public class WpOrderController {
             if(courierName.equalsIgnoreCase(CourierType.SPEEDY.name())) {
                 System.out.println(courierName);
                pdfBytes = speedyService.getWaybillPdf(List.of(waybillId), paperSize, courierSettings.getUsername(), courierSettings.getPassword());
-//                if (pdfBytes == null || pdfBytes.length == 0) {
-//                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-//                }
-                System.out.println(pdfBytes.length);
+                if (pdfBytes == null || pdfBytes.length == 0) {
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                }
             }
-
-
-//            db.
         }
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
