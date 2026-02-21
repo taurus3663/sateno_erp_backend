@@ -341,7 +341,7 @@ public class SpeedyService implements ShippingProvider {
             parcels.add(parcelWrapper);
         }
         body.put("parcels", parcels);
-        System.out.println(body.toString());
+//        System.out.println(body.toString());
 
         // Важно: Използваме RestClient за извличане на байтове
         return restClient.post()

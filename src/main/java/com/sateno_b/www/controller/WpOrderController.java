@@ -233,8 +233,8 @@ public class WpOrderController {
     private static final Pattern REGEX_1 = Pattern.compile("^\\[(OFFICE|LOCKER|ADDRESS)\\]\\s*(.*)\\s*\\[(.*?)\\]\\s*\\[(SPEEDY|ECONT|BOXNOW)\\]$", Pattern.CASE_INSENSITIVE);
     private static final Pattern REGEX_2 = Pattern.compile("До\\s+(офис|адрес|автомат)\\s+(speedy|econt|boxnow)\\[(.*?)\\]:\\s*(.*)", Pattern.CASE_INSENSITIVE);
 
-    @PostMapping("generate/waybill/{orderId}/{waybillId}/{paperSize}")
-    public ResponseEntity<byte[]> generateWayBill(@PathVariable("orderId") Long orderId, @PathVariable("waybillId") String waybillId, @PathVariable String paperSize){
+    @PostMapping("generate/waybill/{orderId}/{waybillIds}/{paperSize}")
+    public ResponseEntity<byte[]> generateWayBill(@PathVariable("orderId") Long orderId, @PathVariable("waybillIds") List<String> waybillIds, @PathVariable String paperSize){
         byte[] pdfBytes = new byte[0];
         
         Optional<WpOrderEntity> byId = wpOrderRepository.findById(orderId);
@@ -264,8 +264,8 @@ public class WpOrderController {
                 }
             }
             if(courierName.equalsIgnoreCase(CourierType.SPEEDY.name())) {
-                System.out.println(courierName);
-               pdfBytes = speedyService.getWaybillPdf(List.of(waybillId), paperSize, courierSettings.getUsername(), courierSettings.getPassword());
+//                System.out.println(courierName);
+               pdfBytes = speedyService.getWaybillPdf(waybillIds, paperSize, courierSettings.getUsername(), courierSettings.getPassword());
                 if (pdfBytes == null || pdfBytes.length == 0) {
                     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
                 }
@@ -273,7 +273,7 @@ public class WpOrderController {
         }
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"label-" + waybillId + ".pdf\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"label-" + waybillIds + ".pdf\"")
                 .body(pdfBytes);
     }
 
