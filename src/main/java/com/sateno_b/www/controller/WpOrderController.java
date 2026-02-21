@@ -3,6 +3,7 @@ package com.sateno_b.www.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sateno_b.www.model.dto.*;
+import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.CustomerEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
@@ -10,6 +11,7 @@ import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
 import com.sateno_b.www.model.enums.WsAction;
+import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import com.sateno_b.www.service.*;
 import jakarta.transaction.Transactional;
@@ -17,6 +19,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,6 +45,7 @@ public class WpOrderController {
     private final NotificationService notificationService;
     private final EcontService econtService;
     private final SpeedyService speedyService;
+    private final CourierSettingsRepository courierSettingsRepository;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status,
@@ -227,9 +233,10 @@ public class WpOrderController {
     private static final Pattern REGEX_1 = Pattern.compile("^\\[(OFFICE|LOCKER|ADDRESS)\\]\\s*(.*)\\s*\\[(.*?)\\]\\s*\\[(SPEEDY|ECONT|BOXNOW)\\]$", Pattern.CASE_INSENSITIVE);
     private static final Pattern REGEX_2 = Pattern.compile("До\\s+(офис|адрес|автомат)\\s+(speedy|econt|boxnow)\\[(.*?)\\]:\\s*(.*)", Pattern.CASE_INSENSITIVE);
 
-    @PostMapping("generate/waybill/{orderId}/{id}")
-    public ResponseEntity<byte[]> generateWayBill(@PathVariable("orderId") Long orderId, @PathVariable("id") Long id){
-
+    @PostMapping("generate/waybill/{orderId}/{waybillId}/{paperSize}")
+    public ResponseEntity<byte[]> generateWayBill(@PathVariable("orderId") Long orderId, @PathVariable("waybillId") String waybillId, @PathVariable String paperSize){
+        byte[] pdfBytes = new byte[0];
+        
         Optional<WpOrderEntity> byId = wpOrderRepository.findById(orderId);
 
         if(byId.isPresent()){
@@ -249,15 +256,29 @@ public class WpOrderController {
                     deliveryType = m2.group(1);
                 }
             }
-
+            List<CourierSettingsEntity> allBySiteAndActive = courierSettingsRepository.findAllBySiteAndActive(order.getSite(), true);
+            CourierSettingsEntity courierSettings = null;
+            for (CourierSettingsEntity courierSettingsEntity : allBySiteAndActive) {
+                if(courierSettingsEntity.getCourierType() == CourierType.SPEEDY){
+                    courierSettings = courierSettingsEntity;
+                }
+            }
             if(courierName.equalsIgnoreCase(CourierType.SPEEDY.name())) {
                 System.out.println(courierName);
+               pdfBytes = speedyService.getWaybillPdf(List.of(waybillId), paperSize, courierSettings.getUsername(), courierSettings.getPassword());
+//                if (pdfBytes == null || pdfBytes.length == 0) {
+//                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+//                }
+                System.out.println(pdfBytes.length);
             }
 
 
 //            db.
         }
-    return null;
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"label-" + waybillId + ".pdf\"")
+                .body(pdfBytes);
     }
 
 }

@@ -228,7 +228,7 @@ public class SpeedyService implements ShippingProvider {
             double deliveryPrice = Double.parseDouble(order.getTotalPrice().toString()) - checkSum;
             Map<String, Object> deliveryLine = new HashMap<>();
             deliveryLine.put("description", "Доставка");
-            deliveryLine.put("vatGroup", "Б");
+            deliveryLine.put("vatGroup", "А");
             deliveryLine.put("amountWithVat", deliveryPrice);
             deliveryLine.put("amount", Math.round((deliveryPrice / 1.2) * 100.0) / 100.0);
             fiscalReceiptItems.add(deliveryLine);
@@ -320,30 +320,41 @@ public class SpeedyService implements ShippingProvider {
         return true;
     }
 
-//    private byte[] getWaybillPdf(SpeedyCreateLabelResponse labelResponse, Map<String, Object> body) {
-//        String url = "https://api.speedy.bg/v1/print";
-//
-//        body.put("paperSize", "A4_4xA6"); // Избор между A4, A6 или A4_4xA6
-//        body.put("additionalWaybillSenderCopy", "NONE");
-//
-//        // Списък от товарителници за печат
-//        List<Map<String, Object>> parcels = labelResponse.getParcels().stream()
-//                .map(parcel -> Map.of("id", (Object) parcel.getId()))
-//                .toList();
-//        body.put("parcels", parcels);
-//
-//        // Важно: Използваме RestClient за извличане на байтове
-//        return restClient.post()
-//                .uri(url)
-//                .contentType(MediaType.APPLICATION_JSON)
-//                .body(body)
-//                .retrieve()
-//                .onStatus(HttpStatusCode::isError, (request, response) -> {
-//                    // Логваме ако Спиди върне 4xx или 5xx
-//                    System.err.println("Speedy Print Error Status: " + response.getStatusCode());
-//                })
-//                .body(byte[].class); // Връщаме масив от байтове (PDF-а)
-//    }
+    public byte[] getWaybillPdf(List<String> parcelList, String paperSize, String username, String password) {
+        String url = "https://api.speedy.bg/v1/print";
+
+        Map<String, Object> body = createBaseBody(username, password);
+        body.put("paperSize", "A4_4xA6"); // Избор между A4, A6 или A4_4xA6
+        body.put("additionalWaybillSenderCopy", "NONE");
+
+        // Списък от товарителници за печат
+        List<Map<String, Object>> parcels = new ArrayList<>();
+        for (String s : parcelList) {
+            // Вътрешният обект: { "id": "63475023972" }
+            Map<String, Object> idMap = new HashMap<>();
+            idMap.put("id", s);
+
+            // Външният обект: { "parcel": { ... } }
+            Map<String, Object> parcelWrapper = new HashMap<>();
+            parcelWrapper.put("parcel", idMap);
+
+            parcels.add(parcelWrapper);
+        }
+        body.put("parcels", parcels);
+        System.out.println(body.toString());
+
+        // Важно: Използваме RestClient за извличане на байтове
+        return restClient.post()
+                .uri(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, response) -> {
+                    // Логваме ако Спиди върне 4xx или 5xx
+                    System.err.println("Speedy Print Error Status: " + response.getStatusCode());
+                })
+                .body(byte[].class); // Връщаме масив от байтове (PDF-а)
+    }
 
 //    public double calculatePrice(double weight, CourierShipmentType shipmentType, String username, String password, CourierSettingsEntity courierSettings) {
 //        try {
