@@ -188,7 +188,6 @@ public class WpOrderController {
 
             Long siteId = webHookService.validateAndGetSiteId(rawPayload, signature);
             if(siteId != null){
-
                 try {
                     // 2. Ръчно десериализираме JSON-а към DTO
 //                    ObjectMapper objectMapper = new ObjectMapper();

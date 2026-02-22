@@ -33,7 +33,6 @@ public class CheckOutController {
     public ResponseEntity<CheckOutCourierListDto> check(@RequestBody CheckCourierRequest request) {
 
 //        System.out.println(request.toString());
-
         SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
         List<CourierSettingsEntity> couriers = courierSettingsRepository.findAllBySiteAndActive(site, true);
 
