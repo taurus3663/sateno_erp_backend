@@ -46,6 +46,7 @@ public class WpOrderController {
     private final EcontService econtService;
     private final SpeedyService speedyService;
     private final CourierSettingsRepository courierSettingsRepository;
+    private final BoxNowService boxNowService;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status,
@@ -221,6 +222,8 @@ public class WpOrderController {
             rs = econtService.createWayBill(createLabelDto);
         } else if(createLabelDto.getCourierType() == CourierType.SPEEDY) {
             rs = speedyService.createWayBill(createLabelDto);
+        } else if(createLabelDto.getCourierType() == CourierType.BOX_NOW) {
+            rs = boxNowService.createWayBill(createLabelDto);
         }
         return ResponseEntity.ok(rs);
     } catch (Exception e) {

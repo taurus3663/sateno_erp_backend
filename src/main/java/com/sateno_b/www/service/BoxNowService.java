@@ -1,14 +1,16 @@
 package com.sateno_b.www.service;
 
-import com.sateno_b.www.model.dto.CheckCourierRequest;
-import com.sateno_b.www.model.dto.ShipmentCityDto;
-import com.sateno_b.www.model.dto.ShipmentOfficeDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
+import com.sateno_b.www.model.entity.WpOrderEntity;
+import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
+import com.sateno_b.www.model.repository.WpOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
@@ -26,6 +28,72 @@ public class BoxNowService implements ShippingProvider {
     private final RestClient restClient;
     private final SiteRepository siteRepository;
     private final CourierSettingsRepository courierSettingsRepository;
+    private final WpOrderRepository wpOrderRepository;
+    private final ObjectMapper objectMapper;
+
+
+    public boolean createWayBill(CreateLabelDto createLabelDto) {
+//        System.out.println(createLabelDto.toString());
+//        CreateLabelDto(id=3008, wpOrderId=2288, packCount=1, weight=1.0, length=30.0, width=5.0, height=20.0,
+//        courierType=BOX_NOW,
+//        courierShipmentType=LOCKER, courierId=3, office=CreateLabelDto.Office(address=бул. България 68Б, Септември,
+//        id=2267, code=null), city=CreateLabelDto.City(id=62780140, name=Септември, postalCode=null, postCode=null),
+//        street=, boxNowPacketSize=MEDIUM, fiscalReceipt=false)
+        CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findById(createLabelDto.getCourierId()).get();
+        WpOrderEntity order = wpOrderRepository.findById(createLabelDto.getId()).get();
+
+//        String token = getAuthToken(courierSettingsEntity.getApiKey(), courierSettingsEntity.getApiSecret());
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("orderNumber", order.getWpOrderId().toString());
+        body.put("paymentMode", "cod");
+        body.put("amountToBeCollected", order.getTotalPrice());
+        body.put("allowReturn", true);
+
+        /*ORIGIN*/
+        Map<String,Object> origin = new HashMap<>();
+        origin.put("locationId", "2"); // Системно ID за Any-APM
+        origin.put("contactName", "Евелина Янкова");
+        origin.put("contactNumber", "+359889020222");
+        origin.put("contactEmail", "info@sateno.bg");
+        body.put("origin", origin);
+
+//        BoxNowOriginsResponse origins = getOrigins(courierSettingsEntity);
+
+        /*DESTINATION*/
+        Map<String,Object> destination = new HashMap<>();
+        destination.put("locationId", createLabelDto.getOffice().getId());
+        destination.put("contactName",order.getBilling().getFirstName() + " " + order.getBilling().getLastName());
+        destination.put("contactNumber", order.getBilling().getPhone());
+        destination.put("contactEmail", order.getBilling().getEmail());
+        body.put("destination", destination);
+
+        /*ITEMS*/
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (OrderLineItem orderLineItem : order.getOrderLine()) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", orderLineItem.getSku());
+            item.put("name", orderLineItem.getProductName());
+            item.put("value", orderLineItem.getPrice());
+            item.put("weight", orderLineItem.getWeight());
+            item.put("compartmentSize", createLabelDto.getBoxNowPacketSize().ordinal() + 1);
+            items.add(item);
+        }
+        body.put("items", items);
+
+
+
+
+
+        return true;
+    }
+
+    private BoxNowOriginsResponse getOrigins(CourierSettingsEntity courierSettingsEntity) {
+//        String token = getAuthToken(courierSettingsEntity.getApiKey(), courierSettingsEntity.getApiSecret());
+        Map<String, Object> toBoxNow = getToBoxNow("/api/v1/origins", Map.of(), courierSettingsEntity.getApiKey(), courierSettingsEntity.getApiSecret());
+//        System.out.println(toBoxNow.toString());
+        return objectMapper.convertValue(toBoxNow, BoxNowOriginsResponse.class);
+    }
 
     @Override
     public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
@@ -250,7 +318,7 @@ public class BoxNowService implements ShippingProvider {
     }
     private Map<String, Object> getToBoxNow(String endpoint, Map<String, Object> body, String username, String password) {
         String totalUrl = BASE_URL+ endpoint;
-
+        System.out.println(totalUrl);
         return restClient.get()
                 .uri(totalUrl)
                 .header("Authorization", "Bearer " + getAuthToken(username, password))
