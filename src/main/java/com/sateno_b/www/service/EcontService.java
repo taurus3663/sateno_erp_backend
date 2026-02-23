@@ -183,7 +183,7 @@ public class EcontService implements ShippingProvider {
     public boolean createWayBill(CreateLabelDto createLabelDto) {
         CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findById(createLabelDto.getCourierId()).get();
         var contract = getContract(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
-//        System.out.println(contract.toString());
+        System.out.println(contract.toString());
 //        System.out.println(createLabelDto.toString());
         WpOrderEntity order = wpOrderRepository.findById(createLabelDto.getId()).get();
 
@@ -192,7 +192,7 @@ public class EcontService implements ShippingProvider {
 
 //        SENDER
         Map<String, Object> senderClient = new HashMap<>();
-        senderClient.put("name", contract.getContactName());
+        senderClient.put("name", contract.getClientName());
 //        senderClient.put("id", contract.getClientId());
 //        senderClient.put("authorizedPerson", contract.getClientName());
         senderClient.put("phones", contract.getPhones().stream().map(CourierContractDetails.PhoneDetails::getNumber).toList());
@@ -200,6 +200,11 @@ public class EcontService implements ShippingProvider {
 //        senderClient.put("phone", contract.getPhones().get(0).getNumber());
 //        senderClient.put("phone", "0877706656");
         label.put("senderClient",  senderClient);
+
+        Map<String, Object> senderAgent = new HashMap<>();
+        senderAgent.put("name", contract.getContactName());
+        senderAgent.put("phones", contract.getPhones().stream().map(CourierContractDetails.PhoneDetails::getNumber).toList());
+        label.put("senderAgent",  senderAgent);
 
         Map<String, Object> senderAddress = new HashMap<>();
         Map<String, Object> city = new HashMap<>();
@@ -253,16 +258,52 @@ public class EcontService implements ShippingProvider {
                         .map(OrderLineItem::getProductName)
                         .toList()
         ));
+        label.put("packingListType", "digital");
+
+
+        List<Map<String, Object>> packingList = new ArrayList<>();
+//        double calculatedSum = 0.0;
+        for (OrderLineItem orderLineItem : order.getOrderLine()) {
+            Map<String, Object> item = new HashMap<>();
+
+            // Номер на артикула (SKU или ID)
+            item.put("inventoryNum", orderLineItem.getSku() != null ? orderLineItem.getSku() : String.valueOf(orderLineItem.getProductId()));
+
+            // Име на продукта (това, което ще види клиента)
+            item.put("description", orderLineItem.getProductName());
+
+            // Тегло на конкретния артикул (в кг)
+            double itemWeight = (orderLineItem.getWeight() != null && !orderLineItem.getWeight().isEmpty())
+                    ? Double.parseDouble(orderLineItem.getWeight()) : 0.5;
+            item.put("weight", itemWeight);
+
+
+
+            // Цена на единична бройка
+            item.put("price", Double.parseDouble(orderLineItem.getPrice().toString()));
+
+            // Количество
+            item.put("count", orderLineItem.getQuantity());
+
+            packingList.add(item);
+//            calculatedSum += (Long.parseLong(orderLineItem.getPrice().toString()) * orderLineItem.getQuantity());
+        }
+        label.put("packingList", packingList);
+
 
         Map<String, Object> services = new HashMap<>();
 
+//        double totalPrice = Double.parseDouble(order.getTotalPrice().toString());
+//        double difference = totalPrice - calculatedSum;
 
         services.put("cdAmount", order.getTotalPrice());
         services.put("cdCurrency", order.getCurrency());
         services.put("cdType", "get"); // 'get' е стандартната стойност за събиране на сумата
-
+        services.put("cdPayOptionsTemplate", "CD257894");
 // 2. Слагаме services в label
         label.put("services", services);
+        System.out.println(label.toString());
+        System.out.println(order.getTotalPrice());
 
 // 3. Други важни полета от спецификацията:
         label.put("paymentReceiverMethod", "cash"); // Получателят плаща в брой
@@ -532,8 +573,8 @@ public class EcontService implements ShippingProvider {
 
     private Map<String, Object> postToEcont(String endpoint, Map<String, Object> body, String username, String password) {
 
-//        String turl = "https://ee.econt.com/" + endpoint;
-        String turl = "https://demo.econt.com/ee/" + endpoint;
+        String turl = "https://ee.econt.com/" + endpoint;
+//        String turl = "https://demo.econt.com/ee/" + endpoint;
         return restClient.post()
                 .uri(turl)
 //                .uri("https://ee.econt.com/ee/" + endpoint)

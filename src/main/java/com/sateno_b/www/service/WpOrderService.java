@@ -27,9 +27,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 @RequiredArgsConstructor
@@ -93,6 +93,7 @@ public class WpOrderService {
             SiteEntity siteEntity = siteRepository.getReferenceById(siteId);
 
 
+            AtomicReference<Double> totalPriceRs = new AtomicReference<>(0.0);
             WpOrderEntity wpOrderEntity = new WpOrderEntity();
             wpOrderEntity.setCustomer(customer);
             wpOrderEntity.setSite(siteEntity);
@@ -100,6 +101,7 @@ public class WpOrderService {
             wpOrderEntity.setOrderLine(dto.getLineItems()
                     .stream()
                     .map(woOrderLineItemDto -> {
+                        totalPriceRs.updateAndGet(v -> v + Double.parseDouble(woOrderLineItemDto.getTotal().toString()));
                         OrderLineItem orderLineItem = new OrderLineItem();
                         orderLineItem.setSku(woOrderLineItemDto.getSku());
                         orderLineItem.setQuantity(woOrderLineItemDto.getQuantity());
@@ -144,7 +146,7 @@ public class WpOrderService {
             wpOrderEntity.setStatus(dto.getStatus());
             wpOrderEntity.setCustomerIp(dto.getCustomerIpAddress());
             wpOrderEntity.setCustomerAgent(dto.getCustomerUserAgent());
-            wpOrderEntity.setTotalPrice(new BigDecimal(dto.getTotal()));
+            wpOrderEntity.setTotalPrice(new BigDecimal(totalPriceRs.get()));
             wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
             wpOrderEntity.setTransactionId(dto.getTransactionId());
             wpOrderEntity.setShippingLines(dto.getShippingLines());
@@ -187,6 +189,7 @@ public class WpOrderService {
         SiteEntity siteEntity = siteRepository.findById(siteId).get();
 
 
+        AtomicReference<Double> totalPriceRs = new AtomicReference<>(0.0);
         WpOrderEntity wpOrderEntity = new WpOrderEntity();
         wpOrderEntity.setCustomer(customer);
         wpOrderEntity.setSite(siteEntity);
@@ -194,6 +197,7 @@ public class WpOrderService {
         wpOrderEntity.setOrderLine(dto.getLineItems()
                 .stream()
                 .map(woOrderLineItemDto -> {
+                    totalPriceRs.updateAndGet(v -> v + Double.parseDouble(woOrderLineItemDto.getTotal().toString()));
                     OrderLineItem orderLineItem = new OrderLineItem();
                     orderLineItem.setSku(woOrderLineItemDto.getSku());
                     orderLineItem.setQuantity(woOrderLineItemDto.getQuantity());
@@ -253,7 +257,7 @@ public class WpOrderService {
         wpOrderEntity.setStatus(dto.getStatus());
         wpOrderEntity.setCustomerIp(dto.getCustomerIpAddress());
         wpOrderEntity.setCustomerAgent(dto.getCustomerUserAgent());
-        wpOrderEntity.setTotalPrice(new BigDecimal(dto.getTotal()));
+        wpOrderEntity.setTotalPrice(new BigDecimal(totalPriceRs.get()));
         wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
         wpOrderEntity.setTransactionId(dto.getTransactionId());
         wpOrderEntity.setShippingLines(dto.getShippingLines());

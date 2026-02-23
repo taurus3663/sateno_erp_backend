@@ -256,7 +256,7 @@ public class SpeedyService implements ShippingProvider {
         obpd.put("option", "OPEN");   // само преглед (отваряне)
         obpd.put("payer", "RECIPIENT");
         obpd.put("returnShipmentServiceId", 505L);
-        obpd.put("returnShipmentPayer", "RECIPIENT");
+        obpd.put("returnShipmentPayer", "SENDER");
 
         if(createLabelDto.getCourierShipmentType() == CourierShipmentType.OFFICE){
             additionalServices.put("obpd", obpd);

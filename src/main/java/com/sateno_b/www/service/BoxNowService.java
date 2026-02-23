@@ -46,8 +46,9 @@ public class BoxNowService implements ShippingProvider {
 
         Map<String, Object> body = new HashMap<>();
         body.put("orderNumber", order.getWpOrderId().toString());
-        body.put("paymentMode", "cod");
-        body.put("amountToBeCollected", order.getTotalPrice());
+        body.put("paymentMode", "prepaid");
+        body.put("amountToBeCollected", order.getTotalPrice().toString());
+        body.put("invoiceValue", order.getTotalPrice().toString());
         body.put("allowReturn", true);
 
         /*ORIGIN*/
@@ -62,9 +63,10 @@ public class BoxNowService implements ShippingProvider {
 
         /*DESTINATION*/
         Map<String,Object> destination = new HashMap<>();
-        destination.put("locationId", createLabelDto.getOffice().getId());
+        destination.put("locationId", createLabelDto.getOffice().getId().toString());
+        destination.put("addressLine1", createLabelDto.getOffice().getAddress());
         destination.put("contactName",order.getBilling().getFirstName() + " " + order.getBilling().getLastName());
-        destination.put("contactNumber", order.getBilling().getPhone());
+        destination.put("contactNumber", formatPhone(order.getBilling().getPhone()));
         destination.put("contactEmail", order.getBilling().getEmail());
         body.put("destination", destination);
 
@@ -72,20 +74,52 @@ public class BoxNowService implements ShippingProvider {
         List<Map<String, Object>> items = new ArrayList<>();
         for (OrderLineItem orderLineItem : order.getOrderLine()) {
             Map<String, Object> item = new HashMap<>();
-            item.put("id", orderLineItem.getSku());
+            item.put("id", orderLineItem.getSku() == null? "b": orderLineItem.getSku());
             item.put("name", orderLineItem.getProductName());
-            item.put("value", orderLineItem.getPrice());
-            item.put("weight", orderLineItem.getWeight());
+            item.put("value", orderLineItem.getPrice().toString());
+            item.put("weight", Double.parseDouble(!orderLineItem.getWeight().isEmpty()? orderLineItem.getWeight(): "0.5"));
             item.put("compartmentSize", createLabelDto.getBoxNowPacketSize().ordinal() + 1);
+//            System.out.println(item.toString());
             items.add(item);
         }
         body.put("items", items);
 
+        Map<String, Object> response = postToBoxNow("/api/v1/delivery-requests", body,
+                courierSettingsEntity.getApiKey(), courierSettingsEntity.getApiSecret());
+        BoxNowDeliveryResponse boxNowDeliveryResponse = getBoxNowDeliveryResponse(response);
 
-
-
-
+        order.setParcelIds(boxNowDeliveryResponse.getParcels().stream().map(BoxNowDeliveryResponse.Parcel::getId).toList());
+        order.setWayBillShipmentNumber(Long.parseLong(boxNowDeliveryResponse.getId()));
+        wpOrderRepository.save(order);
         return true;
+    }
+
+    private BoxNowDeliveryResponse getBoxNowDeliveryResponse(Map<String, Object> response) {
+
+        return objectMapper.convertValue(response, BoxNowDeliveryResponse.class);
+    }
+
+    private String formatPhone(String phone) {
+        if (phone == null) return "";
+        // 1. Премахваме всички интервали, тирета и скоби
+        String cleaned = phone.replaceAll("[^0-9+]", "");
+
+        // 2. Ако започва с 0, заменяме я с +359
+        if (cleaned.startsWith("0")) {
+            return "+359" + cleaned.substring(1);
+        }
+
+        // 3. Ако започва с 359 без +, добавяме +
+        if (cleaned.startsWith("359")) {
+            return "+" + cleaned;
+        }
+
+        // 4. Ако не започва с +, приемаме че е локален и добавяме префикса
+        if (!cleaned.startsWith("+")) {
+            return "+359" + cleaned;
+        }
+
+        return cleaned;
     }
 
     private BoxNowOriginsResponse getOrigins(CourierSettingsEntity courierSettingsEntity) {
@@ -201,10 +235,12 @@ public class BoxNowService implements ShippingProvider {
 
 
     private final String BASE_URL = "https://api-production.boxnow.bg";
+//    private final String TBASE_URL = "https://api-stage.boxnow.bg";
 
     public String getAuthToken(String apiKey, String apiSecret) {
         try {
             String authUrl = BASE_URL + "/api/v1/auth-sessions";
+//            String authUrl = TBASE_URL + "/api/v1/auth-sessions";
 
 
             Map<String, String> body = new HashMap<>();
@@ -307,9 +343,11 @@ public class BoxNowService implements ShippingProvider {
 
     private Map<String, Object> postToBoxNow(String endpoint, Map<String, Object> body, String username, String password) {
         String totalUrl = BASE_URL+ endpoint;
+//        String TtotalUrl = TBASE_URL+ endpoint;
 
         return restClient.post()
                 .uri(totalUrl)
+//                .uri(TtotalUrl)
                 .header("Authorization", "Bearer " + getAuthToken(username, password))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
