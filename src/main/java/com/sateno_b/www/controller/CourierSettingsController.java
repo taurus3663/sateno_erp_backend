@@ -36,7 +36,27 @@ public class CourierSettingsController {
 
         // 1. Създаване на нов куриер
         if (courierSettingsDto.getId() == null || courierSettingsDto.getId() == 0) {
-            CourierSettingsEntity entity = modelMapper.map(courierSettingsDto, CourierSettingsEntity.class);
+//            CourierSettingsEntity entity = modelMapper.map(courierSettingsDto, CourierSettingsEntity.class);
+                CourierSettingsEntity entity = new CourierSettingsEntity();
+                entity.setActive(courierSettingsDto.isActive());
+                entity.setCourierType(courierSettingsDto.getCourierType());
+                entity.setName(courierSettingsDto.getName());
+                entity.setApiKey(courierSettingsDto.getApiKey());
+                entity.setApiSecret(courierSettingsDto.getApiSecret());
+                entity.setUsername(courierSettingsDto.getUsername());
+                entity.setPassword(courierSettingsDto.getPassword());
+                entity.setOffice(courierSettingsDto.isOffice());
+                entity.setAddress(courierSettingsDto.isAddress());
+                entity.setLocker(courierSettingsDto.isLocker());
+
+
+            if (courierSettingsDto.getSite() == null) {
+                entity.setSite(null); // Казваме на JPA, че връзката е премахната
+            } else {
+                SiteEntity referenceById = siteRepository.getReferenceById(courierSettingsDto.getSite().getId());
+                entity.setSite(referenceById);
+            }
+
 
             // Важно: ModelMapper автоматично ще мапне site.id, ако DTO-то го има.
             // Hibernate ще разпознае, че това е съществуващ запис само по ID.

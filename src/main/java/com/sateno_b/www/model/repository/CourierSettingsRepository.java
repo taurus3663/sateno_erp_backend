@@ -20,6 +20,6 @@ public interface CourierSettingsRepository extends JpaRepository<CourierSettings
 
     List<CourierSettingsEntity> findAllBySiteOrderBySortOrderAsc(SiteEntity site);
     List<CourierSettingsEntity> findAllBySiteAndActive(SiteEntity site, boolean active);
-    Optional<CourierSettingsEntity> findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(SiteEntity site, CourierType courierType, CourierShipmentType courierShipmentType);
+//    Optional<CourierSettingsEntity> findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(SiteEntity site, CourierType courierType, CourierShipmentType courierShipmentType);
 
 }

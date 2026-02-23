@@ -15,14 +15,25 @@ import org.hibernate.type.SqlTypes;
 @Getter
 @Setter
 @Entity
-@Table(name = "courier")
+@Table(name = "courier", uniqueConstraints = {
+        @UniqueConstraint(
+                name = "uk_site_courier_type",
+        columnNames = {"site_id", "courier_type"})
+})
 public class CourierSettingsEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     private CourierType courierType;
 
-    @Enumerated(EnumType.STRING)
-    private CourierShipmentType courierShipmentType;
+    @Column(nullable = false)
+    private boolean office = false;
+    @Column(nullable = false)
+    private boolean address = false;
+    @Column(nullable = false)
+    private boolean locker = false;
+
+//    @Enumerated(EnumType.STRING)
+//    private CourierShipmentType courierShipmentType;
 
     @Column
     private String name;

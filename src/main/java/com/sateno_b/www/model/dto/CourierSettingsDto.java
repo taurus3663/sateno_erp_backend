@@ -9,7 +9,10 @@ public class CourierSettingsDto {
 
     private Long id;
     private CourierType courierType;
-    private CourierShipmentType courierShipmentType;
+    private boolean office = false;
+    private boolean address = false;
+    private boolean locker = false;
+//    private CourierShipmentType courierShipmentType;
     private String name;
     private String username;
     private String password;

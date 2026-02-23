@@ -417,9 +417,10 @@ public class EcontService implements ShippingProvider {
     public double calculatePrice(CheckCourierRequest request) {
         try {
             SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
-            Optional<CourierSettingsEntity> settingsOpt = courierSettingsRepository
-                    .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(), request.getCourierShipmentType());
-
+            Optional<CourierSettingsEntity> settingsOpt = null;
+//            Optional<CourierSettingsEntity> settingsOpt = courierSettingsRepository
+//                    .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(), request.getCourierShipmentType());
+        ///  todo fix
             if (settingsOpt.isPresent()) {
                 CourierSettingsEntity settings = settingsOpt.get();
                 var contract = getContract(settings.getUsername(), settings.getPassword());

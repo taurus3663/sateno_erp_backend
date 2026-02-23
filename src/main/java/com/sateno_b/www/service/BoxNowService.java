@@ -300,8 +300,10 @@ public class BoxNowService implements ShippingProvider {
 
     public double calculatePrice(CheckCourierRequest request) {
         SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
-        Optional<CourierSettingsEntity> settingsOpt = courierSettingsRepository
-                .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(), request.getCourierShipmentType());
+        ///  todo fix
+        Optional<CourierSettingsEntity> settingsOpt = null;
+//        Optional<CourierSettingsEntity> settingsOpt = courierSettingsRepository
+//                .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(), request.getCourierShipmentType());
 
         if (settingsOpt.isPresent()) {
             CourierSettingsEntity settings = settingsOpt.get();

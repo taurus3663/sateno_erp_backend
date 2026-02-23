@@ -44,7 +44,7 @@ public class CheckOutController {
             CheckOutCourierDto courierDto = new CheckOutCourierDto();
             courierDto.setCourierType(courier.getCourierType());
             courierDto.setActive(courier.isActive());
-            courierDto.setCourierShipmentType(courier.getCourierShipmentType());
+//            courierDto.setCourierShipmentType(courier.getCourierShipmentType());
             courierDto.setSortOrder(courier.getSortOrder());
             courierDto.setFixedShippingPrice(courier.getFixedShippingPrice());
             courierDto.setFreeShippingPriceMax(courier.getFreeShippingPriceMax());
@@ -56,14 +56,14 @@ public class CheckOutController {
             else if(courier.getAutoShippingPrice() == true) {
 
 //                System.out.println("works");
-                if(courier.getCourierType() == CourierType.SPEEDY) {
-                    double finalPrice = speedyService.calculatePriceDefault(request.getCart_weight(),  courier.getCourierShipmentType());
-                    courierDto.setFixedShippingPrice(finalPrice);
-                } else if (courier.getCourierType() == CourierType.ECONT) {
-                    double finalPrice = econtService.calculatePriceDefault(request.getCart_weight(), courier.getCourierShipmentType());
-                    courierDto.setFixedShippingPrice(finalPrice);
-
-                }
+//                if(courier.getCourierType() == CourierType.SPEEDY) {
+//                    double finalPrice = speedyService.calculatePriceDefault(request.getCart_weight(),  courier.getCourierShipmentType());
+//                    courierDto.setFixedShippingPrice(finalPrice);
+//                } else if (courier.getCourierType() == CourierType.ECONT) {
+//                    double finalPrice = econtService.calculatePriceDefault(request.getCart_weight(), courier.getCourierShipmentType());
+//                    courierDto.setFixedShippingPrice(finalPrice);
+//
+//                }
 //                else if (courier.getCourierType() == CourierType.BOX_NOW) {
 //                    double finalPrice = boxNowService.calculatePriceDefault(request.getCart_weight(), courier.getCourierShipmentType());
 //                    courierDto.setFixedShippingPrice(finalPrice);

@@ -40,11 +40,12 @@ public class SpeedyService implements ShippingProvider {
 
         SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
 
-       Optional<CourierSettingsEntity> g =
-               courierSettingsRepository
-                       .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(),
-                               request.getCourierShipmentType());
-
+//       Optional<CourierSettingsEntity> g =
+//               courierSettingsRepository
+//                       .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(),
+//                               request.getCourierShipmentType());
+        ///  todo fix
+        Optional<CourierSettingsEntity> g = null;
        if(g.isPresent()) {
            CourierSettingsEntity courierSettings = g.get();
 
