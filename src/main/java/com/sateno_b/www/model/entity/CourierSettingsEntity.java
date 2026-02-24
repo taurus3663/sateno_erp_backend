@@ -23,13 +23,6 @@ public class CourierSettingsEntity extends BaseEntity {
     private CourierType courierType;
 
     @Column(nullable = false)
-    private boolean office = false;
-    @Column(nullable = false)
-    private boolean address = false;
-    @Column(nullable = false)
-    private boolean locker = false;
-
-    @Column(nullable = false)
     private boolean defaultCourier = false;
 
 //    @Enumerated(EnumType.STRING)
@@ -74,5 +67,50 @@ public class CourierSettingsEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private CourierConfig config;
+
+
+
+
+    @Column(nullable = false)
+    private boolean office = false;
+    @Column
+    private Double officeFreeShippingPriceMax;
+    @Column
+    private boolean officeFreeShippingPriceMaxBol = false;
+    @Column
+    private boolean officeAutoShippingPrice = false;
+    @Column
+    private Double officeFixedShippingPrice;
+
+
+    @Column(nullable = false)
+    private boolean address = false;
+    @Column
+    private Double addressFreeShippingPriceMax;
+    @Column
+    private boolean addressFreeShippingPriceMaxBol = false;
+    @Column
+    private boolean addressAutoShippingPrice = false;
+    @Column
+    private Double addressFixedShippingPrice;
+
+    @Column(nullable = false)
+    private boolean locker = false;
+    @Column
+    private Double lockerFreeShippingPriceMax;
+    @Column
+    private boolean lockerFreeShippingPriceMaxBol = false;
+    @Column
+    private boolean lockerAutoShippingPrice = false;
+    @Column
+    private Double lockerFixedShippingPrice;
+
+
+
+
+
+
+
+
 
 }

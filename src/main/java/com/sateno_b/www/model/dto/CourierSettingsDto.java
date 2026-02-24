@@ -10,9 +10,7 @@ public class CourierSettingsDto {
 
     private Long id;
     private CourierType courierType;
-    private boolean office = false;
-    private boolean address = false;
-    private boolean locker = false;
+
 //    private CourierShipmentType courierShipmentType;
     private String name;
     private String username;
@@ -29,4 +27,23 @@ public class CourierSettingsDto {
     private Double fixedShippingPrice;
     private boolean defaultCourier = false;
     private CourierConfig config;
+
+    private boolean office = false;
+    private Double officeFreeShippingPriceMax;
+    private boolean officeFreeShippingPriceMaxBol = false;
+    private boolean officeAutoShippingPrice = false;
+    private Double officeFixedShippingPrice;
+
+    private boolean address = false;
+    private Double addressFreeShippingPriceMax;
+    private boolean addressFreeShippingPriceMaxBol = false;
+    private boolean addressAutoShippingPrice = false;
+    private Double addressFixedShippingPrice;
+
+    private boolean locker = false;
+    private Double lockerFreeShippingPriceMax;
+    private boolean lockerFreeShippingPriceMaxBol = false;
+    private boolean lockerAutoShippingPrice = false;
+    private Double lockerFixedShippingPrice;
+
 }

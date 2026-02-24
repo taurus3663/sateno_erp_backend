@@ -46,17 +46,43 @@ public class CheckOutController {
             courierDto.setActive(courier.isActive());
 //            courierDto.setCourierShipmentType(courier.getCourierShipmentType());
             courierDto.setOffice(courier.isOffice());
-            courierDto.setAddress(courier.isAddress());
-            courierDto.setLocker(courier.isLocker());
-            courierDto.setSortOrder(courier.getSortOrder());
-            courierDto.setFixedShippingPrice(courier.getFixedShippingPrice());
-            courierDto.setFreeShippingPriceMax(courier.getFreeShippingPriceMax());
-            courierDto.setAutoShippingPrice(courier.getAutoShippingPrice());
+            courierDto.setOfficeFreeShippingPriceMax(courier.getOfficeFreeShippingPriceMax());
+            courierDto.setOfficeFreeShippingPriceMaxBol(courier.isOfficeFreeShippingPriceMaxBol());
+            courierDto.setOfficeAutoShippingPrice(courier.isOfficeAutoShippingPrice());
+            courierDto.setOfficeFixedShippingPrice(courier.getOfficeFixedShippingPrice());
 
-            if(courier.getFreeShippingPriceMaxBol() == true && courier.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())) {
-                courierDto.setFixedShippingPrice(0.0);
+            courierDto.setAddress(courier.isAddress());
+            courierDto.setAddressFreeShippingPriceMax(courier.getAddressFreeShippingPriceMax());
+            courierDto.setAddressFreeShippingPriceMaxBol(courier.isAddressFreeShippingPriceMaxBol());
+            courierDto.setAddressAutoShippingPrice(courier.isAddressAutoShippingPrice());
+            courierDto.setAddressFixedShippingPrice(courier.getAddressFixedShippingPrice());
+
+            courierDto.setLocker(courier.isLocker());
+            courierDto.setLockerFreeShippingPriceMax(courier.getLockerFreeShippingPriceMax());
+            courierDto.setLockerFreeShippingPriceMaxBol(courier.isLockerFreeShippingPriceMaxBol());
+            courierDto.setLockerAutoShippingPrice(courier.isLockerAutoShippingPrice());
+            courierDto.setLockerFixedShippingPrice(courier.getLockerFixedShippingPrice());
+
+            courierDto.setSortOrder(courier.getSortOrder());
+//            courierDto.setFixedShippingPrice(courier.getFixedShippingPrice());
+//            courierDto.setFreeShippingPriceMax(courier.getFreeShippingPriceMax());
+//            courierDto.setAutoShippingPrice(courier.getAutoShippingPrice());
+
+            if(courier.isAddressFreeShippingPriceMaxBol() && courier.getAddressFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())){
+                courierDto.setAddressFixedShippingPrice(0D);
             }
-            else if(courier.getAutoShippingPrice() == true) {
+            if(courier.isOfficeFreeShippingPriceMaxBol() && courier.getOfficeFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())){
+                courierDto.setOfficeFixedShippingPrice(0D);
+            }
+            if(courier.isLockerFreeShippingPriceMaxBol() && courier.getLockerFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())){
+                courierDto.setLockerFixedShippingPrice(0D);
+            }
+
+
+//            if(courier.getFreeShippingPriceMaxBol() == true && courier.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())) {
+//                courierDto.setFixedShippingPrice(0.0);
+//            }
+             if(courier.getAutoShippingPrice() == true) {
 
 //                System.out.println("works");
 //                if(courier.getCourierType() == CourierType.SPEEDY) {
@@ -76,13 +102,13 @@ public class CheckOutController {
 
             dto.getCheckOutCourierList().add(courierDto);
         }
-
-
+        System.out.println(dto.toString());
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
     @PostMapping("/recalculate-price")
     public double recalculate(@RequestBody CheckCourierRequest request) {
+        System.out.println(request.toString());
         double v = 0;
         if(request.getCourierType() == CourierType.SPEEDY) {
             v = speedyService.calculatePrice(request);
