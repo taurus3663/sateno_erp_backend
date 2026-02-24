@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.entity;
 
+import com.sateno_b.www.model.entity.data.CourierConfig;
 import com.sateno_b.www.model.entity.data.CourierContractDetails;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.enums.CourierType;
@@ -15,11 +16,7 @@ import org.hibernate.type.SqlTypes;
 @Getter
 @Setter
 @Entity
-@Table(name = "courier", uniqueConstraints = {
-        @UniqueConstraint(
-                name = "uk_site_courier_type",
-        columnNames = {"site_id", "courier_type"})
-})
+@Table(name = "courier")
 public class CourierSettingsEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
@@ -31,6 +28,9 @@ public class CourierSettingsEntity extends BaseEntity {
     private boolean address = false;
     @Column(nullable = false)
     private boolean locker = false;
+
+    @Column(nullable = false)
+    private boolean defaultCourier = false;
 
 //    @Enumerated(EnumType.STRING)
 //    private CourierShipmentType courierShipmentType;
@@ -70,5 +70,9 @@ public class CourierSettingsEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private CourierContractDetails courierContractDetails;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private CourierConfig config;
 
 }

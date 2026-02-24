@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.dto;
 
+import com.sateno_b.www.model.entity.data.CourierConfig;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.enums.CourierType;
 import lombok.Data;
@@ -19,11 +20,13 @@ public class CourierSettingsDto {
     private String apiKey;
     private String apiSecret;
     private SiteDto site;
-    private boolean active = true;
+    private boolean active = false;
 
     private Integer sortOrder;
     private Double freeShippingPriceMax;
     private Boolean freeShippingPriceMaxBol = false;
     private Boolean autoShippingPrice = false;
     private Double fixedShippingPrice;
+    private boolean defaultCourier = false;
+    private CourierConfig config;
 }

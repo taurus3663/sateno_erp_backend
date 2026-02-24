@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -34,6 +35,22 @@ public class CourierSettingsController {
     @PostMapping("/save")
     public ResponseEntity<CourierSettingsDto> save(@RequestBody CourierSettingsDto courierSettingsDto) {
 
+        if (courierSettingsDto.isDefaultCourier() && courierSettingsDto.getSite() != null) {
+            // Намираме всички куриери за този сайт, които в момента са default
+            List<CourierSettingsEntity> existingDefaults = courierSettingsRepository
+                    .findBySiteIdAndDefaultCourierTrue((courierSettingsDto.getSite().getId()));
+
+            for (CourierSettingsEntity oldDefault : existingDefaults) {
+                // Ако редактираме, не искаме да махаме флага на себе си (макар че после ще се презапише)
+                if (courierSettingsDto.getId() == null || !oldDefault.getId().equals(courierSettingsDto.getId())) {
+                    oldDefault.setDefaultCourier(false);
+                    courierSettingsRepository.save(oldDefault);
+                }
+            }
+        }
+
+
+
         // 1. Създаване на нов куриер
         if (courierSettingsDto.getId() == null || courierSettingsDto.getId() == 0) {
 //            CourierSettingsEntity entity = modelMapper.map(courierSettingsDto, CourierSettingsEntity.class);
@@ -48,7 +65,8 @@ public class CourierSettingsController {
                 entity.setOffice(courierSettingsDto.isOffice());
                 entity.setAddress(courierSettingsDto.isAddress());
                 entity.setLocker(courierSettingsDto.isLocker());
-
+                entity.setDefaultCourier(courierSettingsDto.isDefaultCourier());
+                entity.setConfig(courierSettingsDto.getConfig());
 
             if (courierSettingsDto.getSite() == null) {
                 entity.setSite(null); // Казваме на JPA, че връзката е премахната
