@@ -34,17 +34,20 @@ public class CheckOutController {
 
 //        System.out.println(request.toString());
         SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
-        List<CourierSettingsEntity> couriers = courierSettingsRepository.findAllBySiteAndActive(site, true);
-
+        List<CourierSettingsEntity> couriers = courierSettingsRepository.findAllBySiteAndActiveAndDefaultCourierTrue(site, true);
         CheckOutCourierListDto dto = new CheckOutCourierListDto();
         dto.setCurrencyName(site.getCurrency().getName());
         dto.setCurrencySymbol(site.getCurrency().getSymbol());
 
         for (CourierSettingsEntity courier : couriers) {
+//            System.out.println("courier: " + courier.toString());
             CheckOutCourierDto courierDto = new CheckOutCourierDto();
             courierDto.setCourierType(courier.getCourierType());
             courierDto.setActive(courier.isActive());
 //            courierDto.setCourierShipmentType(courier.getCourierShipmentType());
+            courierDto.setOffice(courier.isOffice());
+            courierDto.setAddress(courier.isAddress());
+            courierDto.setLocker(courier.isLocker());
             courierDto.setSortOrder(courier.getSortOrder());
             courierDto.setFixedShippingPrice(courier.getFixedShippingPrice());
             courierDto.setFreeShippingPriceMax(courier.getFreeShippingPriceMax());

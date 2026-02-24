@@ -41,12 +41,36 @@ public class CourierSettingsController {
                     .findBySiteIdAndDefaultCourierTrue((courierSettingsDto.getSite().getId()));
 
             for (CourierSettingsEntity oldDefault : existingDefaults) {
-                // Ако редактираме, не искаме да махаме флага на себе си (макар че после ще се презапише)
-                if (courierSettingsDto.getId() == null || !oldDefault.getId().equals(courierSettingsDto.getId())) {
-                    oldDefault.setDefaultCourier(false);
-                    courierSettingsRepository.save(oldDefault);
+                if (oldDefault.getCourierType() == courierSettingsDto.getCourierType()) {
+                    // Ако редактираме, не искаме да махаме флага на себе си (макар че после ще се презапише)
+                    if (courierSettingsDto.getId() == null || !oldDefault.getId().equals(courierSettingsDto.getId())) {
+                        oldDefault.setDefaultCourier(false);
+                        courierSettingsRepository.save(oldDefault);
+                    }
                 }
+
             }
+        }
+
+        // --- 2. НОВАТА ЛОГИКА: Автоматично прехвърляне при деактивация ---
+        if (courierSettingsDto.getId() != null && courierSettingsDto.getId() > 0) {
+            courierSettingsRepository.findById(courierSettingsDto.getId()).ifPresent(en -> {
+
+                // ПРОВЕРКА: Ако записът в момента е бил Default, а сега потребителят го прави НЕАКТИВЕН
+                if (en.isDefaultCourier() && !courierSettingsDto.isActive()) {
+
+                    // Намираме първия друг АКТИВЕН за този сайт и тип
+                    courierSettingsRepository.findFirstBySiteIdAndCourierTypeAndActiveTrueAndIdNot(
+                            en.getSite().getId(), en.getCourierType(), en.getId()
+                    ).ifPresent(successor -> {
+                        successor.setDefaultCourier(true);
+                        courierSettingsRepository.save(successor);
+                    });
+
+                    // Тъй като става неактивен, той губи дефолт значката
+                    courierSettingsDto.setDefaultCourier(false);
+                }
+            });
         }
 
 

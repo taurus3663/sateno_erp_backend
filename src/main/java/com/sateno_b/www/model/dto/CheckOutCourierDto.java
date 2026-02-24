@@ -9,6 +9,9 @@ public class CheckOutCourierDto {
 
     private CourierType courierType;
     private CourierShipmentType courierShipmentType;
+    private boolean office = false;
+    private boolean address = false;
+    private boolean locker = false;
 
     private Double fixedShippingPrice;
     private Double freeShippingPriceMax;
