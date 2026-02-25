@@ -102,7 +102,7 @@ public class CheckOutController {
 
             dto.getCheckOutCourierList().add(courierDto);
         }
-        System.out.println(dto.toString());
+//        System.out.println(dto.toString());
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
