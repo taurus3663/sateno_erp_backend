@@ -5,6 +5,7 @@ import com.sateno_b.www.model.dto.CheckOutCourierDto;
 import com.sateno_b.www.model.dto.CheckOutCourierListDto;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
+import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
@@ -99,6 +100,36 @@ public class CheckOutController {
 //                }
 
             }
+
+             if(courier.isOfficeAutoShippingPrice()) {
+                 if(courier.getCourierType() == CourierType.SPEEDY) {
+                     double finalPrice = speedyService.calculatePriceDefault(request.getCart_weight(), CourierShipmentType.OFFICE);
+                     courierDto.setOfficeFixedShippingPrice(finalPrice);
+                 } else if(courier.getCourierType() == CourierType.ECONT) {
+                     double finalPrice = econtService.calculatePriceDefault(request.getCart_weight(), CourierShipmentType.OFFICE);
+                     courierDto.setOfficeFixedShippingPrice(finalPrice);
+                 }
+             }
+             if(courier.isLockerAutoShippingPrice()) {
+                 if(courier.getCourierType() == CourierType.SPEEDY) {
+                     double finalPrice = speedyService.calculatePriceDefault(request.getCart_weight(),  CourierShipmentType.LOCKER);
+                     courierDto.setLockerFixedShippingPrice(finalPrice);
+                 }
+//                 else if(courier.getCourierType() == CourierType.ECONT) {
+//
+//                 }
+             }
+             if (courier.isAddressAutoShippingPrice()) {
+                 if(courier.getCourierType() == CourierType.SPEEDY) {
+                     double finalPrice = speedyService.calculatePriceDefault(request.getCart_weight(),  CourierShipmentType.ADDRESS);
+                     courierDto.setAddressFixedShippingPrice(finalPrice);
+                 } else if(courier.getCourierType() == CourierType.ECONT) {
+                     double finalPrice = econtService.calculatePriceDefault(request.getCart_weight(), CourierShipmentType.ADDRESS);
+                     courierDto.setAddressFixedShippingPrice(finalPrice);
+                 }
+             }
+
+
 
             dto.getCheckOutCourierList().add(courierDto);
         }
