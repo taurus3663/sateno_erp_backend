@@ -19,12 +19,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -44,8 +40,7 @@ public class SpeedyService implements ShippingProvider {
 //               courierSettingsRepository
 //                       .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(),
 //                               request.getCourierShipmentType());
-        ///  todo fix
-        Optional<CourierSettingsEntity> g = null;
+        Optional<CourierSettingsEntity> g = courierSettingsRepository.findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(site, request.getCourierType());
        if(g.isPresent()) {
            CourierSettingsEntity courierSettings = g.get();
 
@@ -86,6 +81,19 @@ public class SpeedyService implements ShippingProvider {
                cod.put("amount", Double.parseDouble(request.getCart_total())); // Сумата за събиране
                cod.put("currency", "EUR");
                additionalServices.put("cod", cod);
+
+               Map<String, Object> obpd = new HashMap<>();
+               obpd.put("option", "OPEN");   // само преглед (отваряне)
+               obpd.put("payer", "RECIPIENT");
+               obpd.put("returnShipmentServiceId", 505L);
+               obpd.put("returnShipmentPayer", "SENDER");
+               if(request.getCourierShipmentType() == CourierShipmentType.OFFICE ||
+               request.getCourierShipmentType() == CourierShipmentType.ADDRESS) {
+
+               }
+
+
+
 
                service.put("additionalServices", additionalServices);
 
@@ -155,7 +163,8 @@ public class SpeedyService implements ShippingProvider {
 
 
            } catch (Exception e) {
-               System.out.println("Speedy service error: " + e.getMessage());
+               System.out.printf("Speedy service error: %s%n", e.getMessage());
+               e.printStackTrace();
            }
        }
 

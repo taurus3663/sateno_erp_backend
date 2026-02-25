@@ -416,118 +416,304 @@ public class EcontService implements ShippingProvider {
         }
     }
 
-    public double calculatePrice(CheckCourierRequest request) {
-        try {
-            SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
-            Optional<CourierSettingsEntity> settingsOpt = null;
-//            Optional<CourierSettingsEntity> settingsOpt = courierSettingsRepository
-//                    .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(), request.getCourierShipmentType());
-        ///  todo fix
-            if (settingsOpt.isPresent()) {
-                CourierSettingsEntity settings = settingsOpt.get();
-                var contract = getContract(settings.getUsername(), settings.getPassword());
-
-                if (settings.getFreeShippingPriceMaxBol() == true &&
-                        settings.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())) {
-                    return 0.0;
-                }
-
-                Map<String, Object> body = new HashMap<>();
-                Map<String, Object> label = new HashMap<>();
-
-                // 1. ПОДАТЕЛ (Sender)
+//    public double calculatePrice(CheckCourierRequest request) {
+//        try {
+//            SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
+////
+////            Optional<CourierSettingsEntity> settingsOpt = null;
+//            Optional<CourierSettingsEntity> settingsOpt = courierSettingsRepository.findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(site, request.getCourierType());
+////            Optional<CourierSettingsEntity> settingsOpt = courierSettingsRepository
+////                    .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(), request.getCourierShipmentType());
+//        ///  todo fix
+//            if (settingsOpt.isPresent()) {
+//                CourierSettingsEntity settings = settingsOpt.get();
+//                var contract = getContract(settings.getUsername(), settings.getPassword());
+//
+//                if (settings.getFreeShippingPriceMaxBol() == true &&
+//                        settings.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())) {
+//                    return 0.0;
+//                }
+//
+//                Map<String, Object> body = new HashMap<>();
+//                Map<String, Object> label = new HashMap<>();
+//
+//                // 1. ПОДАТЕЛ (Sender)
+////                Map<String, Object> senderAddress = new HashMap<>();
+////                Map<String, Object> senderCity = new HashMap<>();
+////                senderCity.put("id", (contract.getAddress() != null && contract.getAddress().getSiteId() != null)
+////                        ? contract.getAddress().getSiteId() : 23149);
+////                senderCity.put("country", Map.of("code3", "BGR"));
+////                senderCity.put("name", contract.getAddress().getSiteName());
+////                senderCity.put("postCode", contract.getAddress().getPostCode());
+////                senderAddress.put("city", senderCity);
+////                senderAddress.put("street", contract.getAddress().getFullAddressString());
+////                senderAddress.put("phones", contract.getPhones());
+////                label.put("senderAddress", senderAddress);
+////                label.put("senderClientNumber", contract.getClientId());
+//
+//                Map<String, Object> senderClient = new HashMap<>();
+//                senderClient.put("name", contract.getClientName());
+//                senderClient.put("phones", contract.getPhones().stream().map(CourierContractDetails.PhoneDetails::getNumber).toList());
+//                senderClient.put("phone", contract.getPhones().get(0).getNumber());
+//                label.put("senderClient",  senderClient);
+//
 //                Map<String, Object> senderAddress = new HashMap<>();
-//                Map<String, Object> senderCity = new HashMap<>();
-//                senderCity.put("id", (contract.getAddress() != null && contract.getAddress().getSiteId() != null)
-//                        ? contract.getAddress().getSiteId() : 23149);
-//                senderCity.put("country", Map.of("code3", "BGR"));
-//                senderCity.put("name", contract.getAddress().getSiteName());
-//                senderCity.put("postCode", contract.getAddress().getPostCode());
-//                senderAddress.put("city", senderCity);
+//                Map<String, Object> city = new HashMap<>();
+//                city.put("country", Map.of("code3", "BGR"));
+//                city.put("name", contract.getAddress().getSiteName());
+//                city.put("postCode", contract.getAddress().getPostCode());
+//                city.put("id", contract.getAddress().getSiteId());
+//                senderAddress.put("city", city);
 //                senderAddress.put("street", contract.getAddress().getFullAddressString());
-//                senderAddress.put("phones", contract.getPhones());
-//                label.put("senderAddress", senderAddress);
-//                label.put("senderClientNumber", contract.getClientId());
+//                label.put("senderAddress",  senderAddress);
+//
+//                // 2. ПОЛУЧАТЕЛ (Receiver)
+//                Map<String, Object> receiverAddress = new HashMap<>();
+//                Map<String, Object> receiverCity = new HashMap<>();
+//
+//
+////                receiverAddress.put("street", "ул. Централна");
+////                receiverAddress.put("num",  "1");
+////                receiverAddress.put("other",  "1 asd ads");
+////                label.put("courierService", "receiver");
+//                if (request.getCourierShipmentType() == CourierShipmentType.OFFICE ||
+//                        request.getCourierShipmentType() == CourierShipmentType.LOCKER) {
+//
+////                    receiverAddress.put("officeCode", request.getTargetId());
+//
+////                    label.put("receiverDeliveryType", "office"); // Малки букви спрямо документацията
+//                    label.put("receiverOfficeCode", Integer.parseInt(request.getTargetId()));
+//
+//                } else {
+//                    // ДО АДРЕС
+////                    label.put("receiverDeliveryType", "door"); // ТОВА ПРАВИ ПРАТКАТА "ДО АДРЕС"
+//
+////                    receiverAddress.put("street", "ул. Централна");
+////                    receiverAddress.put("num",  "1");
+////                    receiverAddress.put("other",  "1 asd ads");
+//                    receiverCity.put("country", Map.of("code3", "BGR"));
+//                    receiverCity.put("name", request.getCityName());
+//                    receiverCity.put("postCode", request.getPostcode());
+//                    receiverAddress.put("city", receiverCity);
+//
+//
+////                    services.put("payAfterTest", true); // Опция "Преглед"
+//                }
+//
+//                label.put("receiverAddress", receiverAddress);
+//                // 3. ПАРАМЕТРИ НА ПРАТКАТА
+//                label.put("packCount", Integer.parseInt(request.getItems_count()));
+//                label.put("shipmentType", "pack");
+//                label.put("weight", request.getCart_weight());
+//                label.put("shipmentDescription", "Текстилни изделия");
+//                label.put("paymentReceiverMethod", "cash");
+//
+//                label.put("price", "2");
+//                label.put("currency", "EUR");
+//
+//                body.put("label", label);
+//                body.put("mode", "calculate");
+//
+//                try {
+////                    String jsonBody = new com.fasterxml.jackson.databind.ObjectMapper()
+////                            .writerWithDefaultPrettyPrinter()
+////                            .writeValueAsString(body);
+////                    System.out.println("--- SENDING JSON TO ECONT ---");
+////                    System.out.println(jsonBody);
+//                } catch (Exception e) {
+//                    log.error("Error printing JSON body: {}", e.getMessage());
+//                }
+//                // 5. ИЗПРАЩАНЕ
+//                Map<String, Object> response = postToEcont("services/Shipments/LabelService.createLabel.json", body,
+//                        settings.getUsername(), settings.getPassword());
+//
+////                System.out.println("DEBUG JSON2: " + response);
+//
+//                if (response != null && response.containsKey("label")) {
+//                    Map<String, Object> labelRes = (Map<String, Object>) response.get("label");
+//
+//                    // Стойността, която ПОЛУЧАТЕЛЯТ трябва да плати
+//                    if (labelRes.containsKey("receiverDueAmount")) {
+//                        double due = Double.parseDouble(labelRes.get("receiverDueAmount").toString());
+//                        if (due > 0) {
+//                            return due; // Връщаме цената за клиента
+//                        }
+//                    }
+//
+//                    // Fallback към общата цена
+//                    if (labelRes.containsKey("totalPrice")) {
+//                        return Double.parseDouble(labelRes.get("totalPrice").toString());
+//                    }
+//                }
+//            }
+//        } catch (Exception e) {
+//            log.error("Econt Error: {}", e.getMessage());
+//        }
+//        return -1.0;
+//    }
 
-                Map<String, Object> senderClient = new HashMap<>();
-                senderClient.put("name", contract.getClientName());
-                senderClient.put("phones", contract.getPhones().stream().map(CourierContractDetails.PhoneDetails::getNumber).toList());
-                senderClient.put("phone", contract.getPhones().get(0).getNumber());
-                label.put("senderClient",  senderClient);
 
-                Map<String, Object> senderAddress = new HashMap<>();
-                Map<String, Object> city = new HashMap<>();
-                city.put("country", Map.of("code3", "BGR"));
-                city.put("name", contract.getAddress().getSiteName());
-                city.put("postCode", contract.getAddress().getPostCode());
-                city.put("id", contract.getAddress().getSiteId());
-                senderAddress.put("city", city);
-                senderAddress.put("street", contract.getAddress().getFullAddressString());
-                label.put("senderAddress",  senderAddress);
+public double calculatePrice(CheckCourierRequest createLabelDto) {
+  try {
+    SiteEntity site = siteRepository.findSiteEntityByUrl(createLabelDto.getSite());
+    CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(site, createLabelDto.getCourierType()).get();
+    var contract = getContract(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
+//        System.out.println(contract.toString());
+//        System.out.println(createLabelDto.toString());
+//    WpOrderEntity order = wpOrderRepository.findById(createLabelDto.get()).get();
 
-                // 2. ПОЛУЧАТЕЛ (Receiver)
-                Map<String, Object> receiverAddress = new HashMap<>();
-                Map<String, Object> receiverCity = new HashMap<>();
+    Map<String, Object> body = new HashMap<>();
+    Map<String, Object> label =  new HashMap<>();
+
+//        SENDER
+    Map<String, Object> senderClient = new HashMap<>();
+    senderClient.put("name", contract.getClientName());
+//        senderClient.put("id", contract.getClientId());
+//        senderClient.put("authorizedPerson", contract.getClientName());
+    senderClient.put("phones", List.of(courierSettingsEntity.getConfig().getPhoneNumber()));
+//        senderClient.put("phones", List.of("0877706656"));
+//        senderClient.put("phone", contract.getPhones().get(0).getNumber());
+//        senderClient.put("phone", "0877706656");
+    label.put("senderClient",  senderClient);
+
+    Map<String, Object> senderAgent = new HashMap<>();
+    senderAgent.put("name", courierSettingsEntity.getConfig().getAgentName());
+    senderAgent.put("phones", List.of(courierSettingsEntity.getConfig().getPhoneNumber()));
+    label.put("senderAgent",  senderAgent);
+
+    Map<String, Object> senderAddress = new HashMap<>();
+    Map<String, Object> city = new HashMap<>();
+    city.put("country", Map.of("code3", "BGR"));
+    city.put("name", courierSettingsEntity.getConfig().getCity());
+    city.put("postCode", courierSettingsEntity.getConfig().getPostalCode());
+//        city.put("id", contract.getAddress().getSiteId());
+    senderAddress.put("city", city);
+    senderAddress.put("street", courierSettingsEntity.getConfig().getAddress());
+    label.put("senderAddress",  senderAddress);
+
+//        RECEIVER
+    Map<String, Object> receiverClient = new HashMap<>();
+    receiverClient.put("name", "ТЕСТ" + " " + "ТЕСТ");
+    receiverClient.put("phones", List.of());
+    label.put("receiverClient", receiverClient);
 
 
-//                receiverAddress.put("street", "ул. Централна");
-//                receiverAddress.put("num",  "1");
-//                receiverAddress.put("other",  "1 asd ads");
-//                label.put("courierService", "receiver");
-                if (request.getCourierShipmentType() == CourierShipmentType.OFFICE ||
-                        request.getCourierShipmentType() == CourierShipmentType.LOCKER) {
 
-//                    receiverAddress.put("officeCode", request.getTargetId());
+    Map<String, Object> receiverAddress = new HashMap<>();
+    Map<String, Object> receiverCity = new HashMap<>();
+//        System.out.println(createLabelDto.getCourierShipmentType());
+    if (createLabelDto.getCourierShipmentType() == CourierShipmentType.OFFICE ||
+            createLabelDto.getCourierShipmentType() == CourierShipmentType.LOCKER) {
+//            System.out.println("here");
+        label.put("receiverOfficeCode", createLabelDto.getTargetId());
+//            receiverCity.put("id", createLabelDto.getCity().getId());
+//            receiverAddress.put("street", createLabelDto.getOffice().getAddress());
+    } else {
+        receiverCity.put("country", Map.of("code3", "BGR"));
+        receiverCity.put("name", createLabelDto.getCityName());
+        receiverCity.put("postCode", createLabelDto.getPostcode());
+//        receiverAddress.put("street", createLabelDto.getStreet());
+//            receiverAddress.put("num", "9");
+//            receiverAddress.put("other", "bl. 5");
+        receiverAddress.put("city", receiverCity);
+        label.put("receiverAddress", receiverAddress);
+    }
+//        label.put("sendDate", toString());
+    label.put("holidayDeliveryDay", "workday");
 
-//                    label.put("receiverDeliveryType", "office"); // Малки букви спрямо документацията
-                    label.put("receiverOfficeCode", Integer.parseInt(request.getTargetId()));
-
-                } else {
-                    // ДО АДРЕС
-//                    label.put("receiverDeliveryType", "door"); // ТОВА ПРАВИ ПРАТКАТА "ДО АДРЕС"
-
-//                    receiverAddress.put("street", "ул. Централна");
-//                    receiverAddress.put("num",  "1");
-//                    receiverAddress.put("other",  "1 asd ads");
-                    receiverCity.put("country", Map.of("code3", "BGR"));
-                    receiverCity.put("name", request.getCityName());
-                    receiverCity.put("postCode", request.getPostcode());
-                    receiverAddress.put("city", receiverCity);
+    label.put("packCount", createLabelDto.getItems().size());
+    label.put("shipmentType", "PACK");
+    label.put("weight", createLabelDto.getCart_weight());
+//        label.put("shipmentDescription", "Текстилни изделия");
+    label.put("shipmentDescription", String.join(
+            ", ",
+            createLabelDto.getItems()
+                    .stream()
+                    .map(CheckOutCourierItemsDto::getName)
+                    .toList()
+    ));
+    label.put("packingListType", "digital");
 
 
-//                    services.put("payAfterTest", true); // Опция "Преглед"
-                }
+    List<Map<String, Object>> packingList = new ArrayList<>();
+//        double calculatedSum = 0.0;
+    for (CheckOutCourierItemsDto orderLineItem : createLabelDto.getItems()) {
+        Map<String, Object> item = new HashMap<>();
 
-                label.put("receiverAddress", receiverAddress);
-                // 3. ПАРАМЕТРИ НА ПРАТКАТА
-                label.put("packCount", Integer.parseInt(request.getItems_count()));
-                label.put("shipmentType", "pack");
-                label.put("weight", request.getCart_weight());
-                label.put("shipmentDescription", "Текстилни изделия");
-                label.put("paymentReceiverMethod", "cash");
+        // Номер на артикула (SKU или ID)
+        item.put("inventoryNum", orderLineItem.getSku() != null ? orderLineItem.getSku() : String.valueOf(orderLineItem.getId()));
 
-                label.put("price", "2");
-                label.put("currency", "EUR");
+        // Име на продукта (това, което ще види клиента)
+        item.put("description", orderLineItem.getName());
 
-                body.put("label", label);
-                body.put("mode", "calculate");
+        // Тегло на конкретния артикул (в кг)
+        double itemWeight = (orderLineItem.getWeight() != null)
+                ? orderLineItem.getWeight() : 0.5;
+        item.put("weight", itemWeight);
 
-                try {
-//                    String jsonBody = new com.fasterxml.jackson.databind.ObjectMapper()
-//                            .writerWithDefaultPrettyPrinter()
-//                            .writeValueAsString(body);
-//                    System.out.println("--- SENDING JSON TO ECONT ---");
-//                    System.out.println(jsonBody);
-                } catch (Exception e) {
-                    log.error("Error printing JSON body: {}", e.getMessage());
-                }
-                // 5. ИЗПРАЩАНЕ
-                Map<String, Object> response = postToEcont("services/Shipments/LabelService.createLabel.json", body,
-                        settings.getUsername(), settings.getPassword());
 
-//                System.out.println("DEBUG JSON2: " + response);
 
-                if (response != null && response.containsKey("label")) {
+        // Цена на единична бройка
+        item.put("price", Double.parseDouble(orderLineItem.getPrice().toString()));
+
+        // Количество
+        item.put("count", orderLineItem.getQuantity());
+
+        packingList.add(item);
+//            calculatedSum += (Long.parseLong(orderLineItem.getPrice().toString()) * orderLineItem.getQuantity());
+    }
+    label.put("packingList", packingList);
+
+
+    Map<String, Object> services = new HashMap<>();
+
+//        double totalPrice = Double.parseDouble(order.getTotalPrice().toString());
+//        double difference = totalPrice - calculatedSum;
+
+    services.put("cdAmount", createLabelDto.getCart_total());
+    services.put("cdCurrency", createLabelDto.getCurrency());
+    services.put("cdType", "get"); // 'get' е стандартната стойност за събиране на сумата
+    services.put("cdPayOptionsTemplate", "CD257894");
+// 2. Слагаме services в label
+    label.put("services", services);
+
+// 3. Други важни полета от спецификацията:
+    label.put("paymentReceiverMethod", "cash"); // Получателят плаща в брой
+    label.put("sendDate", LocalDate.now(ZoneId.of("Europe/Sofia")).toString());
+    label.put("holidayDeliveryDay", "workday");
+
+// 4. Опция "Преглед" (по желание)
+    label.put("payAfterAccept", true);
+    label.put("payAfterTest", true);
+
+    Map<String, Object> returnParams = new HashMap<>();
+//        returnParams.put("rejectAction", "return"); // Какво да се прави при отказ
+    returnParams.put("rejectOriginalParcelPaySide", "receiver"); // Кой плаща отиването
+    returnParams.put("rejectReturnParcelPaySide", "receiver");   // Кой плаща връщането
+    returnParams.put("rejectInstruction", "return");
+// Можеш да добавиш и това от схемата, ако искаш автоматично връщане при непотърсена пратка
+//        returnParams.put("daysUntilReturn", 7);
+
+// 2. Опаковаме ги в обекта Instruction
+    Map<String, Object> instruction = new HashMap<>();
+    instruction.put("type", "return");
+    instruction.put("returnInstructionParams", returnParams); // ТУК СЕ ВЛАГАТ ПАРАМЕТРИТЕ
+
+// 3. Слагаме масива в лейбъла
+    label.put("instructions", List.of(instruction));
+
+
+    body.put("label", label);
+    body.put("mode", "calculate");
+
+//        Map<String, Object> stringObjectMap = postToEcont("services/ClientService.getPaymentOptions.json", body, courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
+//        System.out.println(stringObjectMap.toString());
+
+//        System.out.println(label.toString());
+    Map<String, Object> response = postToEcont("services/Shipments/LabelService.createLabel.json", body, courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
+//        System.out.println(response);
+
+      if (response != null && response.containsKey("label")) {
                     Map<String, Object> labelRes = (Map<String, Object>) response.get("label");
 
                     // Стойността, която ПОЛУЧАТЕЛЯТ трябва да плати
@@ -542,13 +728,12 @@ public class EcontService implements ShippingProvider {
                     if (labelRes.containsKey("totalPrice")) {
                         return Double.parseDouble(labelRes.get("totalPrice").toString());
                     }
-                }
-            }
-        } catch (Exception e) {
+      }
+  } catch (Exception e) {
             log.error("Econt Error: {}", e.getMessage());
         }
         return -1.0;
-    }
+}
 
     public double calculatePriceDefault(double weight, CourierShipmentType type) {
         double basePrice = 0;
