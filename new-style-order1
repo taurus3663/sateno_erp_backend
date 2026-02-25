@@ -2,11 +2,44 @@
 /**
  * SILIYAN ERP - SHIPPING MODULE (MODE-SPECIFIC PRICES ONLY)
  */
-
+// 1. ВАЛИДАЦИЯ ПРИ ПОРЪЧКА - ПРОВЕРКА ЗА ИЗБРАНИ ДЕТАЙЛИ
 add_action( 'woocommerce_checkout_process', function() {
     if ( empty($_POST['siliyan_courier_full']) ) {
-        wc_add_notice( 'Моля изберете метод на доставка.', 'error' );
+        wc_add_notice( 'Моля, изберете метод на доставка.', 'error' );
+        return;
     }
+
+    $unique_id = $_POST['siliyan_courier_full']; // Пример: speedy_office_10
+    $parts = explode('_', $unique_id);
+    $mode = $parts[1] ?? ''; // office, locker или address
+
+    if ($mode === 'office' || $mode === 'locker') {
+        // Проверка дали е избран офис от падащото меню (скритото поле sl_val_...)
+        if ( empty($_POST['sl_val_' . $unique_id]) ) {
+            wc_add_notice( 'Моля, изберете конкретен офис или автомат от списъка.', 'error' );
+        }
+    } elseif ($mode === 'address') {
+    // 1. Проверка за ГРАД
+    // Взимаме "Бургас" и махаме интервалите
+    $city = isset($_POST['billing_city']) ? trim($_POST['billing_city']) : '';
+
+    if ( empty($city) || mb_strlen($city) < 2 ) {
+        wc_add_notice( '<strong>Грешка:</strong> Моля, изберете град за доставка.', 'error' );
+    }
+
+    // 2. Проверка за УЛИЦА
+    // Взимаме "[ADDRESS] [] [ECONT]"
+    $address = isset($_POST['billing_address_1']) ? trim($_POST['billing_address_1']) : '';
+    // Тук е хитрината: Махаме всичко излишно, за да видим дали потребителят е писал нещо
+    $clean_street = str_replace(['[ADDRESS]', '[]', '[ECONT]', '[SPEEDY]', '[BOXNOW]'], '', $address);
+    $clean_street = trim($clean_street); // Остава само това, което е между таговете
+
+// 		echo "<script>console.log('ERP Debug - Clean Street: " . esc_js($clean_street) . "');</script>";
+    // Ако потребителят не е въвел нищо, $clean_street ще е празен низ ""
+    if ( empty($clean_street) || mb_strlen($clean_street) < 3 ) {
+        wc_add_notice( '<strong>Грешка:</strong> Моля, въведете точен адрес (улица и номер).', 'error' );
+    }
+}
 });
 
 // 2. СКРИВАНЕ НА СТАНДАРТНИТЕ ПОЛЕТА
@@ -208,24 +241,59 @@ function siliyan_erp_advanced_search() {
             $('#billing_address_1, #shipping_address_1').val(addr.trim());
         };
 
-        $(document).on('input focus', '.combined-search', function() {
-            var uid = this.id.replace('input-', ''), courier = uid.split('_')[0];
-            var term = $(this).val().toLowerCase();
-            if (!sl_MasterDB[courier]) return;
-            var html = '', count = 0, words = term.split(/\s+/);
-            $.each(sl_MasterDB[courier], function(key, value) {
-                $.each(Array.isArray(value) ? value : [value], function(i, off) {
-                    var label = (off.city || key).toUpperCase() + " - " + off.name;
-                    if (words.every(w => label.toLowerCase().includes(w))) {
-                        html += `<div class="mw-item" onclick="slSelectOffice('${uid}','${label}','${off.code}')">🏢 ${label}</div>`;
-                        count++;
-                    }
-                    if (count >= 20) return false;
-                });
-                if (count >= 20) return false;
-            });
-            $('#results-' + uid).html(html).show();
+		function slCheckType(name, mode, courier) {
+    if (courier === 'boxnow') return true;
+
+    var n = name.toLowerCase();
+
+    // Ако сме избрали режим АВТОМАТ
+    if (mode === 'locker') {
+        return n.includes('автомат') || n.includes('apm') || n.includes('locker') || n.includes('aps');
+    }
+
+    // Ако сме избрали режим ОФИС - тук е добре да СКРИЕМ автоматите, за да не се бъркат хората
+    if (mode === 'office') {
+        return !(n.includes('автомат') || n.includes('apm') || n.includes('locker') || n.includes('aps'));
+    }
+
+    return true;
+}
+
+       $(document).on('input focus', '.combined-search', function() {
+    var uid = this.id.replace('input-', ''),
+        parts = uid.split('_'),
+        courier = parts[0],
+        mode = parts[1]; // Вземаме mode (locker/office) от UID-то
+
+    var term = $(this).val().toLowerCase();
+    console.log("Courier: " + courier + " | Mode: " + mode); // Твоят принт
+
+    if (!sl_MasterDB[courier]) return;
+
+    var html = '', count = 0, words = term.split(/\s+/);
+
+    $.each(sl_MasterDB[courier], function(key, value) {
+        $.each(Array.isArray(value) ? value : [value], function(i, off) {
+            var label = (off.city || key).toUpperCase() + " - " + off.name;
+            var labelLower = label.toLowerCase();
+
+            // --- СПЕЦИФИЧНА ПРОВЕРКА ЗА СПИДИ LOCKER ---
+            if (courier === 'speedy' && mode === 'locker') {
+                var isSpeedyLocker = labelLower.includes('автомат') || labelLower.includes('aps') || labelLower.includes('апс');
+                if (!isSpeedyLocker) return true; // Продължи към следващия обект (пропусни този)
+            }
+            // ------------------------------------------
+
+            if (words.every(w => labelLower.includes(w))) {
+                html += `<div class="mw-item" onclick="slSelectOffice('${uid}','${label}','${off.code}')">🏢 ${label}</div>`;
+                count++;
+            }
+            if (count >= 20) return false;
         });
+        if (count >= 20) return false;
+    });
+    $('#results-' + uid).html(html).show();
+});
 
         $(document).on('input focus', '.city-autocomplete', function() {
             var uid = this.id.replace('city-input-', ''), term = $(this).val().toLowerCase(), html = '', count = 0;

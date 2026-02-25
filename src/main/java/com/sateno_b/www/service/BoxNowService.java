@@ -49,14 +49,14 @@ public class BoxNowService implements ShippingProvider {
         body.put("paymentMode", "prepaid");
         body.put("amountToBeCollected", order.getTotalPrice().toString());
         body.put("invoiceValue", order.getTotalPrice().toString());
-        body.put("allowReturn", true);
+        body.put("allowReturn", false);
 
         /*ORIGIN*/
         Map<String,Object> origin = new HashMap<>();
         origin.put("locationId", "2"); // Системно ID за Any-APM
-        origin.put("contactName", "Евелина Янкова");
-        origin.put("contactNumber", "+359889020222");
-        origin.put("contactEmail", "info@sateno.bg");
+        origin.put("contactName", courierSettingsEntity.getConfig().getAgentName());
+        origin.put("contactNumber", courierSettingsEntity.getConfig().getPhoneNumber());
+        origin.put("contactEmail", courierSettingsEntity.getConfig().getMail());
         body.put("origin", origin);
 
 //        BoxNowOriginsResponse origins = getOrigins(courierSettingsEntity);
@@ -358,7 +358,7 @@ public class BoxNowService implements ShippingProvider {
     }
     private Map<String, Object> getToBoxNow(String endpoint, Map<String, Object> body, String username, String password) {
         String totalUrl = BASE_URL+ endpoint;
-        System.out.println(totalUrl);
+//        System.out.println(totalUrl);
         return restClient.get()
                 .uri(totalUrl)
                 .header("Authorization", "Bearer " + getAuthToken(username, password))

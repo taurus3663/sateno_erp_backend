@@ -195,25 +195,25 @@ public class EcontService implements ShippingProvider {
         senderClient.put("name", contract.getClientName());
 //        senderClient.put("id", contract.getClientId());
 //        senderClient.put("authorizedPerson", contract.getClientName());
-        senderClient.put("phones", contract.getPhones().stream().map(CourierContractDetails.PhoneDetails::getNumber).toList());
+        senderClient.put("phones", List.of(courierSettingsEntity.getConfig().getPhoneNumber()));
 //        senderClient.put("phones", List.of("0877706656"));
 //        senderClient.put("phone", contract.getPhones().get(0).getNumber());
 //        senderClient.put("phone", "0877706656");
         label.put("senderClient",  senderClient);
 
         Map<String, Object> senderAgent = new HashMap<>();
-        senderAgent.put("name", contract.getContactName());
-        senderAgent.put("phones", contract.getPhones().stream().map(CourierContractDetails.PhoneDetails::getNumber).toList());
+        senderAgent.put("name", courierSettingsEntity.getConfig().getAgentName());
+        senderAgent.put("phones", List.of(courierSettingsEntity.getConfig().getPhoneNumber()));
         label.put("senderAgent",  senderAgent);
 
         Map<String, Object> senderAddress = new HashMap<>();
         Map<String, Object> city = new HashMap<>();
         city.put("country", Map.of("code3", "BGR"));
-        city.put("name", contract.getAddress().getSiteName());
-        city.put("postCode", contract.getAddress().getPostCode());
-        city.put("id", contract.getAddress().getSiteId());
+        city.put("name", courierSettingsEntity.getConfig().getCity());
+        city.put("postCode", courierSettingsEntity.getConfig().getPostalCode());
+//        city.put("id", contract.getAddress().getSiteId());
         senderAddress.put("city", city);
-        senderAddress.put("street", contract.getAddress().getFullAddressString());
+        senderAddress.put("street", courierSettingsEntity.getConfig().getAddress());
         label.put("senderAddress",  senderAddress);
 
 //        RECEIVER
@@ -236,7 +236,7 @@ public class EcontService implements ShippingProvider {
         } else {
             receiverCity.put("country", Map.of("code3", "BGR"));
             receiverCity.put("name", createLabelDto.getCity().getName());
-            receiverCity.put("postCode", createLabelDto.getCity().getPostalCode());
+            receiverCity.put("postCode", createLabelDto.getCity().getPostCode());
 //            receiverCity.put("id", createLabelDto.getOffice().getId());
             receiverAddress.put("street", createLabelDto.getStreet());
 //            receiverAddress.put("num", "9");
@@ -302,8 +302,6 @@ public class EcontService implements ShippingProvider {
         services.put("cdPayOptionsTemplate", "CD257894");
 // 2. Слагаме services в label
         label.put("services", services);
-        System.out.println(label.toString());
-        System.out.println(order.getTotalPrice());
 
 // 3. Други важни полета от спецификацията:
         label.put("paymentReceiverMethod", "cash"); // Получателят плаща в брой
@@ -333,9 +331,13 @@ public class EcontService implements ShippingProvider {
 
         body.put("label", label);
         body.put("mode", "create");
+
+//        Map<String, Object> stringObjectMap = postToEcont("services/ClientService.getPaymentOptions.json", body, courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
+//        System.out.println(stringObjectMap.toString());
+
 //        System.out.println(label.toString());
         Map<String, Object> response = postToEcont("services/Shipments/LabelService.createLabel.json", body, courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
-        System.out.println(response);
+//        System.out.println(response);
 
         EcontCreateLabelResponse labelResponse = getLabelResponse(response);
         order.setWayBillUrl(labelResponse.getLabel().getPdfURL());
