@@ -183,7 +183,7 @@ public class EcontService implements ShippingProvider {
     public boolean createWayBill(CreateLabelDto createLabelDto) {
         CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findById(createLabelDto.getCourierId()).get();
         var contract = getContract(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
-        System.out.println(contract.toString());
+//        System.out.println(contract.toString());
 //        System.out.println(createLabelDto.toString());
         WpOrderEntity order = wpOrderRepository.findById(createLabelDto.getId()).get();
 
@@ -626,7 +626,7 @@ public class EcontService implements ShippingProvider {
 //            System.out.println("00000000000000000");
             // 2. Данните за клиента са вложени в ключ "client"
             Map<String, Object> clientMap = (Map<String, Object>) profileMap.get("client");
-            System.out.println(clientMap.toString());
+//            System.out.println(clientMap.toString());
             if (clientMap != null) {
                 CourierContractDetails details = new CourierContractDetails();
 

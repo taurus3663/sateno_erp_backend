@@ -165,7 +165,7 @@ public class SpeedyService implements ShippingProvider {
     }
 
     public boolean createWayBill(CreateLabelDto createLabelDto) {
-        System.out.println(createLabelDto.toString());
+//        System.out.println(createLabelDto.toString());
         CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findById(createLabelDto.getCourierId()).get();
         WpOrderEntity order = wpOrderRepository.findById(createLabelDto.getId()).get();
         Map<String, Object> body = createBaseBody(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
@@ -259,7 +259,8 @@ public class SpeedyService implements ShippingProvider {
         obpd.put("returnShipmentServiceId", 505L);
         obpd.put("returnShipmentPayer", "SENDER");
 
-        if(createLabelDto.getCourierShipmentType() == CourierShipmentType.OFFICE){
+        if(createLabelDto.getCourierShipmentType() == CourierShipmentType.OFFICE ||
+        createLabelDto.getCourierShipmentType() == CourierShipmentType.ADDRESS){
             additionalServices.put("obpd", obpd);
         }
 
@@ -309,9 +310,9 @@ public class SpeedyService implements ShippingProvider {
         Map<String, Object> response = postToSpeedy("shipment", body);
 //        Map<String, Object> response = postToSpeedy("calculate", body);
 
-        System.out.println(response);
+//        System.out.println(response);
         SpeedyCreateLabelResponse labelResponse = getLabelResponse(response);
-        System.out.println(labelResponse.toString());
+//        System.out.println(labelResponse.toString());
 
         order.setWayBillShipmentNumber(Long.parseLong(labelResponse.getId()));
         for (SpeedyCreateLabelResponse.Parcel parcel : labelResponse.getParcels()) {
@@ -578,7 +579,7 @@ public class SpeedyService implements ShippingProvider {
 //                    .retrieve()
 //                    .toEntity(Object.class);
             var response =  postToSpeedy("client/contract", body);
-            System.out.println(response);
+//            System.out.println(response);
 
             if (response != null && response.containsKey("clients")) {
 
