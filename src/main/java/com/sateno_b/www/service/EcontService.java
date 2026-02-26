@@ -8,24 +8,21 @@ import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.CourierContractDetails;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.CourierShipmentType;
+import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.function.Consumer;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -342,9 +339,32 @@ public class EcontService implements ShippingProvider {
         EcontCreateLabelResponse labelResponse = getLabelResponse(response);
         order.setWayBillUrl(labelResponse.getLabel().getPdfURL());
         order.setWayBillShipmentNumber(Long.parseLong(labelResponse.getLabel().getShipmentNumber()));
+        order.setCourierType(CourierType.ECONT);
+        order.setCourierId(createLabelDto.getCourierId());
         wpOrderRepository.save(order);
         return true;
     }
+
+//    public byte[] getWaybillPdf(List<String> parcelList, String paperSize, String username, String password, WpOrderEntity order) {
+//        byte[] pdfBytes = null;
+//
+//        String url = order.getWayBillUrl();
+//
+//        pdfBytes = restClient.get()
+//                .uri(url)
+//                .headers(httpHeaders -> {
+//                    httpHeaders.setBasicAuth(username, password);
+//                    httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+//                })
+//                .retrieve()
+//                .onStatus(HttpStatusCode::isError, (request, response) -> {
+//                    // Логваме ако Econt върне 4xx или 5xx
+//                    System.err.println("Econt Print Error Status: " + response.getStatusCode());
+//                })
+//                .body(byte[].class);
+//
+//        return pdfBytes;
+//    }
 
     private EcontCreateLabelResponse getLabelResponse(Map<String, Object> response) {
         ObjectMapper mapper = new ObjectMapper();

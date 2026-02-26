@@ -7,6 +7,7 @@ import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.CourierShipmentType;
+import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
@@ -17,7 +18,6 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.*;
 
@@ -45,7 +45,7 @@ public class BoxNowService implements ShippingProvider {
 //        String token = getAuthToken(courierSettingsEntity.getApiKey(), courierSettingsEntity.getApiSecret());
 
         Map<String, Object> body = new HashMap<>();
-        body.put("orderNumber", order.getWpOrderId().toString());
+        body.put("orderNumber", order.getWpOrderId().toString() + "-" + order.getId().toString());
         body.put("paymentMode", "prepaid");
         body.put("amountToBeCollected", order.getTotalPrice().toString());
         body.put("invoiceValue", order.getTotalPrice().toString());
@@ -73,11 +73,19 @@ public class BoxNowService implements ShippingProvider {
         /*ITEMS*/
         List<Map<String, Object>> items = new ArrayList<>();
         for (OrderLineItem orderLineItem : order.getOrderLine()) {
+            double weightValue = Double.parseDouble(orderLineItem.getWeight() != null && !orderLineItem.getWeight().isEmpty() ? orderLineItem.getWeight() : "0.5");
+
+// Проверка: ако е 0 или по-малко, фиксираме на 0.5
+            if (weightValue <= 0) {
+                weightValue = 0.5;
+            }
+
+
             Map<String, Object> item = new HashMap<>();
             item.put("id", orderLineItem.getSku() == null? "b": orderLineItem.getSku());
             item.put("name", orderLineItem.getProductName());
             item.put("value", orderLineItem.getPrice().toString());
-            item.put("weight", Double.parseDouble(!orderLineItem.getWeight().isEmpty()? orderLineItem.getWeight(): "0.5"));
+            item.put("weight", weightValue);
             item.put("compartmentSize", createLabelDto.getBoxNowPacketSize().ordinal() + 1);
 //            System.out.println(item.toString());
             items.add(item);
@@ -86,10 +94,13 @@ public class BoxNowService implements ShippingProvider {
 
         Map<String, Object> response = postToBoxNow("/api/v1/delivery-requests", body,
                 courierSettingsEntity.getApiKey(), courierSettingsEntity.getApiSecret());
+        System.out.println(response);
         BoxNowDeliveryResponse boxNowDeliveryResponse = getBoxNowDeliveryResponse(response);
 
         order.setParcelIds(boxNowDeliveryResponse.getParcels().stream().map(BoxNowDeliveryResponse.Parcel::getId).toList());
         order.setWayBillShipmentNumber(Long.parseLong(boxNowDeliveryResponse.getId()));
+        order.setCourierType(CourierType.BOX_NOW);
+        order.setCourierId(createLabelDto.getCourierId());
         wpOrderRepository.save(order);
         return true;
     }
@@ -97,6 +108,24 @@ public class BoxNowService implements ShippingProvider {
     private BoxNowDeliveryResponse getBoxNowDeliveryResponse(Map<String, Object> response) {
 
         return objectMapper.convertValue(response, BoxNowDeliveryResponse.class);
+    }
+
+    public byte[] getWaybillPdf(List<String> parcelList, String paperSize, String username, String password, WpOrderEntity order) {
+       byte[] pdfBytes = null;
+
+       String wayBillUrl = BASE_URL + "/api/v1/parcels/" + parcelList.get(0) + "/label.pdf";
+
+        pdfBytes = restClient.get()
+                .uri(wayBillUrl)
+                .header("Authorization", "Bearer " + getAuthToken(username, password))
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, response) -> {
+                    // Логваме ако BoxNOW върне 4xx или 5xx
+                    System.err.println("BoxNow Print Error Status: " + response.getStatusCode());
+                })
+                .body(byte[].class);
+
+        return pdfBytes;
     }
 
     private String formatPhone(String phone) {

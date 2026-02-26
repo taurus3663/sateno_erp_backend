@@ -8,6 +8,7 @@ import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.CourierContractDetails;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.CourierShipmentType;
+import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
@@ -220,29 +221,69 @@ public class SpeedyService implements ShippingProvider {
 
         if(createLabelDto.getFiscalReceipt() == true){
         List<Map<String, Object>> fiscalReceiptItems = new ArrayList<>();
-        double checkSum = 0.0;
-        for (OrderLineItem item : order.getOrderLine()) {
-            Map<String, Object> fiscalItem = new HashMap<>();
-            String name = item.getProductName();
-            fiscalItem.put("description", name.length() > 50 ? name.substring(0, 47) + "..." : name);
-            fiscalItem.put("vatGroup", "Б"); // Стандартно 20% ДДС
-            double itemTotalWithVat = Double.parseDouble(item.getPrice().toString()) * item.getQuantity();
-            double itemTotalWithoutVat = itemTotalWithVat / 1.2;
-            fiscalItem.put("amountWithVat", itemTotalWithVat);
-            fiscalItem.put("amount", Math.round(itemTotalWithoutVat * 100.0) / 100.0);
-            fiscalReceiptItems.add(fiscalItem);
-            checkSum += itemTotalWithVat;
-        }
+            double checkSum = 0.0;
+            for (OrderLineItem item : order.getOrderLine()) {
+
+                // ЗАЩИТА: Проверка за null цена, за да избегнем NumberFormatException
+                String priceStr = (item.getTotalPrice() != null) ? item.getTotalPrice().toString() : "0.0";
+                double unitPrice = Double.parseDouble(priceStr);
+                int quantity = item.getQuantity();
+                double lineTotal = unitPrice * quantity;
+                System.out.println(unitPrice);
+                System.out.println(unitPrice);
+                Map<String, Object> fiscalItem = new HashMap<>();
+                String name = item.getProductName();
+                fiscalItem.put("description", name.length() > 50 ? name.substring(0, 47) + "..." : name);
+                fiscalItem.put("vatGroup", "А"); // Кирилско А
+                fiscalItem.put("amount", unitPrice);
+                fiscalItem.put("amountWithVat", unitPrice);
+                fiscalItem.put("quantity", quantity);
+
+                fiscalReceiptItems.add(fiscalItem);
+                checkSum += lineTotal;
+            }
+
+            // ВЗЕМАМЕ ОБЩАТА СУМА НА ПОРЪЧКАТА (Наложения платеж)
+            double totalOrderAmount = Double.parseDouble(order.getTotalPrice().toString());
+
+            // АКО ИМА РАЗЛИКА (Доставка), ТЯ ТРЯБВА ДА СЕ ДОБАВИ, ЗА ДА СЪВПАДНЕ С БОНА
+            if (Math.abs(totalOrderAmount - checkSum) > 0.001) {
+                double deliveryPrice = totalOrderAmount - checkSum;
+
+                Map<String, Object> deliveryLine = new HashMap<>();
+                deliveryLine.put("description", "Доставка");
+                deliveryLine.put("vatGroup", "А");
+                deliveryLine.put("amount", deliveryPrice);
+                deliveryLine.put("quantity", 1);
+
+                fiscalReceiptItems.add(deliveryLine);
+            }
+
+//        double checkSum = 0.0;
+//        for (OrderLineItem item : order.getOrderLine()) {
+//            Map<String, Object> fiscalItem = new HashMap<>();
+//            String name = item.getProductName();
+//            fiscalItem.put("description", name.length() > 50 ? name.substring(0, 47) + "..." : name);
+//            fiscalItem.put("vatGroup", "A");
+//            double itemTotalWithVat = Double.parseDouble(item.getPrice().toString()) * item.getQuantity();
+////            double itemTotalWithoutVat = itemTotalWithVat / 1.2;
+////            fiscalItem.put("amountWithVat", itemTotalWithVat);
+//            fiscalItem.put("amount", itemTotalWithVat);
+////            fiscalItem.put("amount", Math.round(itemTotalWithoutVat * 100.0) / 100.0);
+//            fiscalReceiptItems.add(fiscalItem);
+////            checkSum += itemTotalWithVat;
+//        }
         // 2. Добавяне на доставката като отделен ред, ако клиентът я плаща
-        if (Double.parseDouble(order.getTotalPrice().toString()) > checkSum) {
-            double deliveryPrice = Double.parseDouble(order.getTotalPrice().toString()) - checkSum;
-            Map<String, Object> deliveryLine = new HashMap<>();
-            deliveryLine.put("description", "Доставка");
-            deliveryLine.put("vatGroup", "А");
-            deliveryLine.put("amountWithVat", deliveryPrice);
-            deliveryLine.put("amount", Math.round((deliveryPrice / 1.2) * 100.0) / 100.0);
-            fiscalReceiptItems.add(deliveryLine);
-        }
+//        if (Double.parseDouble(order.getTotalPrice().toString()) > checkSum) {
+//            double deliveryPrice = Double.parseDouble(order.getTotalPrice().toString()) - checkSum;
+//            Map<String, Object> deliveryLine = new HashMap<>();
+//            deliveryLine.put("description", "Доставка");
+//            deliveryLine.put("vatGroup", "A");
+//            deliveryLine.put("amountWithVat", deliveryPrice);
+//            deliveryLine.put("amount", Double.parseDouble(order.getTotalPrice().toString()));
+////            deliveryLine.put("amount", Math.round((deliveryPrice / 1.2) * 100.0) / 100.0);
+//            fiscalReceiptItems.add(deliveryLine);
+//        }
 
             cod.put("fiscalReceiptItems", fiscalReceiptItems);
         }
@@ -318,7 +359,7 @@ public class SpeedyService implements ShippingProvider {
 
         Map<String, Object> response = postToSpeedy("shipment", body);
 //        Map<String, Object> response = postToSpeedy("calculate", body);
-
+        System.out.println(response);
 //        System.out.println(response);
         SpeedyCreateLabelResponse labelResponse = getLabelResponse(response);
 //        System.out.println(labelResponse.toString());
@@ -327,6 +368,8 @@ public class SpeedyService implements ShippingProvider {
         for (SpeedyCreateLabelResponse.Parcel parcel : labelResponse.getParcels()) {
             order.getParcelIds().add(parcel.getId());
         }
+        order.setCourierType(CourierType.SPEEDY);
+        order.setCourierId(createLabelDto.getCourierId());
         wpOrderRepository.save(order);
         return true;
     }

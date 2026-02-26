@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -215,6 +214,22 @@ public class WpOrderController {
     @PostMapping("/create/waybill")
     public ResponseEntity<?> createWayBill(@RequestBody CreateLabelDto createLabelDto) {
 
+        Optional<WpOrderEntity> byId = wpOrderRepository.findById(createLabelDto.getId());
+
+       if(byId.isPresent()){
+           // Проверка
+           // дали поръчката вече има генерирана товарителница
+           if (byId.get().getWayBillShipmentNumber() != null || byId.get().getCourierId() != null) {
+               return ResponseEntity
+                       .badRequest()
+                       .body("Поръчката вече има генерирана товарителница!");
+           }
+       } else {
+           return ResponseEntity
+                   .badRequest()
+                   .body("ИД не съществува");
+       }
+
 //        System.out.println(createLabelDto.toString());
         Object rs = new Object();
     try {
@@ -228,6 +243,7 @@ public class WpOrderController {
         return ResponseEntity.ok(rs);
     } catch (Exception e) {
         log.error(e.getMessage());
+        e.printStackTrace();
         return ResponseEntity.internalServerError().body(e.getMessage());
     }
     }
@@ -243,34 +259,36 @@ public class WpOrderController {
 
         if(byId.isPresent()){
             WpOrderEntity order = byId.get();
-            String shippingMethod = order.getBilling().getAddress1();
-            String courierName = "";
-            String deliveryType = "";
-            Matcher m1 = REGEX_1.matcher(shippingMethod);
-            if (m1.find()) {
-                deliveryType = m1.group(1);
-                courierName = m1.group(4);
+//            String shippingMethod = order.getBilling().getAddress1();
+//            String courierName = "";
+//            String deliveryType = "";
+//            Matcher m1 = REGEX_1.matcher(shippingMethod);
+//            if (m1.find()) {
+//                deliveryType = m1.group(1);
+//                courierName = m1.group(4);
+//            } else {
+//                // Опит за парсване с Regex 2
+//                Matcher m2 = REGEX_2.matcher(shippingMethod);
+//                if (m2.find()) {
+//                    courierName = m2.group(2);
+//                    deliveryType = m2.group(1);
+//                }
+//            }
+
+            Optional<CourierSettingsEntity> courierSettings = courierSettingsRepository.findById(order.getCourierId());
+            if(courierSettings.isPresent()){
+                        CourierSettingsEntity courierSetting = courierSettings.get();
+                if(order.getCourierType() == CourierType.SPEEDY) {
+                    pdfBytes = speedyService.getWaybillPdf(waybillIds, paperSize, courierSetting.getUsername(), courierSetting.getPassword());
+                } else if(order.getCourierType() == CourierType.BOX_NOW) {
+                    pdfBytes = boxNowService.getWaybillPdf(waybillIds, paperSize, courierSetting.getApiKey(), courierSetting.getApiSecret(), order);
+                }
             } else {
-                // Опит за парсване с Regex 2
-                Matcher m2 = REGEX_2.matcher(shippingMethod);
-                if (m2.find()) {
-                    courierName = m2.group(2);
-                    deliveryType = m2.group(1);
-                }
+                return ResponseEntity.notFound().build();
             }
-            List<CourierSettingsEntity> allBySiteAndActive = courierSettingsRepository.findAllBySiteAndActive(order.getSite(), true);
-            CourierSettingsEntity courierSettings = null;
-            for (CourierSettingsEntity courierSettingsEntity : allBySiteAndActive) {
-                if(courierSettingsEntity.getCourierType() == CourierType.SPEEDY){
-                    courierSettings = courierSettingsEntity;
-                }
-            }
-            if(courierName.equalsIgnoreCase(CourierType.SPEEDY.name())) {
-//                System.out.println(courierName);
-               pdfBytes = speedyService.getWaybillPdf(waybillIds, paperSize, courierSettings.getUsername(), courierSettings.getPassword());
-                if (pdfBytes == null || pdfBytes.length == 0) {
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-                }
+
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }
         }
         return ResponseEntity.ok()

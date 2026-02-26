@@ -3,9 +3,12 @@ package com.sateno_b.www.model.dto;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
 import com.sateno_b.www.model.entity.data.ShippingLines;
+import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -43,4 +46,6 @@ public class WpOrderDto {
     private String wayBillUrl;
     private Long wayBillShipmentNumber;
     private List<String> parcelIds = new ArrayList<>();
+    private CourierType courierType;
+    private Long courierId;
 }
