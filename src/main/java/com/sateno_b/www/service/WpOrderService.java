@@ -105,7 +105,7 @@ public class WpOrderService {
                         OrderLineItem orderLineItem = new OrderLineItem();
                         orderLineItem.setSku(woOrderLineItemDto.getSku());
                         orderLineItem.setQuantity(woOrderLineItemDto.getQuantity());
-                        orderLineItem.setPrice(woOrderLineItemDto.getSubtotal());
+                        orderLineItem.setPrice(woOrderLineItemDto.getPrice());
                         orderLineItem.setProductId(woOrderLineItemDto.getProductId());
                         orderLineItem.setProductName(woOrderLineItemDto.getProductName());
                         orderLineItem.setTotalPrice(woOrderLineItemDto.getTotal());
@@ -201,7 +201,7 @@ public class WpOrderService {
                     OrderLineItem orderLineItem = new OrderLineItem();
                     orderLineItem.setSku(woOrderLineItemDto.getSku());
                     orderLineItem.setQuantity(woOrderLineItemDto.getQuantity());
-                    orderLineItem.setPrice(woOrderLineItemDto.getSubtotal());
+                    orderLineItem.setPrice(woOrderLineItemDto.getPrice());
                     orderLineItem.setProductId(woOrderLineItemDto.getProductId());
                     orderLineItem.setProductName(woOrderLineItemDto.getProductName());
                     orderLineItem.setTotalPrice(woOrderLineItemDto.getTotal());

@@ -19,6 +19,7 @@ public class WoOrderLineItemDto {
         private int quantity;
         private BigDecimal subtotal;
         private BigDecimal total;
+        private BigDecimal price;
         @JsonProperty("meta_data")
         private List<WoPaoIdValueDto> paoIdValue;
         private WoOrderLineItemImageDto image;

@@ -181,9 +181,16 @@ public class SpeedyService implements ShippingProvider {
         Map<String, Object> body = createBaseBody(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
 
         Map<String, Object> content = new HashMap<>();
-        content.put("contents", order.getOrderLine().stream()
+
+        String productList = order.getOrderLine().stream()
                 .map(OrderLineItem::getProductName)
-                .collect(Collectors.joining(", ")));
+                .filter(Objects::nonNull) // Защита от null имена
+                .collect(Collectors.joining(", "));
+        if (productList.length() > 100) {
+            productList = productList.substring(0, 97) + "...";
+        }
+
+        content.put("contents", productList);
         content.put("totalWeight", createLabelDto.getWeight());
         content.put("parcelsCount", createLabelDto.getPackCount());
         content.put("package", "STANDARD");
@@ -193,12 +200,18 @@ public class SpeedyService implements ShippingProvider {
 
         int i = 0;
         for (OrderLineItem orderLineItem : order.getOrderLine()) {
+
+            int quantity = orderLineItem.getQuantity();
+
+
+        for(int q = 0; q<quantity; q++){
             Map<String, Object> p = new HashMap<>();
             p.put("seqNo", ++i);
-            p.put("weight", orderLineItem.getWeight());
+//            p.put("weight", singleWeight);
             p.put("ref1", orderLineItem.getProductName());
             p.put("ref2", orderLineItem.getSku());
             parcels.add(p);
+        }
         }
         body.put("parcels", parcels);
         body.put("content", content);
@@ -224,40 +237,39 @@ public class SpeedyService implements ShippingProvider {
             double checkSum = 0.0;
             for (OrderLineItem item : order.getOrderLine()) {
 
-                // ЗАЩИТА: Проверка за null цена, за да избегнем NumberFormatException
-                String priceStr = (item.getTotalPrice() != null) ? item.getTotalPrice().toString() : "0.0";
-                double unitPrice = Double.parseDouble(priceStr);
-                int quantity = item.getQuantity();
+                double unitPrice = (item.getPrice() != null) ? Double.parseDouble(item.getPrice().toString()) : 0.0;                int quantity = item.getQuantity();
+
                 double lineTotal = unitPrice * quantity;
-                System.out.println(unitPrice);
-                System.out.println(unitPrice);
+
                 Map<String, Object> fiscalItem = new HashMap<>();
-                String name = item.getProductName();
+                String name = item.getProductName() != null ? item.getProductName() : "Продукт";
+
                 fiscalItem.put("description", name.length() > 50 ? name.substring(0, 47) + "..." : name);
-                fiscalItem.put("vatGroup", "А"); // Кирилско А
-                fiscalItem.put("amount", unitPrice);
-                fiscalItem.put("amountWithVat", unitPrice);
-                fiscalItem.put("quantity", quantity);
+                fiscalItem.put("vatGroup", "А");
+                fiscalItem.put("amount", item.getTotalPrice());
+                fiscalItem.put("amountWithVat", item.getTotalPrice());
+                fiscalItem.put("quantity", (double) quantity);
 
                 fiscalReceiptItems.add(fiscalItem);
                 checkSum += lineTotal;
             }
 
             // ВЗЕМАМЕ ОБЩАТА СУМА НА ПОРЪЧКАТА (Наложения платеж)
-            double totalOrderAmount = Double.parseDouble(order.getTotalPrice().toString());
+//            double totalOrderAmount = Double.parseDouble(order.getTotalPrice().toString());
 
             // АКО ИМА РАЗЛИКА (Доставка), ТЯ ТРЯБВА ДА СЕ ДОБАВИ, ЗА ДА СЪВПАДНЕ С БОНА
-            if (Math.abs(totalOrderAmount - checkSum) > 0.001) {
-                double deliveryPrice = totalOrderAmount - checkSum;
-
-                Map<String, Object> deliveryLine = new HashMap<>();
-                deliveryLine.put("description", "Доставка");
-                deliveryLine.put("vatGroup", "А");
-                deliveryLine.put("amount", deliveryPrice);
-                deliveryLine.put("quantity", 1);
-
-                fiscalReceiptItems.add(deliveryLine);
-            }
+//            if (Math.abs(totalOrderAmount - checkSum) > 0.001) {
+//                double deliveryPrice = totalOrderAmount - checkSum;
+//
+//                Map<String, Object> deliveryLine = new HashMap<>();
+//                deliveryLine.put("description", "Доставка");
+//                deliveryLine.put("vatGroup", "А");
+//                deliveryLine.put("amount", deliveryPrice);
+//                deliveryLine.put("amountWithVat", deliveryPrice);
+//                deliveryLine.put("quantity", 1);
+//
+//                fiscalReceiptItems.add(deliveryLine);
+//            }
 
 //        double checkSum = 0.0;
 //        for (OrderLineItem item : order.getOrderLine()) {
