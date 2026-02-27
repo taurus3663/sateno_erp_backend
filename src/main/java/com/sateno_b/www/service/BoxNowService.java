@@ -78,24 +78,31 @@ public class BoxNowService implements ShippingProvider {
 
         /*ITEMS*/
         List<Map<String, Object>> items = new ArrayList<>();
-        for (OrderLineItem orderLineItem : order.getOrderLine()) {
-            double weightValue = Double.parseDouble(orderLineItem.getWeight() != null && !orderLineItem.getWeight().isEmpty() ? orderLineItem.getWeight() : "0.5");
-
-// Проверка: ако е 0 или по-малко, фиксираме на 0.5
-            if (weightValue <= 0) {
-                weightValue = 0.5;
-            }
-
-
-            Map<String, Object> item = new HashMap<>();
-            item.put("id", orderLineItem.getSku() == null? "b": orderLineItem.getSku());
-            item.put("name", orderLineItem.getProductName());
-            item.put("value", orderLineItem.getPrice().toString());
-            item.put("weight", weightValue);
-            item.put("compartmentSize", createLabelDto.getBoxNowPacketSize().ordinal() + 1);
-//            System.out.println(item.toString());
+//        for (OrderLineItem orderLineItem : order.getOrderLine()) {
+//            double weightValue = Double.parseDouble(orderLineItem.getWeight() != null && !orderLineItem.getWeight().isEmpty() ? orderLineItem.getWeight() : "0.5");
+//
+//// Проверка: ако е 0 или по-малко, фиксираме на 0.5
+//            if (weightValue <= 0) {
+//                weightValue = 0.5;
+//            }
+//
+//
+//            Map<String, Object> item = new HashMap<>();
+//            item.put("id", orderLineItem.getSku() == null? "b": orderLineItem.getSku());
+//            item.put("name", orderLineItem.getProductName());
+//            item.put("value", orderLineItem.getPrice().toString());
+//            item.put("weight", weightValue);
+//            item.put("compartmentSize", createLabelDto.getBoxNowPacketSize());
+////            System.out.println(item.toString());
+//            items.add(item);
+//        }
+                    Map<String, Object> item = new HashMap<>();
+//            item.put("id", orderLineItem.getSku() == null? "b": orderLineItem.getSku());
+//            item.put("name", orderLineItem.getProductName());
+            item.put("value", order.getTotalPrice().toString());
+            item.put("weight", createLabelDto.getWeight());
+            item.put("compartmentSize", createLabelDto.getBoxNowPacketSize().ordinal()+ 1);
             items.add(item);
-        }
         body.put("items", items);
 
         Map<String, Object> response = postToBoxNow("/api/v1/delivery-requests", body,
