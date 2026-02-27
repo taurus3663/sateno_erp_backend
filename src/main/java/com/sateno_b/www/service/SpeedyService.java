@@ -9,6 +9,7 @@ import com.sateno_b.www.model.entity.data.CourierContractDetails;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.enums.CourierType;
+import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
@@ -384,6 +385,36 @@ public class SpeedyService implements ShippingProvider {
         order.setCourierId(createLabelDto.getCourierId());
         wpOrderRepository.save(order);
         return true;
+    }
+
+    public boolean cancelShipment(WpOrderEntity order, CourierSettingsEntity settings) {
+        Map<String, Object> body = createBaseBody(settings.getUsername(), settings.getPassword());
+        body.put("shipmentId", order.getWayBillShipmentNumber().toString());
+        // Можеш да добавиш и коментар за анулирането
+        body.put("comment", "Анулирана през ERP система");
+        try {
+            // Извикваме Спиди (ендпойнтът обикновено е /shipment/cancel)
+            Map<String, Object> response = postToSpeedy("shipment/cancel", body);
+
+            if (response.containsKey("error")) {
+                throw new RuntimeException("Грешка от Спиди: " + response.get("error"));
+            }
+
+            // Ако анулирането е успешно, чистим данните в нашата база
+            order.setWayBillShipmentNumber(null);
+            order.setWayBillUrl(null);
+            order.getParcelIds().clear();
+            order.setCourierId(null);
+            // Можеш да върнеш статуса на "Processing" ако е бил променен
+            order.setStatus(OrderStatus.PROCESSING);
+
+            wpOrderRepository.save(order);
+            return true;
+
+        } catch (Exception e) {
+//            log.error("Грешка при анулиране на товарителница № " + order.getWayBillShipmentNumber(), e);
+            throw new RuntimeException("Неуспешно анулиране: " + e.getMessage());
+        }
     }
 
     public byte[] getWaybillPdf(List<String> parcelList, String paperSize, String username, String password) {

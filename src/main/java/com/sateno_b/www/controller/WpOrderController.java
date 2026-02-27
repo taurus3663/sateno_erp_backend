@@ -297,4 +297,34 @@ public class WpOrderController {
                 .body(pdfBytes);
     }
 
+    @PostMapping("/cancel-shipment/{orderId}")
+    public ResponseEntity<?> cancelShipment(@PathVariable Long orderId){
+        boolean result = false;
+        try {
+            WpOrderEntity order = wpOrderRepository.findById(orderId)
+                    .orElseThrow(() -> new RuntimeException("Поръчката не е намерена "));
+
+            if(order.getWayBillShipmentNumber() == null){
+                throw new RuntimeException("Поръчката няма генерирана товарителница");
+            }
+
+            Optional<CourierSettingsEntity> courierSetting = courierSettingsRepository.findById(order.getCourierId());
+
+            if(courierSetting.isPresent()){
+                CourierSettingsEntity courier =  courierSetting.get();
+                if(courier.getCourierType() == CourierType.SPEEDY){
+                    result = speedyService.cancelShipment(order, courier);
+                }
+
+
+
+            }
+
+
+            return ResponseEntity.ok(Map.of("success", result));
+
+        } catch (Exception e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
