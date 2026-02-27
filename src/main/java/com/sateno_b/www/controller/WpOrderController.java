@@ -176,7 +176,7 @@ public class WpOrderController {
             }
 
             wpOrderRepository.save(byId.get());
-            notificationService.sendUpdate("orders", WsAction.UPDATED);
+//            notificationService.sendUpdate("orders", WsAction.UPDATED);
             return ResponseEntity.ok(wpOrderDto);
         }
         return ResponseEntity.notFound().build();
@@ -199,7 +199,7 @@ public class WpOrderController {
 
 //                    log.info("Успешно обработена поръчка #{} от сайт ID: {}", dto.getId(), siteId);
 
-                    notificationService.sendUpdate("orders", WsAction.UPDATED);
+//                    notificationService.sendUpdate("orders", WsAction.UPDATED);
                 } catch (JsonProcessingException e) {
                     log.error("Грешка при парсване на JSON от WooCommerce: {}", e.getMessage());
 

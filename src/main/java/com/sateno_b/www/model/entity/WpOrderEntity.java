@@ -7,6 +7,7 @@ import com.sateno_b.www.model.entity.data.ShippingLines;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
+import com.sateno_b.www.model.listeners.WpOrderEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -17,6 +18,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+@EntityListeners(WpOrderEntityListener.class)
 @EqualsAndHashCode(callSuper = true)
 @Data
 @AllArgsConstructor
