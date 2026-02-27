@@ -9,6 +9,7 @@ import com.sateno_b.www.model.entity.data.CourierContractDetails;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.enums.CourierType;
+import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
@@ -343,6 +344,45 @@ public class EcontService implements ShippingProvider {
         order.setCourierId(createLabelDto.getCourierId());
         wpOrderRepository.save(order);
         return true;
+    }
+
+    public boolean cancelShipment(WpOrderEntity order, CourierSettingsEntity settings) {
+        // Вземаме номера на товарителницата
+        String waybillNumber = order.getWayBillShipmentNumber().toString();
+
+        if (order.getWayBillShipmentNumber() == null || waybillNumber.isEmpty()) {
+            throw new RuntimeException("Липсва номер на товарителница за анулиране към Еконт.");
+        }
+
+        try {
+            // Подготвяме тялото на заявката според документацията на Еконт
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("shipmentNumbers", List.of(waybillNumber));
+
+            // Примерно извикване към Еконт API (обикновено /services/Shipments/LabelService.deleteLabels)
+            Map<String, Object> response = postToEcont("/services/Shipments/LabelService.deleteLabels.json", requestBody, settings.getUsername(), settings.getPassword());
+            System.out.println(response);
+            // Проверка за грешки в самия отговор (Еконт често връщат грешките вътре в JSON-а)
+            if (response.containsKey("error") || response.containsKey("errors")) {
+                String errorMsg = response.get("error") != null ? response.get("error").toString() : "Грешка при анулиране в Еконт";
+                throw new RuntimeException(errorMsg);
+            }
+
+            // Ако е успешно, чистим локалните данни
+            order.setWayBillShipmentNumber(null);
+            order.setWayBillUrl(null);
+            order.getParcelIds().clear();
+            order.setCourierType(null);
+            order.setStatus(OrderStatus.PROCESSING);
+            order.setCourierType(null);
+
+            wpOrderRepository.save(order);
+            // WebSocket сигналът ще се изстреля автоматично от @PostUpdate в Entity-то
+            return true;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Еконт отказ: " + e.getMessage());
+        }
     }
 
 //    public byte[] getWaybillPdf(List<String> parcelList, String paperSize, String username, String password, WpOrderEntity order) {

@@ -316,8 +316,9 @@ public class WpOrderController {
                     result = speedyService.cancelShipment(order, courier);
                 } else if(courier.getCourierType() == CourierType.BOX_NOW){
                     result = boxNowService.cancelShipment(order, courier);
+                } else if (courier.getCourierType() == CourierType.ECONT) {
+                    result = econtService.cancelShipment(order, courier);
                 }
-
 
 
             }
