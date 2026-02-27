@@ -8,6 +8,7 @@ import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.enums.CourierType;
+import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.interfaces.ShippingProvider;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
@@ -17,6 +18,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.util.*;
@@ -45,7 +47,11 @@ public class BoxNowService implements ShippingProvider {
 //        String token = getAuthToken(courierSettingsEntity.getApiKey(), courierSettingsEntity.getApiSecret());
 
         Map<String, Object> body = new HashMap<>();
-        body.put("orderNumber", order.getWpOrderId().toString() + "-" + order.getId().toString());
+        body.put("orderNumber",
+                order.getWpOrderId().toString() + "-" +
+                        order.getId().toString() + "-" +
+                        System.currentTimeMillis()
+        );
         body.put("paymentMode", "prepaid");
         body.put("amountToBeCollected", order.getTotalPrice().toString());
         body.put("invoiceValue", order.getTotalPrice().toString());
@@ -103,6 +109,45 @@ public class BoxNowService implements ShippingProvider {
         order.setCourierId(createLabelDto.getCourierId());
         wpOrderRepository.save(order);
         return true;
+    }
+
+    public boolean cancelShipment(WpOrderEntity order, CourierSettingsEntity courierSettingsEntity) {
+        String parcelId = order.getParcelIds().isEmpty() ? null : order.getParcelIds().get(0);
+        if (parcelId == null) throw new RuntimeException("Няма зареден ваучер за анулиране");
+
+        String cancelUrl = BASE_URL + "/api/v1/parcels/" + parcelId + ":cancel";
+
+        try {
+            // Изпълняваме заявката
+                     restClient.post()
+                    .uri(cancelUrl)
+                    .header("Authorization", "Bearer " + getAuthToken(courierSettingsEntity.getApiKey(), courierSettingsEntity.getApiSecret()))
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, (request, response) -> {
+                        // Извличаме детайлите на грешката от тялото на отговора на BoxNow
+                        String errorBody = new String(response.getBody().readAllBytes());
+                        // ХВЪРЛЯМЕ ГРЕШКА - това спира по-нататъшното изпълнение
+                        throw new RuntimeException("BoxNow грешка (" + response.getStatusCode() + "): " + errorBody);
+                    })
+                    .body(new ParameterizedTypeReference<Map<String, Object>>() {
+                    });
+            // ТОВА СЕ ИЗПЪЛНЯВА САМО АКО ГОРЕ НЯМА ГРЕШКА (Status 2xx)
+            order.setWayBillShipmentNumber(null);
+            order.setWayBillUrl(null);
+            order.getParcelIds().clear();
+            order.setCourierId(null);
+            order.setStatus(OrderStatus.PROCESSING);
+            order.setCourierType(null);
+
+            wpOrderRepository.save(order);
+            return true;
+
+        } catch (RuntimeException e) {
+            // Хвърляме грешката нагоре към контролера, за да я види потребителят в Angular
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Неочаквана грешка при връзка с BoxNow: " + e.getMessage());
+        }
     }
 
     private BoxNowDeliveryResponse getBoxNowDeliveryResponse(Map<String, Object> response) {

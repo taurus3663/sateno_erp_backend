@@ -392,7 +392,7 @@ public class SpeedyService implements ShippingProvider {
         body.put("shipmentId", order.getWayBillShipmentNumber().toString());
         // Можеш да добавиш и коментар за анулирането
         body.put("comment", "Анулирана през ERP система");
-        try {
+
             // Извикваме Спиди (ендпойнтът обикновено е /shipment/cancel)
             Map<String, Object> response = postToSpeedy("shipment/cancel", body);
 
@@ -405,16 +405,10 @@ public class SpeedyService implements ShippingProvider {
             order.setWayBillUrl(null);
             order.getParcelIds().clear();
             order.setCourierId(null);
-            // Можеш да върнеш статуса на "Processing" ако е бил променен
             order.setStatus(OrderStatus.PROCESSING);
-
+        order.setCourierType(null);
             wpOrderRepository.save(order);
             return true;
-
-        } catch (Exception e) {
-//            log.error("Грешка при анулиране на товарителница № " + order.getWayBillShipmentNumber(), e);
-            throw new RuntimeException("Неуспешно анулиране: " + e.getMessage());
-        }
     }
 
     public byte[] getWaybillPdf(List<String> parcelList, String paperSize, String username, String password) {

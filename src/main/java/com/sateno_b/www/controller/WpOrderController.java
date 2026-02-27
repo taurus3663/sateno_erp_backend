@@ -314,6 +314,8 @@ public class WpOrderController {
                 CourierSettingsEntity courier =  courierSetting.get();
                 if(courier.getCourierType() == CourierType.SPEEDY){
                     result = speedyService.cancelShipment(order, courier);
+                } else if(courier.getCourierType() == CourierType.BOX_NOW){
+                    result = boxNowService.cancelShipment(order, courier);
                 }
 
 
