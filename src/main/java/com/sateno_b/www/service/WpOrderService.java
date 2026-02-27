@@ -2,17 +2,17 @@ package com.sateno_b.www.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sateno_b.www.model.dto.WoOrderDto;
-import com.sateno_b.www.model.dto.WoPaoIdValueValueDto;
-import com.sateno_b.www.model.dto.WooProductDto;
+import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.CustomerEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
+import com.sateno_b.www.model.entity.UserSignalEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.data.PaoIdValue;
 import com.sateno_b.www.model.entity.data.PaoIdValueValue;
 import com.sateno_b.www.model.repository.CustomerRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
+import com.sateno_b.www.model.repository.UserSignalRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import com.sateno_b.www.shared.AuthTool;
 import jakarta.persistence.EntityManager;
@@ -42,9 +42,11 @@ public class WpOrderService {
     @PersistenceContext
     private final EntityManager entityManager;
     private final WpProductService wpProductService;
+    private final NekorektenService nekorektenService;
 
     private static final String ORDER_URL = "/wp-json/wc/v3/orders/";
     private final CustomerRepository customerRepository;
+    private final UserSignalRepository userSignalRepository;
 
 
     public void syncOrderToDB(Long siteId){
@@ -265,6 +267,21 @@ public class WpOrderService {
         Instant instant = ldt.atZone(ZoneId.of("Europe/Sofia")).toInstant();
         wpOrderEntity.setWpOrderTime(instant);
         wpOrderRepository.save(wpOrderEntity);
+
+        NekorektenResponseDto nekorektenResponseDto = nekorektenService.checkPhone(rawPhone);
+        if(nekorektenResponseDto != null) {
+//
+            for (NekorektenResponseDto.NekorektenItemDto item : nekorektenResponseDto.getItems()) {
+                UserSignalEntity userSignalEntity = new UserSignalEntity();
+                userSignalEntity.setCreateDate(item.getCreateDate());
+                userSignalEntity.setFirstName(item.getFirstName());
+                userSignalEntity.setLastName(item.getLastName());
+                userSignalEntity.setText(item.getText());
+                userSignalEntity.setCustomer(customer);
+                userSignalRepository.save(userSignalEntity);
+            }
+        }
+
     }
 
     private List<WoOrderDto> fetchAllOrders(SiteEntity site){
