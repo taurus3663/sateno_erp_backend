@@ -375,6 +375,7 @@ public class EcontService implements ShippingProvider {
             order.setCourierType(null);
             order.setStatus(OrderStatus.PROCESSING);
             order.setCourierType(null);
+            order.setCourierId(null);
 
             wpOrderRepository.save(order);
             // WebSocket сигналът ще се изстреля автоматично от @PostUpdate в Entity-то
