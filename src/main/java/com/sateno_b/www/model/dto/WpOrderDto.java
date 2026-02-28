@@ -48,4 +48,6 @@ public class WpOrderDto {
     private List<String> parcelIds = new ArrayList<>();
     private CourierType courierType;
     private Long courierId;
+
+    private List<UserSignalDto> signals;
 }

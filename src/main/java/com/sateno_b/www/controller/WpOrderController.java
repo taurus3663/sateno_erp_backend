@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.CustomerEntity;
+import com.sateno_b.www.model.entity.UserSignalEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.CourierType;
@@ -12,6 +13,7 @@ import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
 import com.sateno_b.www.model.enums.WsAction;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
+import com.sateno_b.www.model.repository.UserSignalRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import com.sateno_b.www.service.*;
 import jakarta.transaction.Transactional;
@@ -46,6 +48,7 @@ public class WpOrderController {
     private final SpeedyService speedyService;
     private final CourierSettingsRepository courierSettingsRepository;
     private final BoxNowService boxNowService;
+    private final UserSignalRepository userSignalRepository;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status,
@@ -115,7 +118,13 @@ public class WpOrderController {
             if(entity.getCustomer() != null) {
                 long count = finalCounts.getOrDefault(entity.getCustomer().getId(), 0L);
                 dto.setCustomerOrderCount(count);
+
+                List<UserSignalEntity> byCustomerId = userSignalRepository.findByCustomerId(entity.getCustomer().getId());
+                List<UserSignalDto> signalDtos = byCustomerId.stream().map(e ->  modelMapper.map(e, UserSignalDto.class)).toList();
+                dto.setSignals(signalDtos);
             }
+
+//            userSignalRepository.findByCustomerId(entity.getCustomer().getId())
 //            long count = wpOrderRepository.countByCustomer(entity.getCustomer());
 //            dto.setCustomerOrderCount(count);
 //            System.out.println(count);
