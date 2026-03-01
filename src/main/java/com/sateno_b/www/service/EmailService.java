@@ -45,7 +45,7 @@ public class EmailService {
                     )
                     .withTransportStrategy(strategy)
                     .withSessionTimeout(10000) // Увеличи малко времето за бавни сървъри
-                    .withDebugLogging(true)
+                    .withDebugLogging(false)
                     .buildMailer();
 
             mailer.testConnection();
