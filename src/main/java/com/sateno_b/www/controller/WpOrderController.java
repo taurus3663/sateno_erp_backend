@@ -152,12 +152,13 @@ public class WpOrderController {
 
                 for (WpOrderEntity wpOrderEntity : ordersToMerge) {
 
-                    boolean isPayed = wpOrderEntity.getPaymentMethod() == PaymentMethod.CARD ||
-                            wpOrderEntity.getPaymentMethod() == PaymentMethod.STRIPE ||
-                            wpOrderEntity.getPaymentMethod() == PaymentMethod.STRIPE_APPLEPAY ||
-                            wpOrderEntity.getPaymentMethod() == PaymentMethod.STRIPE_CC;
+//                    boolean isPayed = wpOrderEntity.getPaymentMethod() == PaymentMethod.CARD ||
+//                            wpOrderEntity.getPaymentMethod() == PaymentMethod.STRIPE ||
+//                            wpOrderEntity.getPaymentMethod() == PaymentMethod.STRIPE_APPLEPAY ||
+//                            wpOrderEntity.getPaymentMethod() == PaymentMethod.STRIPE_CC;
 
                     for (OrderLineItem orderLineItem : wpOrderEntity.getOrderLine()) {
+                        System.out.println(orderLineItem.toString());
 
                         OrderLineItem newItem = new OrderLineItem();
                         newItem.setProductName(orderLineItem.getProductName());
@@ -166,15 +167,15 @@ public class WpOrderController {
                         newItem.setImage(orderLineItem.getImage());
                         newItem.setPaoIdValue(orderLineItem.getPaoIdValue());
 
-                        if(isPayed){
-                            newItem.setPrice(BigDecimal.valueOf(0));
-                            newItem.setTotalPrice(BigDecimal.valueOf(0));
-                        } else {
+//                        if(isPayed){
+//                            newItem.setPrice(BigDecimal.valueOf(0));
+//                            newItem.setTotalPrice(BigDecimal.valueOf(0));
+//                        } else {
                             newItem.setPrice(orderLineItem.getPrice());
                             newItem.setTotalPrice(orderLineItem.getTotalPrice());
 
                             byId.get().setTotalPrice(byId.get().getTotalPrice().add(newItem.getTotalPrice()));
-                        }
+//                        }
                         wpOrderEntity.setStatus(OrderStatus.JOINT);
                         wpOrderEntity.setParentId(byId.get().getId());
                         byId.get().getOrderLine().add(newItem);

@@ -19,7 +19,7 @@ public class EmailDto {
 
     //    SMTP
     private String hostSmtp;
-    private String portSmtp;
+    private int portSmtp;
     private String usernameSmtp;
     private String passwordSmtp;
     private boolean sslSmtp;

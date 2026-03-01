@@ -40,7 +40,7 @@ public class EmailEntity extends BaseEntity {
     @Column
     private String hostSmtp;
     @Column
-    private String portSmtp;
+    private int portSmtp;
     @Column
     private String usernameSmtp;
     @Column
