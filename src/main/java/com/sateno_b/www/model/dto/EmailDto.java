@@ -6,6 +6,7 @@ import lombok.Data;
 @Data
 public class EmailDto {
 
+    private Long id;
     private boolean active;
     private String name;
 
