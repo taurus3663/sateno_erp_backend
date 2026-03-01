@@ -24,6 +24,10 @@ public class EmailService {
 
     }
 
+    public void readEmail() {
+
+    }
+
     public boolean testConnection(Long id) {
         EmailEntity cfg = emailRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Config not found"));
