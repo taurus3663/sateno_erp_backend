@@ -39,6 +39,13 @@ public class SiteEntity extends BaseEntity {
     @Column()
     private String orderCreateApiKey;
 
+    @ManyToOne()
+    @JoinColumn(name = "email_id")
+    private EmailEntity email;
+
+    @Column(columnDefinition = "TEXT")
+    private String newOrderMessage;
+
 //    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 //    private List<CourierSettingsEntity> couriers;
 

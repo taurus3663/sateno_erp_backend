@@ -3,16 +3,14 @@ package com.sateno_b.www.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sateno_b.www.model.dto.*;
-import com.sateno_b.www.model.entity.CourierSettingsEntity;
-import com.sateno_b.www.model.entity.CustomerEntity;
-import com.sateno_b.www.model.entity.UserSignalEntity;
-import com.sateno_b.www.model.entity.WpOrderEntity;
+import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
 import com.sateno_b.www.model.enums.WsAction;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
+import com.sateno_b.www.model.repository.EmailLogRepository;
 import com.sateno_b.www.model.repository.UserSignalRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import com.sateno_b.www.service.*;
@@ -27,10 +25,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/wp_order")
@@ -49,89 +45,15 @@ public class WpOrderController {
     private final CourierSettingsRepository courierSettingsRepository;
     private final BoxNowService boxNowService;
     private final UserSignalRepository userSignalRepository;
+    private final EmailLogRepository emailLogRepository;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status,
                                                    @RequestParam(required = false) String phone,
                                                    @RequestParam(required = false) String customer) {
 
-        Pageable sortedByIdDesc = PageRequest.of(
-                pageable.getPageNumber(),
-                pageable.getPageSize(),
-                Sort.by("wpOrderTime").descending() // Първо по най-нова дата
-                        .and(Sort.by("id").descending()) // После по ID, ако датите са еднакви
-        );
-
-
-        OrderStatus orderStatus = (status != null) ? OrderStatus.fromValue(status) : null;
-
-        Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findWithFilters(orderStatus, phone, customer, sortedByIdDesc);
-
-        List<CustomerEntity> customers = wpOrderEntities.getContent().stream()
-                .map(WpOrderEntity::getCustomer)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
-
-        Map<Long, Long> customerCounts = new HashMap<>();
-        if (!customers.isEmpty()) {
-            List<Object[]> results = wpOrderRepository.countByCustomersBatch(customers);
-            customerCounts = results.stream().collect(Collectors.toMap(
-                    res -> (Long) res[0], // ID на клиента
-                    res -> (Long) res[1]  // Брой поръчки
-            ));
-        }
-        Map<Long, Long> finalCounts = customerCounts;
-
-        Page<WpOrderDto> wpOrderDtos =wpOrderEntities.map(entity -> {
-            WpOrderDto dto = modelMapper.map(entity, WpOrderDto.class);
-
-            if(entity.getStatus() == OrderStatus.PROCESSING && entity.getCustomer() != null) {
-
-                String phone1 = entity.getCustomer().getPhone();
-                if(phone1 != null && !phone1.isEmpty()) {
-                    List<WpOrderEntity> duplicates = wpOrderRepository.findDuplicatesWithLines(
-                            phone1, OrderStatus.PROCESSING, entity.getId()
-                    );
-
-                    List<OrderLineItemDto> allDuplicateLines = duplicates.stream()
-                            .flatMap(dup -> dup.getOrderLine().stream().map(line -> {
-                                // Мапваме продукта
-                                OrderLineItemDto lineDto = modelMapper.map(line, OrderLineItemDto.class);
-                                // Заковаваме ID-то на поръчката, от която идва
-                                lineDto.setOrderId(dup.getId());
-                                lineDto.setWpOrderId(dup.getWpOrderId());
-                                return lineDto;
-                            }))
-                            .collect(Collectors.toList());
-                    if(!allDuplicateLines.isEmpty()) {
-//                        System.out.printf("Duplicates found: %s\n", allDuplicateLines.size());
-//                        System.out.println(dto.getWpOrderId());
-                        dto.setShowDuplicateWarning(true);
-                    }
-
-                    dto.setOrderLineOtherOrders(allDuplicateLines);
-                }
-
-            }
-
-            if(entity.getCustomer() != null) {
-                long count = finalCounts.getOrDefault(entity.getCustomer().getId(), 0L);
-                dto.setCustomerOrderCount(count);
-
-                List<UserSignalEntity> byCustomerId = userSignalRepository.findByCustomerId(entity.getCustomer().getId());
-                List<UserSignalDto> signalDtos = byCustomerId.stream().map(e ->  modelMapper.map(e, UserSignalDto.class)).toList();
-                dto.setSignals(signalDtos);
-            }
-
-//            userSignalRepository.findByCustomerId(entity.getCustomer().getId())
-//            long count = wpOrderRepository.countByCustomer(entity.getCustomer());
-//            dto.setCustomerOrderCount(count);
-//            System.out.println(count);
-            return dto;
-        });
-
-        return ResponseEntity.ok(wpOrderDtos);
+        Page<WpOrderDto> all = wpOrderService.getAll(pageable, status, phone, customer);
+        return ResponseEntity.ok(all);
     }
 
     @PostMapping("/sync/{siteId}")

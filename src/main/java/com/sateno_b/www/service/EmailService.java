@@ -2,6 +2,9 @@ package com.sateno_b.www.service;
 
 import com.sateno_b.www.model.dto.EmailSendRequest;
 import com.sateno_b.www.model.entity.EmailEntity;
+import com.sateno_b.www.model.entity.EmailLogEntity;
+import com.sateno_b.www.model.enums.EmailDirection;
+import com.sateno_b.www.model.repository.EmailLogRepository;
 import com.sateno_b.www.model.repository.EmailRepository;
 import jakarta.mail.Session;
 import jakarta.mail.Store;
@@ -22,6 +25,7 @@ public class EmailService {
 
 
     private final EmailRepository emailRepository;
+    private final EmailLogRepository emailLogRepository;
 
     public void sendEmail(EmailSendRequest request) {
         EmailEntity cfg = emailRepository.findById(request.getConfigId())
@@ -51,6 +55,15 @@ public class EmailService {
 
             mailer.sendMail(email);
             System.out.println("Email sent successfully to " + request.getTo());
+            EmailLogEntity emailLogEntity = new EmailLogEntity();
+            emailLogEntity.setBody(request.getContent());
+            emailLogEntity.setSubject(request.getSubject());
+            emailLogEntity.setConfig(cfg);
+            emailLogEntity.setDirection(EmailDirection.SENT);
+//            emailLogEntity.setPrivateConfirmKey();
+//            emailLogEntity.setPrivateSeenKey();
+
+            emailLogRepository.save(emailLogEntity);
         } catch (Exception e) {
             throw new RuntimeException("Failed to send email: " + e.getMessage());
         }

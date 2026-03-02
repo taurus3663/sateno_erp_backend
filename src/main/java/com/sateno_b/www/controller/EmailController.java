@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -129,5 +130,43 @@ public class EmailController implements BaseController<EmailDto, Long> {
                     EmailLogDto map = modelMapper.map(entity, EmailLogDto.class);
                     return map;
                 });
+    }
+
+    @GetMapping("/seen/{key}")
+    public byte[] seen(@PathVariable("key") Long id) {
+//        Optional<EmailEntity> byId = emailRepository.findById(id);
+        return new byte[] {
+                (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+                0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, (byte) 0xC4,
+                (byte) 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x08, (byte) 0xD7, 0x63, 0x60, 0x00, 0x02,
+                0x00, 0x00, 0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, (byte) 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44,
+                (byte) 0xAE, 0x42, 0x60, (byte) 0x82
+        };
+    }
+
+    @GetMapping(value = "/confirm/{key}", produces = MediaType.TEXT_HTML_VALUE)
+    @ResponseBody
+    public String confirmOrder(@PathVariable String key) {
+//        boolean success = emailLogService.processConfirmation(key);
+            boolean success = false;
+        if (success) {
+            return """
+            <html>
+                <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+                    <h1 style="color: #28a745;">✅ Благодарим ви!</h1>
+                    <p>Вашата поръчка е потвърдена успешно.</p>
+                </body>
+            </html>
+            """;
+        } else {
+            return """
+            <html>
+                <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+                    <h1 style="color: #dc3545;">❌ Упс!</h1>
+                    <p>Линкът е невалиден или вече е бил използван.</p>
+                </body>
+            </html>
+            """;
+        }
     }
 }

@@ -10,5 +10,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface EmailLogRepository extends JpaRepository<EmailLogEntity, Long> {
-    Page<EmailLogDto> findAllByDirectionIs(EmailDirection direction, Pageable pageable);
+    Page<EmailLogEntity> findAllByDirectionIs(EmailDirection direction, Pageable pageable);
 }

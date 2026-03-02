@@ -3,13 +3,11 @@ package com.sateno_b.www.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sateno_b.www.model.dto.*;
-import com.sateno_b.www.model.entity.CustomerEntity;
-import com.sateno_b.www.model.entity.SiteEntity;
-import com.sateno_b.www.model.entity.UserSignalEntity;
-import com.sateno_b.www.model.entity.WpOrderEntity;
+import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.data.PaoIdValue;
 import com.sateno_b.www.model.entity.data.PaoIdValueValue;
+import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.repository.CustomerRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.UserSignalRepository;
@@ -19,17 +17,24 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -43,10 +48,12 @@ public class WpOrderService {
     private final EntityManager entityManager;
     private final WpProductService wpProductService;
     private final NekorektenService nekorektenService;
+    private final ModelMapper modelMapper;
 
     private static final String ORDER_URL = "/wp-json/wc/v3/orders/";
     private final CustomerRepository customerRepository;
     private final UserSignalRepository userSignalRepository;
+    private final EmailService emailService;
 
 
     public void syncOrderToDB(Long siteId){
@@ -281,6 +288,12 @@ public class WpOrderService {
                 userSignalRepository.save(userSignalEntity);
             }
         }
+        EmailSendRequest emailSendRequest = new EmailSendRequest();
+        emailSendRequest.setTo(wpOrderEntity.getCustomer().getEmail());
+        emailSendRequest.setConfigId(siteEntity.getEmail().getId());
+        emailSendRequest.setSubject("");
+        emailSendRequest.setContent("");
+//        emailService.sendEmail();
 
     }
 
@@ -315,6 +328,100 @@ public class WpOrderService {
 
 //        System.out.println(allOrders.size());
         return allOrders;
+    }
+
+
+    @Transactional
+    public Page<WpOrderDto> getAll(Pageable pageable, @RequestParam(required = false) String status,
+                                   @RequestParam(required = false) String phone,
+                                   @RequestParam(required = false) String customer) {
+
+        Pageable sortedByIdDesc = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by("wpOrderTime").descending() // Първо по най-нова дата
+                        .and(Sort.by("id").descending()) // После по ID, ако датите са еднакви
+        );
+
+
+        OrderStatus orderStatus = (status != null) ? OrderStatus.fromValue(status) : null;
+
+        Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findWithFilters(orderStatus, phone, customer, sortedByIdDesc);
+
+        List<CustomerEntity> customers = wpOrderEntities.getContent().stream()
+                .map(WpOrderEntity::getCustomer)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<Long, Long> customerCounts = new HashMap<>();
+        if (!customers.isEmpty()) {
+            List<Object[]> results = wpOrderRepository.countByCustomersBatch(customers);
+            customerCounts = results.stream().collect(Collectors.toMap(
+                    res -> (Long) res[0], // ID на клиента
+                    res -> (Long) res[1]  // Брой поръчки
+            ));
+        }
+        Map<Long, Long> finalCounts = customerCounts;
+
+        Page<WpOrderDto> wpOrderDtos =wpOrderEntities.map(entity -> {
+            WpOrderDto dto = modelMapper.map(entity, WpOrderDto.class);
+
+            if(entity.getStatus() == OrderStatus.PROCESSING && entity.getCustomer() != null) {
+
+                String phone1 = entity.getCustomer().getPhone();
+                if(phone1 != null && !phone1.isEmpty()) {
+                    List<WpOrderEntity> duplicates = wpOrderRepository.findDuplicatesWithLines(
+                            phone1, OrderStatus.PROCESSING, entity.getId()
+                    );
+
+                    List<OrderLineItemDto> allDuplicateLines = duplicates.stream()
+                            .flatMap(dup -> dup.getOrderLine().stream().map(line -> {
+                                // Мапваме продукта
+                                OrderLineItemDto lineDto = modelMapper.map(line, OrderLineItemDto.class);
+                                // Заковаваме ID-то на поръчката, от която идва
+                                lineDto.setOrderId(dup.getId());
+                                lineDto.setWpOrderId(dup.getWpOrderId());
+                                return lineDto;
+                            }))
+                            .collect(Collectors.toList());
+                    if(!allDuplicateLines.isEmpty()) {
+//                        System.out.printf("Duplicates found: %s\n", allDuplicateLines.size());
+//                        System.out.println(dto.getWpOrderId());
+                        dto.setShowDuplicateWarning(true);
+                    }
+
+                    dto.setOrderLineOtherOrders(allDuplicateLines);
+                }
+
+            }
+
+            if(entity.getCustomer() != null) {
+                long count = finalCounts.getOrDefault(entity.getCustomer().getId(), 0L);
+                dto.setCustomerOrderCount(count);
+
+                List<UserSignalEntity> byCustomerId = userSignalRepository.findByCustomerId(entity.getCustomer().getId());
+                List<UserSignalDto> signalDtos = byCustomerId.stream().map(e ->  modelMapper.map(e, UserSignalDto.class)).toList();
+                dto.setSignals(signalDtos);
+            }
+
+//            userSignalRepository.findByCustomerId(entity.getCustomer().getId())
+//            long count = wpOrderRepository.countByCustomer(entity.getCustomer());
+//            dto.setCustomerOrderCount(count);
+//            System.out.println(count);
+
+            EmailLogEntity email = entity.getEmails()
+                    .stream().min(Comparator.comparing(EmailLogEntity::getCreateTime))
+                    .orElse(null);
+            if(email != null) {
+                dto.setConfirmed(email.isConfirmed());
+            }
+
+            return dto;
+        });
+
+        return wpOrderDtos;
+
     }
 
 

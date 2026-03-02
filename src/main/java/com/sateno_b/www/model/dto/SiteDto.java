@@ -18,6 +18,8 @@ public class SiteDto {
     private LanguageDto language;
     private boolean active = false;
     private String orderCreateApiKey;
+    private EmailDto email;
+    private String newOrderMessage;
 
     private List<CourierSettingsDto> couriers = new ArrayList<>();
 

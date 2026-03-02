@@ -48,7 +48,6 @@ public class EmailEntity extends BaseEntity {
     @Column
     private boolean sslSmtp;
 
-
     @Column(columnDefinition = "TEXT")
     private String signature;
 
