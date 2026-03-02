@@ -49,5 +49,8 @@ public class WpOrderDto {
     private CourierType courierType;
     private Long courierId;
 
-    private List<UserSignalDto> signals;
+    private List<UserSignalDto> signals; //nekorekten
+
+    private boolean confirmed = false;
+
 }

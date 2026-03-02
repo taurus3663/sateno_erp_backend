@@ -1,7 +1,9 @@
 package com.sateno_b.www.init;
 
+import com.sateno_b.www.model.dto.EmailSendRequest;
 import com.sateno_b.www.model.entity.UserEntity;
 import com.sateno_b.www.model.repository.UserRepository;
+import com.sateno_b.www.service.EmailService;
 import com.sateno_b.www.service.NekorektenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -21,6 +23,7 @@ public class initDB implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         initAdmin();
+        sendEmailTest();
 
 //        nekorektenService.checkPhone("0888182076");
 //        {"message":null,"items":
@@ -47,5 +50,38 @@ public class initDB implements CommandLineRunner {
             admin.setEmail("taurus.ali47@gmail.com");
             userRepository.save(admin);
         }
+    }
+
+    private final EmailService emailService;
+
+    private void sendEmailTest() {
+        String buttonHtml = """
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="https://your-erp-link.com/confirm?id=123" 
+               style="background-color: #3B82F6; 
+                      color: white; 
+                      padding: 12px 25px; 
+                      text-decoration: none; 
+                      border-radius: 5px; 
+                      font-weight: bold; 
+                      display: inline-block;
+                      font-family: Arial, sans-serif;">
+                ПОТВЪРДИ ПОРЪЧКАТА
+            </a>
+        </div>
+    """;
+        String fullHtmlBody = "<h1>Здравейте!</h1>" +
+                "<p>Моля, натиснете бутона отдолу, за да потвърдите вашата поръчка:</p>" +
+                buttonHtml +
+                "<p>Благодарим ви!</p>";
+
+
+        EmailSendRequest emailSendRequest = new EmailSendRequest();
+        emailSendRequest.setConfigId(2L);
+//        emailSendRequest.setTo("taurus.ali47@gmail.com");
+        emailSendRequest.setTo("silyan.silyanov@gmail.com");
+        emailSendRequest.setSubject("TEST");
+        emailSendRequest.setContent(fullHtmlBody);
+//        emailService.sendEmail(emailSendRequest);
     }
 }

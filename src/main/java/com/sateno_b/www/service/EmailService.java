@@ -1,12 +1,15 @@
 package com.sateno_b.www.service;
 
+import com.sateno_b.www.model.dto.EmailSendRequest;
 import com.sateno_b.www.model.entity.EmailEntity;
 import com.sateno_b.www.model.repository.EmailRepository;
 import jakarta.mail.Session;
 import jakarta.mail.Store;
 import lombok.RequiredArgsConstructor;
+import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.mailer.Mailer;
 import org.simplejavamail.api.mailer.config.TransportStrategy;
+import org.simplejavamail.email.EmailBuilder;
 import org.simplejavamail.mailer.MailerBuilder;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +23,38 @@ public class EmailService {
 
     private final EmailRepository emailRepository;
 
-    public void sendEmail() {
+    public void sendEmail(EmailSendRequest request) {
+        EmailEntity cfg = emailRepository.findById(request.getConfigId())
+                .orElseThrow(() -> new RuntimeException("Config not found"));
+
+        String fullBody = request.getContent();
+        if (cfg.getSignature() != null) {
+            fullBody += "<br><br>" + cfg.getSignature();
+        }
+
+        Email email = EmailBuilder.startingBlank()
+                .from(cfg.getName(), cfg.getUsernameSmtp())
+                .to(request.getTo())
+                .withSubject(request.getSubject())
+                .withHTMLText(fullBody)
+                .buildEmail();
+
+        TransportStrategy strategy = TransportStrategy.SMTP;
+        if (cfg.isSslSmtp()) {
+            strategy = (cfg.getPortSmtp() == 465) ? TransportStrategy.SMTPS : TransportStrategy.SMTP_TLS;
+        }
+
+        try (Mailer mailer = MailerBuilder
+                .withSMTPServer(cfg.getHostSmtp(), cfg.getPortSmtp(), cfg.getUsernameSmtp(), cfg.getPasswordSmtp())
+                .withTransportStrategy(strategy)
+                .buildMailer()) {
+
+            mailer.sendMail(email);
+            System.out.println("Email sent successfully to " + request.getTo());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send email: " + e.getMessage());
+        }
+
 
     }
 

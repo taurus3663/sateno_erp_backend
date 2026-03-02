@@ -1,8 +1,11 @@
 package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.EmailDto;
+import com.sateno_b.www.model.dto.EmailLogDto;
 import com.sateno_b.www.model.entity.EmailEntity;
+import com.sateno_b.www.model.enums.EmailDirection;
 import com.sateno_b.www.model.interfaces.BaseController;
+import com.sateno_b.www.model.repository.EmailLogRepository;
 import com.sateno_b.www.model.repository.EmailRepository;
 import com.sateno_b.www.service.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,7 @@ public class EmailController implements BaseController<EmailDto, Long> {
     private final EmailRepository emailRepository;
     private final ModelMapper modelMapper;
     private final EmailService emailService;
+    private final EmailLogRepository emailLogRepository;
 
     @PostMapping("/test-income-connection/{id}")
     public ResponseEntity<Map<String, Object>> testIncomeConnection(@PathVariable Long id) {
@@ -105,5 +109,25 @@ public class EmailController implements BaseController<EmailDto, Long> {
             }
         }
         return false;
+    }
+
+
+    @GetMapping("/sent/list")
+    public Page<EmailLogDto> sentList(Pageable pageable) {
+
+        return emailLogRepository.findAllByDirectionIs(EmailDirection.SENT, pageable)
+                .map(entity -> {
+                    EmailLogDto map = modelMapper.map(entity, EmailLogDto.class);
+                    return map;
+                });
+    }
+
+    @GetMapping("/received/list")
+    public Page<EmailLogDto> receivedList(Pageable pageable) {
+        return emailLogRepository.findAllByDirectionIs(EmailDirection.RECEIVED, pageable)
+                .map(entity -> {
+                    EmailLogDto map = modelMapper.map(entity, EmailLogDto.class);
+                    return map;
+                });
     }
 }

@@ -115,7 +115,14 @@
         <dependency>
             <groupId>org.simplejavamail</groupId>
             <artifactId>simple-java-mail</artifactId>
-            <version>8.8.3</version> </dependency>
+            <version>8.8.3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.simplejavamail</groupId>
+            <artifactId>batch-module</artifactId>
+            <version>8.8.3</version>
+        </dependency>
 
 
     </dependencies>
