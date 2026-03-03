@@ -12,7 +12,8 @@ public enum OrderStatus {
     ABANDONED("abandoned"),
     COMPLETED("completed"),
     APPROVED("approved"),
-    JOINT("joint");
+    JOINT("joint"),
+    WAITING("waiting");
 
     private final String value;
 

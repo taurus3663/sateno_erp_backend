@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.dto;
 
+import jakarta.persistence.Column;
 import lombok.*;
 
 import java.util.ArrayList;
@@ -20,6 +21,11 @@ public class SiteDto {
     private String orderCreateApiKey;
     private EmailDto email;
     private String newOrderMessage;
+    private Long changeStatusTimer;
+    private Long secondOrderMessageTimer;
+    private String secondOrderMessage;
+    private Long thirdOrderMessageTimer;
+    private String thirdOrderMessage;
 
     private List<CourierSettingsDto> couriers = new ArrayList<>();
 

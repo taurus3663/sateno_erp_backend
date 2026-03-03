@@ -71,6 +71,12 @@ public class SiteController {
             siteEntity.setActive(siteDto.isActive());
             siteEntity.setOrderCreateApiKey(siteDto.getOrderCreateApiKey());
 
+            siteEntity.setChangeStatusTimer(siteDto.getChangeStatusTimer());
+            siteEntity.setSecondOrderMessage(siteDto.getSecondOrderMessage());
+            siteEntity.setSecondOrderMessageTimer(siteDto.getSecondOrderMessageTimer());
+            siteEntity.setThirdOrderMessage(siteDto.getThirdOrderMessage());
+            siteEntity.setThirdOrderMessageTimer(siteDto.getThirdOrderMessageTimer());
+
             // ВАЖНО: Сетваме валутата само ако е изпратена
             if (siteDto.getCurrency() != null && siteDto.getCurrency().getId() != null) {
                 currencyRepository.findById(siteDto.getCurrency().getId())

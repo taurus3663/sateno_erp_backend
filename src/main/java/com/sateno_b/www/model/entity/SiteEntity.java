@@ -46,6 +46,19 @@ public class SiteEntity extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String newOrderMessage;
 
+    @Column
+    private Long changeStatusTimer;
+
+    @Column
+    private Long secondOrderMessageTimer;
+    @Column(columnDefinition = "TEXT")
+    private String secondOrderMessage;
+
+    @Column
+    private Long thirdOrderMessageTimer;
+    @Column(columnDefinition = "TEXT")
+    private String thirdOrderMessage;
+
 //    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 //    private List<CourierSettingsEntity> couriers;
 
