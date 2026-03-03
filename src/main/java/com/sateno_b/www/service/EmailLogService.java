@@ -1,7 +1,10 @@
 package com.sateno_b.www.service;
 
 import com.sateno_b.www.model.entity.EmailLogEntity;
+import com.sateno_b.www.model.entity.WpOrderEntity;
+import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.repository.EmailLogRepository;
+import com.sateno_b.www.model.repository.WpOrderRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,6 +16,7 @@ import java.util.Optional;
 public class EmailLogService {
 
     private final EmailLogRepository emailLogRepository;
+    private final WpOrderRepository wpOrderRepository;
 
     @Transactional
     public boolean processConfirmationOrder(String key) {
@@ -25,6 +29,13 @@ public class EmailLogService {
                 emailLogEntity.setConfirmed(true);
                 emailLogRepository.save(emailLogEntity);
                 success = true;
+
+                Optional<WpOrderEntity> byEmailsContaining = wpOrderRepository.findByEmailsContaining(emailLogEntity);
+                if(byEmailsContaining.isPresent()) {
+                    WpOrderEntity wpOrderEntity = byEmailsContaining.get();
+                    wpOrderEntity.setStatus(OrderStatus.APPROVED);
+                    wpOrderRepository.save(wpOrderEntity);
+                }
             }
         }
         return success;

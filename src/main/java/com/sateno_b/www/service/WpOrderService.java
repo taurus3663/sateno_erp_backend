@@ -8,6 +8,7 @@ import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.data.PaoIdValue;
 import com.sateno_b.www.model.entity.data.PaoIdValueValue;
 import com.sateno_b.www.model.enums.OrderStatus;
+import com.sateno_b.www.model.enums.TaskType;
 import com.sateno_b.www.model.repository.CustomerRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.UserSignalRepository;
@@ -54,6 +55,7 @@ public class WpOrderService {
     private final CustomerRepository customerRepository;
     private final UserSignalRepository userSignalRepository;
     private final EmailService emailService;
+    private final OrderAutomationService orderAutomationService;
 
 
     public void syncOrderToDB(Long siteId){
@@ -306,6 +308,14 @@ public class WpOrderService {
             emailSendRequest.setGenConfirm(true);
             EmailLogEntity emailLogEntity = emailService.sendEmail(emailSendRequest);
             wpOrderEntity.getEmails().add(emailLogEntity);
+
+            if(siteEntity.getSecondOrderMessageTimer() != null && siteEntity.getSecondOrderMessageTimer() > 0){
+                orderAutomationService.scheduleTask(wpOrderEntity, TaskType.SECOND_EMAIL, siteEntity.getSecondOrderMessageTimer());
+            }
+           if(siteEntity.getChangeStatusTimer() != null && siteEntity.getChangeStatusTimer() > 0){
+               orderAutomationService.scheduleTask(wpOrderEntity, TaskType.STATUS_CHANGE, siteEntity.getChangeStatusTimer());
+           }
+
 
         }
 

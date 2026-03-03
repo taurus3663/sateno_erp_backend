@@ -1,6 +1,7 @@
 package com.sateno_b.www.model.repository;
 
 import com.sateno_b.www.model.entity.CustomerEntity;
+import com.sateno_b.www.model.entity.EmailLogEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.enums.OrderStatus;
 import org.springframework.data.domain.Page;
@@ -44,4 +45,6 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
     List<Object[]> countByCustomersBatch(@Param("customers") List<CustomerEntity> customers);
 
     Boolean existsByWpOrderId(Long id);
+    Optional<WpOrderEntity> findByEmailsContaining(EmailLogEntity emailLog);
+
 }
