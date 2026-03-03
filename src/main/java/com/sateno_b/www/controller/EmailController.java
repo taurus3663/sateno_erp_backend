@@ -126,7 +126,7 @@ public class EmailController implements BaseController<EmailDto, Long> {
                 });
     }
 
-    @GetMapping("/received/list")
+    @GetMapping("/receive/list")
     public Page<EmailLogDto> receivedList(Pageable pageable) {
         return emailLogRepository.findAllByDirectionIs(EmailDirection.RECEIVED, pageable)
                 .map(entity -> {
