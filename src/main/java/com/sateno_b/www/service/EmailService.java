@@ -9,14 +9,17 @@ import com.sateno_b.www.model.repository.EmailRepository;
 import jakarta.mail.Session;
 import jakarta.mail.Store;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.service.spi.ServiceException;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.mailer.Mailer;
 import org.simplejavamail.api.mailer.config.TransportStrategy;
 import org.simplejavamail.email.EmailBuilder;
 import org.simplejavamail.mailer.MailerBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Properties;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 //@Slf4j
@@ -26,22 +29,18 @@ public class EmailService {
 
     private final EmailRepository emailRepository;
     private final EmailLogRepository emailLogRepository;
+    @Value("${app.base-url}")
+    private String baseUrl;
 
-    public void sendEmail(EmailSendRequest request) {
+    public EmailLogEntity sendEmail(EmailSendRequest request) {
         EmailEntity cfg = emailRepository.findById(request.getConfigId())
                 .orElseThrow(() -> new RuntimeException("Config not found"));
 
-        String fullBody = request.getContent();
-        if (cfg.getSignature() != null) {
-            fullBody += "<br><br>" + cfg.getSignature();
-        }
+        String seenKey = UUID.randomUUID().toString();
+        String trackingPixel = "<img src=\"" + baseUrl + "/erp/email/seen/" + seenKey + "\" width=\"1\" height=\"1\" style=\"display:none\">";
 
-        Email email = EmailBuilder.startingBlank()
-                .from(cfg.getName(), cfg.getUsernameSmtp())
-                .to(request.getTo())
-                .withSubject(request.getSubject())
-                .withHTMLText(fullBody)
-                .buildEmail();
+        String content = request.getContent();
+        String fullBody = content + trackingPixel;
 
         TransportStrategy strategy = TransportStrategy.SMTP;
         if (cfg.isSslSmtp()) {
@@ -53,17 +52,59 @@ public class EmailService {
                 .withTransportStrategy(strategy)
                 .buildMailer()) {
 
-            mailer.sendMail(email);
+
             System.out.println("Email sent successfully to " + request.getTo());
             EmailLogEntity emailLogEntity = new EmailLogEntity();
-            emailLogEntity.setBody(request.getContent());
             emailLogEntity.setSubject(request.getSubject());
             emailLogEntity.setConfig(cfg);
             emailLogEntity.setDirection(EmailDirection.SENT);
-//            emailLogEntity.setPrivateConfirmKey();
-//            emailLogEntity.setPrivateSeenKey();
+//            emailLogEntity.setPrivateConfirmKey(request.getConfirmKey());
+            emailLogEntity.setPrivateSeenKey(seenKey);
+            emailLogEntity.setSender(cfg.getName());
+            emailLogEntity.setRecipient(request.getTo());
+            emailLogEntity.setSeen(false);
+            emailLogEntity.setConfirmed(false);
 
-            emailLogRepository.save(emailLogEntity);
+            if(request.isGenConfirm()) {
+                String confirmKey = UUID.randomUUID().toString();
+                String confirmUrl = baseUrl + "/erp/email/confirm/" + confirmKey;
+
+                String buttonHtml = """
+    <div style="text-align: center; margin: 20px 0;">
+        <a href="%s"
+           style="background-color: #3B82F6; 
+                  color: white; 
+                  padding: 12px 25px; 
+                  text-decoration: none; 
+                  border-radius: 5px; 
+                  font-weight: bold; 
+                  display: inline-block;
+                  font-family: Arial, sans-serif;">
+            ПОТВЪРДИ ПОРЪЧКАТА
+        </a>
+    </div>
+    """.formatted(confirmUrl);
+
+
+                    fullBody += buttonHtml;
+
+                emailLogEntity.setPrivateConfirmKey(confirmKey);
+
+            }
+
+            if (cfg.getSignature() != null) {
+                fullBody += "<br><br>" + cfg.getSignature();
+            }
+            emailLogEntity.setBody(fullBody);
+
+            Email email = EmailBuilder.startingBlank()
+                    .from(cfg.getName(), cfg.getUsernameSmtp())
+                    .to(request.getTo())
+                    .withSubject(request.getSubject())
+                    .withHTMLText(fullBody)
+                    .buildEmail();
+            mailer.sendMail(email);
+           return emailLogRepository.save(emailLogEntity);
         } catch (Exception e) {
             throw new RuntimeException("Failed to send email: " + e.getMessage());
         }

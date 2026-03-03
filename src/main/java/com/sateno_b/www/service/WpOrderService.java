@@ -273,7 +273,7 @@ public class WpOrderService {
         LocalDateTime ldt = LocalDateTime.parse(dto.getDateCreated());
         Instant instant = ldt.atZone(ZoneId.of("Europe/Sofia")).toInstant();
         wpOrderEntity.setWpOrderTime(instant);
-        wpOrderRepository.save(wpOrderEntity);
+//        wpOrderRepository.save(wpOrderEntity);
 
         NekorektenResponseDto nekorektenResponseDto = nekorektenService.checkPhone(rawPhone);
         if(nekorektenResponseDto != null) {
@@ -288,13 +288,28 @@ public class WpOrderService {
                 userSignalRepository.save(userSignalEntity);
             }
         }
-        EmailSendRequest emailSendRequest = new EmailSendRequest();
-        emailSendRequest.setTo(wpOrderEntity.getCustomer().getEmail());
-        emailSendRequest.setConfigId(siteEntity.getEmail().getId());
-        emailSendRequest.setSubject("");
-        emailSendRequest.setContent("");
-//        emailService.sendEmail();
+        if(siteEntity.getEmail() != null) {
+            String message = siteEntity.getNewOrderMessage();
+            String subject = "Нова поръчка"; // Стойност по подразбиране
 
+            if (message != null && !message.isEmpty()) {
+                // Взимаме 10 символа, но само ако има толкова, иначе взимаме целия текст
+                subject = message.substring(0, Math.min(message.length(), 10));
+            }
+
+
+            EmailSendRequest emailSendRequest = new EmailSendRequest();
+            emailSendRequest.setTo(wpOrderEntity.getCustomer().getEmail());
+            emailSendRequest.setConfigId(siteEntity.getEmail().getId());
+            emailSendRequest.setSubject(subject);
+            emailSendRequest.setContent(siteEntity.getNewOrderMessage());
+            emailSendRequest.setGenConfirm(true);
+            EmailLogEntity emailLogEntity = emailService.sendEmail(emailSendRequest);
+            wpOrderEntity.getEmails().add(emailLogEntity);
+
+        }
+
+        wpOrderRepository.save(wpOrderEntity);
     }
 
     private List<WoOrderDto> fetchAllOrders(SiteEntity site){
@@ -410,11 +425,14 @@ public class WpOrderService {
 //            dto.setCustomerOrderCount(count);
 //            System.out.println(count);
 
-            EmailLogEntity email = entity.getEmails()
-                    .stream().min(Comparator.comparing(EmailLogEntity::getCreateTime))
-                    .orElse(null);
-            if(email != null) {
-                dto.setConfirmed(email.isConfirmed());
+            List<EmailLogEntity> email = entity.getEmails();
+//                    .stream().min(Comparator.comparing(EmailLogEntity::getCreateTime))
+//                    .orElse(null);
+            for (EmailLogEntity log : email) {
+                if(log.isConfirmed()){
+                    dto.setConfirmed(true);
+                    break;
+                }
             }
 
             return dto;

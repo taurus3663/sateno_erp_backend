@@ -103,5 +103,5 @@ public class WpOrderEntity extends BaseEntity {
 
     @OneToMany(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
-    private List<EmailLogEntity> emails;
+    private List<EmailLogEntity> emails = new ArrayList<>();
 }

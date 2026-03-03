@@ -3,10 +3,12 @@ package com.sateno_b.www.controller;
 import com.sateno_b.www.model.dto.EmailDto;
 import com.sateno_b.www.model.dto.EmailLogDto;
 import com.sateno_b.www.model.entity.EmailEntity;
+import com.sateno_b.www.model.entity.EmailLogEntity;
 import com.sateno_b.www.model.enums.EmailDirection;
 import com.sateno_b.www.model.interfaces.BaseController;
 import com.sateno_b.www.model.repository.EmailLogRepository;
 import com.sateno_b.www.model.repository.EmailRepository;
+import com.sateno_b.www.service.EmailLogService;
 import com.sateno_b.www.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -28,6 +30,7 @@ public class EmailController implements BaseController<EmailDto, Long> {
     private final ModelMapper modelMapper;
     private final EmailService emailService;
     private final EmailLogRepository emailLogRepository;
+    private final EmailLogService emailLogService;
 
     @PostMapping("/test-income-connection/{id}")
     public ResponseEntity<Map<String, Object>> testIncomeConnection(@PathVariable Long id) {
@@ -133,8 +136,19 @@ public class EmailController implements BaseController<EmailDto, Long> {
     }
 
     @GetMapping("/seen/{key}")
-    public byte[] seen(@PathVariable("key") Long id) {
-//        Optional<EmailEntity> byId = emailRepository.findById(id);
+    public byte[] seen(@PathVariable("key") String key) {
+        System.out.println("SEEN " + key);
+        key = key.replaceAll("^\"|\"$", "");
+        Optional<EmailLogEntity> byPrivateSeenKey = emailLogRepository.findByPrivateSeenKey(key);
+        if(byPrivateSeenKey.isPresent()) {
+            EmailLogEntity emailLogEntity = byPrivateSeenKey.get();
+
+            if(!emailLogEntity.isSeen()){
+                emailLogEntity.setSeen(true);
+                emailLogRepository.save(emailLogEntity);
+            }
+
+        }
         return new byte[] {
                 (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
                 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, (byte) 0xC4,
@@ -147,8 +161,9 @@ public class EmailController implements BaseController<EmailDto, Long> {
     @GetMapping(value = "/confirm/{key}", produces = MediaType.TEXT_HTML_VALUE)
     @ResponseBody
     public String confirmOrder(@PathVariable String key) {
-//        boolean success = emailLogService.processConfirmation(key);
-            boolean success = false;
+
+            boolean success = emailLogService.processConfirmationOrder(key);
+
         if (success) {
             return """
             <html>

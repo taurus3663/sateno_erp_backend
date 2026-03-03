@@ -1,7 +1,9 @@
 package com.sateno_b.www.init;
 
 import com.sateno_b.www.model.dto.EmailSendRequest;
+import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.UserEntity;
+import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.UserRepository;
 import com.sateno_b.www.service.EmailService;
 import com.sateno_b.www.service.NekorektenService;
@@ -19,6 +21,7 @@ public class initDB implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final NekorektenService nekorektenService;
+    private final SiteRepository siteRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -78,8 +81,8 @@ public class initDB implements CommandLineRunner {
 
         EmailSendRequest emailSendRequest = new EmailSendRequest();
         emailSendRequest.setConfigId(2L);
-//        emailSendRequest.setTo("taurus.ali47@gmail.com");
-        emailSendRequest.setTo("silyan.silyanov@gmail.com");
+        emailSendRequest.setTo("taurus.ali47@gmail.com");
+//        emailSendRequest.setTo("silyan.silyanov@gmail.com");
         emailSendRequest.setSubject("TEST");
         emailSendRequest.setContent(fullHtmlBody);
 //        emailService.sendEmail(emailSendRequest);
