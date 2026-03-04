@@ -286,13 +286,31 @@ public EmailLogEntity sendEmail(EmailSendRequest request) {
 
         var billing = order.getBilling();
         billingAddressHtml = String.format("""
-            <div style="margin-top: 30px; font-family: Arial, sans-serif;">
-                <h3 style="color: #f4b9b9; border-bottom: 2px solid #f4b9b9; padding-bottom: 5px;">Адрес за доставка</h3>
-                <p style="color: #636363; line-height: 1.4;">
-                    %s %s<br>%s<br>%s, %s<br>%s
-                </p>
-            </div>
-            """, billing.getFirstName(), billing.getLastName(), billing.getAddress1(), billing.getCity(), billing.getPostalCode(), billing.getCountry());
+    <div style="margin-top: 30px; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;">
+        <h3 style="color: #f4b9b9; border-bottom: 2px solid #f4b9b9; padding-bottom: 5px; font-size: 18px; text-transform: uppercase;">
+            Адрес за доставка
+        </h3>
+        <p style="color: #636363; line-height: 1.5; font-size: 14px; margin: 10px 0;">
+            <strong>Име:</strong> %s %s<br>
+            <strong>Адрес:</strong> %s<br>
+            <strong>Град:</strong> %s %s<br>
+            <strong>Държава:</strong> %s<br>
+            <strong>Телефон:</strong> <a href="tel:%s" style="color: #f4b9b9; text-decoration: none;">%s</a><br>
+            <strong>Имейл:</strong> <a href="mailto:%s" style="color: #f4b9b9; text-decoration: none;">%s</a>
+        </p>
+    </div>
+    """,
+                billing.getFirstName(),
+                billing.getLastName(),
+                billing.getAddress1(),
+                billing.getCity(),
+                billing.getPostalCode() != null ? billing.getPostalCode() : "", // Проверка за празен пощенски код
+                billing.getCountry(),
+                billing.getPhone(),
+                billing.getPhone(),
+                billing.getEmail(),
+                billing.getEmail()
+        );
     }
 
     // 3. Сглобяване на финалния HTML
