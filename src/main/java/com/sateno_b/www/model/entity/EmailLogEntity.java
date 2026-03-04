@@ -46,6 +46,9 @@ public class EmailLogEntity extends BaseEntity {
     private boolean seen = false;
 
     @Column
-    boolean confirmed = false;
+    private boolean confirmed = false;
+
+    @Column
+    private boolean cancel = false;
 
 }

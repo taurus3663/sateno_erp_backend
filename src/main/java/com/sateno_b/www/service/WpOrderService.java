@@ -311,6 +311,8 @@ public class WpOrderService {
             emailSendRequest.setSubject(subject);
             emailSendRequest.setContent(siteEntity.getNewOrderMessage());
             emailSendRequest.setGenConfirm(true);
+            emailSendRequest.setShowItemsTable(true);
+            emailSendRequest.setWpOrderEntity(wpOrderEntity);
             EmailLogEntity emailLogEntity = emailService.sendEmail(emailSendRequest);
             wpOrderEntity.getEmails().add(emailLogEntity);
 

@@ -40,4 +40,28 @@ public class EmailLogService {
         }
         return success;
     }
+
+    @Transactional
+    public boolean processCancelOrder(String key) {
+        Optional<EmailLogEntity> confirmKey = emailLogRepository.findByPrivateConfirmKey(key);
+        boolean success = false;
+
+        if(confirmKey.isPresent()) {
+            EmailLogEntity emailLogEntity = confirmKey.get();
+            if(!emailLogEntity.isConfirmed()) {
+                emailLogEntity.setConfirmed(true);
+                emailLogEntity.setCancel(true);
+                emailLogRepository.save(emailLogEntity);
+                success = true;
+                Optional<WpOrderEntity> byEmailsContaining = wpOrderRepository.findByEmailsContaining(emailLogEntity);
+                if(byEmailsContaining.isPresent()) {
+                    WpOrderEntity wpOrderEntity = byEmailsContaining.get();
+                    wpOrderEntity.setStatus(OrderStatus.CANCELLED);
+                    wpOrderRepository.save(wpOrderEntity);
+                }
+
+            }
+        }
+        return success;
+    }
 }

@@ -51,90 +51,309 @@ public class EmailService {
     @Value("${app.base-url}")
     private String baseUrl;
 
-    public EmailLogEntity sendEmail(EmailSendRequest request) {
-        EmailEntity cfg = emailRepository.findById(request.getConfigId())
-                .orElseThrow(() -> new RuntimeException("Config not found"));
+//    public EmailLogEntity sendEmail(EmailSendRequest request) {
+//        EmailEntity cfg = emailRepository.findById(request.getConfigId())
+//                .orElseThrow(() -> new RuntimeException("Config not found"));
+//
+//        String seenKey = UUID.randomUUID().toString();
+//        String trackingPixel = "<img src=\"" + baseUrl + "/erp/email/seen/" + seenKey + "\" width=\"1\" height=\"1\" style=\"display:none\">";
+//
+//        String content = request.getContent();
+//        String fullBody = content + trackingPixel;
+//
+//        TransportStrategy strategy = TransportStrategy.SMTP;
+//        if (cfg.isSslSmtp()) {
+//            strategy = (cfg.getPortSmtp() == 465) ? TransportStrategy.SMTPS : TransportStrategy.SMTP_TLS;
+//        }
+//
+//        try (Mailer mailer = MailerBuilder
+//                .withSMTPServer(cfg.getHostSmtp(), cfg.getPortSmtp(), cfg.getUsernameSmtp(), cfg.getPasswordSmtp())
+//                .withTransportStrategy(strategy)
+//                .buildMailer()) {
+//
+//
+//            System.out.println("Email sent successfully to " + request.getTo());
+//            EmailLogEntity emailLogEntity = new EmailLogEntity();
+//            emailLogEntity.setSubject(request.getSubject());
+//            emailLogEntity.setConfig(cfg);
+//            emailLogEntity.setDirection(EmailDirection.SENT);
+////            emailLogEntity.setPrivateConfirmKey(request.getConfirmKey());
+//            emailLogEntity.setPrivateSeenKey(seenKey);
+//            emailLogEntity.setSender(cfg.getName());
+//            emailLogEntity.setRecipient(request.getTo());
+//            emailLogEntity.setSeen(false);
+//            emailLogEntity.setConfirmed(false);
+//
+//            if (request.isGenConfirm()) {
+//                String confirmKey = UUID.randomUUID().toString();
+//
+//                // Генерираме двата URL адреса
+//                String confirmUrl = baseUrl + "/erp/email/confirm/" + confirmKey;
+//                String cancelUrl = baseUrl + "/erp/email/cancel/" + confirmKey;
+//
+//                String buttonsHtml = """
+//        <div style="text-align: center; margin: 25px 0; font-family: Arial, sans-serif;">
+//            <a href="%s"
+//               style="background-color: green;
+//                      color: white;
+//                      padding: 12px 25px;
+//                      text-decoration: none;
+//                      border-radius: 5px;
+//                      font-weight: bold;
+//                      display: inline-block;
+//                      margin: 0 10px 10px 10px;">
+//                ПОТВЪРДИ ПОРЪЧКАТА
+//            </a>
+//
+//            <a href="%s"
+//               style="background-color: #EF4444;
+//                      color: white;
+//                      padding: 12px 25px;
+//                      text-decoration: none;
+//                      border-radius: 5px;
+//                      font-weight: bold;
+//                      display: inline-block;
+//                      margin: 0 10px 10px 10px;">
+//                ОТКАЖИ ПОРЪЧКАТА
+//            </a>
+//        </div>
+//        """.formatted(confirmUrl, cancelUrl);
+//
+//                fullBody += buttonsHtml;
+//                emailLogEntity.setPrivateConfirmKey(confirmKey);
+//            }
+//
+//
+//            String buttonsHtml = "";
+//            String orderTableHtml = "";
+//            String customerName = (request.getWpOrderEntity() != null) ? request.getWpOrderEntity().getBilling().getFirstName() : "Клиент";
+//            String orderId = (request.getWpOrderEntity() != null) ? request.getWpOrderEntity().getWpOrderId().toString() : "---";
+//            String billingAddressHtml = "";
+//
+//// 2. Генерираме я само ако е поискано (true) и имаме данни за поръчка
+//            if (request.isShowItemsTable() && request.getWpOrderEntity() != null) {
+//                var order = request.getWpOrderEntity();
+//                StringBuilder tableRows = new StringBuilder();
+//
+//                for (var item : order.getOrderLine()) {
+//                    tableRows.append(String.format("""
+//            <tr>
+//                <td style="text-align:left; border:1px solid #e5e5e5; padding:12px; color: #636363;">%s</td>
+//                <td style="text-align:center; border:1px solid #e5e5e5; padding:12px; color: #636363;">%d</td>
+//                <td style="text-align:right; border:1px solid #e5e5e5; padding:12px; color: #636363;">%.2f %s</td>
+//            </tr>
+//            """, item.getProductName(), item.getQuantity(), item.getPrice(), order.getCurrency_symbol()));
+//                }
+//
+//                orderTableHtml = """
+//        <h2 style="color: #f4b9b9; font-family: Arial, sans-serif; font-size: 18px; margin: 24px 0 8px;">Детайли на поръчката</h2>
+//        <table cellspacing="0" cellpadding="6" style="width:100%%; border:1px solid #e5e5e5; border-collapse:collapse; font-family: Arial, sans-serif;">
+//            <thead>
+//                <tr>
+//                    <th style="background-color:#f8f8f8; border:1px solid #e5e5e5; padding:12px; text-align:left;">Продукт</th>
+//                    <th style="background-color:#f8f8f8; border:1px solid #e5e5e5; padding:12px; text-align:center;">Количество</th>
+//                    <th style="background-color:#f8f8f8; border:1px solid #e5e5e5; padding:12px; text-align:right;">Цена</th>
+//                </tr>
+//            </thead>
+//            <tbody>%s</tbody>
+//            <tfoot>
+//                <tr>
+//                    <th colspan="2" style="border:1px solid #e5e5e5; padding:12px; text-align:left;">Общо:</th>
+//                    <td style="border:1px solid #e5e5e5; padding:12px; text-align:right; font-weight:bold;">%s %s</td>
+//                </tr>
+//            </tfoot>
+//        </table>
+//        """.formatted(tableRows.toString(), order.getTotalPrice(), order.getCurrency_symbol());
+//
+//                // Същото правим и за адреса - показваме го само ако има таблица/поръчка
+//                var billing = order.getBilling();
+//                billingAddressHtml = String.format("""
+//        <div style="margin-top: 30px; font-family: Arial, sans-serif;">
+//            <h3 style="color: #f4b9b9; border-bottom: 2px solid #f4b9b9; padding-bottom: 5px;">Адрес за доставка</h3>
+//            <p style="color: #636363; line-height: 1.4;">
+//                %s %s<br>%s<br>%s, %s<br>%s
+//            </p>
+//        </div>
+//        """, billing.getFirstName(), billing.getLastName(), billing.getAddress1(), billing.getCity(), billing.getPostalCode(), billing.getCountry());
+//            }
+//
+//            // 3. Сглобяване на финалния HTML дизайн ( WooCommerce Style )
+//            String finalHtml = """
+//        <div style="background-color: #f7f7f7; padding: 20px;">
+//            <div style="max-width: 600px; margin: auto; background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 3px;">
+//                <div style="background-color: #f4b9b9; padding: 40px; text-align: center;">
+//                    <h1 style="color: #333; font-family: Arial, sans-serif; font-size: 30px; margin: 0;">Благодарим за вашата поръчка</h1>
+//                </div>
+//                <div style="padding: 40px; font-family: Arial, sans-serif; font-size: 14px; line-height: 150%%; color: #636363;">
+//                    <p>Здравейте, %s,</p>
+//                    <p>Вашата поръчка #%s е получена и в момента се обработва.</p>
+//
+//                    %s %s <p style="margin-top: 20px;">Благодарим ви, че избрахте <strong>sateno.bg</strong>!</p>
+//                </div>
+//            </div>
+//            %s </div>
+//        """.formatted(customerName, orderId, buttonsHtml, orderTableHtml, trackingPixel);
+//
+//
+//            if (cfg.getSignature() != null) {
+//                fullBody += "<br><br>" + cfg.getSignature();
+//            }
+////            emailLogEntity.setBody(fullBody);
+//            emailLogEntity.setBody(finalHtml);
+//
+//            Email email = EmailBuilder.startingBlank()
+//                    .from(cfg.getName(), cfg.getUsernameSmtp())
+//                    .to(request.getTo())
+//                    .withSubject(request.getSubject())
+////                    .withHTMLText(fullBody)
+//                    .withHTMLText(finalHtml)
+//                    .buildEmail();
+//            mailer.sendMail(email);
+//           return emailLogRepository.save(emailLogEntity);
+//        } catch (Exception e) {
+//            throw new RuntimeException("Failed to send email: " + e.getMessage());
+//        }
+//
+//
+//    }
 
-        String seenKey = UUID.randomUUID().toString();
-        String trackingPixel = "<img src=\"" + baseUrl + "/erp/email/seen/" + seenKey + "\" width=\"1\" height=\"1\" style=\"display:none\">";
+public EmailLogEntity sendEmail(EmailSendRequest request) {
+    EmailEntity cfg = emailRepository.findById(request.getConfigId())
+            .orElseThrow(() -> new RuntimeException("Config not found"));
 
-        String content = request.getContent();
-        String fullBody = content + trackingPixel;
+    String seenKey = UUID.randomUUID().toString();
+    String trackingPixel = "<img src=\"" + baseUrl + "/erp/email/seen/" + seenKey + "\" width=\"1\" height=\"1\" style=\"display:none\">";
 
-        TransportStrategy strategy = TransportStrategy.SMTP;
-        if (cfg.isSslSmtp()) {
-            strategy = (cfg.getPortSmtp() == 465) ? TransportStrategy.SMTPS : TransportStrategy.SMTP_TLS;
-        }
-
-        try (Mailer mailer = MailerBuilder
-                .withSMTPServer(cfg.getHostSmtp(), cfg.getPortSmtp(), cfg.getUsernameSmtp(), cfg.getPasswordSmtp())
-                .withTransportStrategy(strategy)
-                .buildMailer()) {
+    // Инициализираме променливите в началото
+    String buttonsHtml = "";
+    String orderTableHtml = "";
+    String billingAddressHtml = "";
+    String confirmKey = null;
 
 
-            System.out.println("Email sent successfully to " + request.getTo());
-            EmailLogEntity emailLogEntity = new EmailLogEntity();
-            emailLogEntity.setSubject(request.getSubject());
-            emailLogEntity.setConfig(cfg);
-            emailLogEntity.setDirection(EmailDirection.SENT);
-//            emailLogEntity.setPrivateConfirmKey(request.getConfirmKey());
-            emailLogEntity.setPrivateSeenKey(seenKey);
-            emailLogEntity.setSender(cfg.getName());
-            emailLogEntity.setRecipient(request.getTo());
-            emailLogEntity.setSeen(false);
-            emailLogEntity.setConfirmed(false);
 
-            if(request.isGenConfirm()) {
-                String confirmKey = UUID.randomUUID().toString();
-                String confirmUrl = baseUrl + "/erp/email/confirm/" + confirmKey;
+    String customerName = (request.getWpOrderEntity() != null) ? request.getWpOrderEntity().getBilling().getFirstName() : "Клиент";
+    String orderId = (request.getWpOrderEntity() != null) ? request.getWpOrderEntity().getWpOrderId().toString() : "---";
 
-                String buttonHtml = """
-    <div style="text-align: center; margin: 20px 0;">
-        <a href="%s"
-           style="background-color: #3B82F6; 
-                  color: white; 
-                  padding: 12px 25px; 
-                  text-decoration: none; 
-                  border-radius: 5px; 
-                  font-weight: bold; 
-                  display: inline-block;
-                  font-family: Arial, sans-serif;">
-            ПОТВЪРДИ ПОРЪЧКАТА
-        </a>
-    </div>
-    """.formatted(confirmUrl);
+    // 1. Генериране на бутони за потвърждение
+    if (request.isGenConfirm()) {
+        confirmKey = UUID.randomUUID().toString();
+        String confirmUrl = baseUrl + "/erp/email/confirm/" + confirmKey;
+        String cancelUrl = baseUrl + "/erp/email/cancel/" + confirmKey;
 
-
-                    fullBody += buttonHtml;
-
-                emailLogEntity.setPrivateConfirmKey(confirmKey);
-
-            }
-
-            if (cfg.getSignature() != null) {
-                fullBody += "<br><br>" + cfg.getSignature();
-            }
-            emailLogEntity.setBody(fullBody);
-
-            Email email = EmailBuilder.startingBlank()
-                    .from(cfg.getName(), cfg.getUsernameSmtp())
-                    .to(request.getTo())
-                    .withSubject(request.getSubject())
-                    .withHTMLText(fullBody)
-                    .buildEmail();
-            mailer.sendMail(email);
-           return emailLogRepository.save(emailLogEntity);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send email: " + e.getMessage());
-        }
-
-
+        buttonsHtml = """
+            <div style="text-align: center; margin: 25px 0; font-family: Arial, sans-serif;">
+                <a href="%s" style="background-color: green; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin: 5px;">ПОТВЪРДИ ПОРЪЧКАТА</a>
+                <a href="%s" style="background-color: #EF4444; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin: 5px;">ОТКАЖИ ПОРЪЧКАТА</a>
+            </div>
+            """.formatted(confirmUrl, cancelUrl);
     }
 
-    public void readEmail() {
+    // 2. Генериране на таблица с продукти и адрес
+    if (request.isShowItemsTable() && request.getWpOrderEntity() != null) {
+        var order = request.getWpOrderEntity();
+        StringBuilder tableRows = new StringBuilder();
 
+        for (var item : order.getOrderLine()) {
+            tableRows.append(String.format("""
+                <tr>
+                    <td style="text-align:left; border:1px solid #e5e5e5; padding:12px; color: #636363;">%s</td>
+                    <td style="text-align:center; border:1px solid #e5e5e5; padding:12px; color: #636363;">%d</td>
+                    <td style="text-align:right; border:1px solid #e5e5e5; padding:12px; color: #636363;">%.2f %s</td>
+                </tr>
+                """, item.getProductName(), item.getQuantity(), item.getPrice(), order.getCurrency_symbol()));
+        }
+
+        orderTableHtml = """
+            <h2 style="color: #f4b9b9; font-family: Arial, sans-serif; font-size: 18px; margin: 24px 0 8px;">Детайли на поръчката</h2>
+            <table cellspacing="0" cellpadding="6" style="width:100%%; border:1px solid #e5e5e5; border-collapse:collapse; font-family: Arial, sans-serif;">
+                <thead>
+                    <tr>
+                        <th style="background-color:#f8f8f8; border:1px solid #e5e5e5; padding:12px; text-align:left;">Продукт</th>
+                        <th style="background-color:#f8f8f8; border:1px solid #e5e5e5; padding:12px; text-align:center;">Количество</th>
+                        <th style="background-color:#f8f8f8; border:1px solid #e5e5e5; padding:12px; text-align:right;">Цена</th>
+                    </tr>
+                </thead>
+                <tbody>%s</tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="2" style="border:1px solid #e5e5e5; padding:12px; text-align:left;">Общо:</th>
+                        <td style="border:1px solid #e5e5e5; padding:12px; text-align:right; font-weight:bold;">%.2f %s</td>
+                    </tr>
+                </tfoot>
+            </table>
+            """.formatted(tableRows.toString(), order.getTotalPrice(), order.getCurrency_symbol());
+
+        var billing = order.getBilling();
+        billingAddressHtml = String.format("""
+            <div style="margin-top: 30px; font-family: Arial, sans-serif;">
+                <h3 style="color: #f4b9b9; border-bottom: 2px solid #f4b9b9; padding-bottom: 5px;">Адрес за доставка</h3>
+                <p style="color: #636363; line-height: 1.4;">
+                    %s %s<br>%s<br>%s, %s<br>%s
+                </p>
+            </div>
+            """, billing.getFirstName(), billing.getLastName(), billing.getAddress1(), billing.getCity(), billing.getPostalCode(), billing.getCountry());
     }
 
+    // 3. Сглобяване на финалния HTML
+    String signature = (cfg.getSignature() != null) ? "<br><br>" + cfg.getSignature() : "";
+
+    String finalHtml = """
+        <div style="background-color: #f7f7f7; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 3px;">
+                <div style="background-color: #f4b9b9; padding: 40px; text-align: center;">
+                    <h1 style="color: #333; font-family: Arial, sans-serif; font-size: 30px; margin: 0;">Благодарим за вашата поръчка</h1>
+                </div>
+                <div style="padding: 40px; font-family: Arial, sans-serif; font-size: 14px; line-height: 150%%; color: #636363;">
+                    <p>Здравейте, %s,</p>
+                    <p>Вашата поръчка #%s е получена.</p>
+                    
+                    <div style="text-align: center; margin: 20px 0; font-size: 16px; color: #333;">
+                                        %s
+                                    </div>
+                    
+                    %s %s %s <p style="margin-top: 20px;"></p>
+                    %s </div>
+            </div>
+            %s </div>
+        """.formatted(customerName, orderId, request.getContent(), buttonsHtml, orderTableHtml, billingAddressHtml, signature, trackingPixel);
+
+    // 4. Изпращане
+    TransportStrategy strategy = cfg.isSslSmtp() ?
+            ((cfg.getPortSmtp() == 465) ? TransportStrategy.SMTPS : TransportStrategy.SMTP_TLS) : TransportStrategy.SMTP;
+
+    try (Mailer mailer = MailerBuilder
+            .withSMTPServer(cfg.getHostSmtp(), cfg.getPortSmtp(), cfg.getUsernameSmtp(), cfg.getPasswordSmtp())
+            .withTransportStrategy(strategy)
+            .buildMailer()) {
+
+        Email email = EmailBuilder.startingBlank()
+                .from(cfg.getName(), cfg.getUsernameSmtp())
+                .to(request.getTo())
+                .withSubject(request.getSubject())
+                .withHTMLText(finalHtml)
+                .buildEmail();
+
+        mailer.sendMail(email);
+
+        // 5. Запис в лога
+        EmailLogEntity emailLogEntity = new EmailLogEntity();
+        emailLogEntity.setSubject(request.getSubject());
+        emailLogEntity.setConfig(cfg);
+        emailLogEntity.setDirection(EmailDirection.SENT);
+        emailLogEntity.setPrivateSeenKey(seenKey);
+        emailLogEntity.setPrivateConfirmKey(confirmKey);
+        emailLogEntity.setSender(cfg.getName());
+        emailLogEntity.setRecipient(request.getTo());
+        emailLogEntity.setSeen(false);
+        emailLogEntity.setConfirmed(false);
+        emailLogEntity.setBody(finalHtml);
+
+        return emailLogRepository.save(emailLogEntity);
+    } catch (Exception e) {
+        throw new RuntimeException("Failed to send email: " + e.getMessage());
+    }
+}
     public boolean testConnection(Long id) {
         EmailEntity cfg = emailRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Config not found"));

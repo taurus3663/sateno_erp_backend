@@ -41,7 +41,7 @@ public class OrderAutomationService {
             boolean confirmed = isOrderConfirmed(order);
 
             // 1. Ако е потвърдена, просто маркираме задачата като обработена
-            if (confirmed) {
+            if (confirmed || order.getStatus() != OrderStatus.PROCESSING) {
                 task.setProcessed(true);
                 orderAutomationTaskRepository.save(task);
                 orderAutomationTaskRepository.deleteAllByOrderAndProcessedFalse(order);

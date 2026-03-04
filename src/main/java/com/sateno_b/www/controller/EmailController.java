@@ -171,24 +171,61 @@ public class EmailController implements BaseController<EmailDto, Long> {
 
         if (success) {
             return """
-            <html>
-                <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+        <html>
+            <body style="font-family: sans-serif; text-align: center; padding-top: 50px; background-color: #f8f9fa;">
+                <div style="max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
                     <h1 style="color: #28a745;">✅ Благодарим ви!</h1>
-                    <p>Вашата поръчка е потвърдена успешно.</p>
-                </body>
-            </html>
-            """;
+                    <p style="font-size: 18px; color: #555;">Вашата поръчка е <strong>потвърдена успешно</strong> и започваме подготовката ѝ.</p>
+                    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="font-size: 14px; color: #888;">Ще получите допълнително известие при изпращане.</p>
+                </div>
+            </body>
+        </html>
+        """;
         } else {
             return """
-            <html>
-                <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
-                    <h1 style="color: #dc3545;">❌ Упс!</h1>
-                    <p>Линкът е невалиден или вече е бил използван.</p>
-                </body>
-            </html>
-            """;
+        <html>
+            <body style="font-family: sans-serif; text-align: center; padding-top: 50px; background-color: #f8f9fa;">
+                <div style="max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                    <h1 style="color: #6c757d;">⚠️ Връзката е неактивна</h1>
+                    <p style="font-size: 18px; color: #555;">Този линк е невалиден или поръчката вече е била потвърдена.</p>
+                    <p style="font-size: 14px; color: #888;">Ако имате въпроси, моля свържете се с нас.</p>
+                </div>
+            </body>
+        </html>
+        """;
         }
     }
 
-//    @GetMapping
+    @GetMapping("/cancel/{key}")
+    @ResponseBody
+    public String cancelOrder(@PathVariable String key) {
+
+        boolean success = emailLogService.processCancelOrder(key);
+
+        if (success) {
+            return """
+        <html>
+            <body style="font-family: sans-serif; text-align: center; padding-top: 50px; background-color: #f8f9fa;">
+                <div style="max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 10px; shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <h1 style="color: #dc3545;">🗑️ Поръчката е отказана</h1>
+                    <p style="font-size: 18px; color: #555;">Вашата поръчка беше успешно анулирана в нашата система.</p>
+                    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                </div>
+            </body>
+        </html>
+        """;
+        } else {
+            return """
+        <html>
+            <body style="font-family: sans-serif; text-align: center; padding-top: 50px; background-color: #f8f9fa;">
+                <div style="max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 10px;">
+                    <h1 style="color: #6c757d;">⚠️ Връзката е неактивна</h1>
+                    <p style="font-size: 18px; color: #555;">Този линк вече е бил използван или поръчката е в статус, който не позволява отказ.</p>
+                </div>
+            </body>
+        </html>
+        """;
+        }
+    }
 }
