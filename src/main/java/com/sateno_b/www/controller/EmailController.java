@@ -90,7 +90,8 @@ public class EmailController implements BaseController<EmailDto, Long> {
 //    @PostMapping("/save")
     public EmailDto save(@RequestBody EmailDto emailDto) {
         EmailEntity map = modelMapper.map(emailDto, EmailEntity.class);
-        return modelMapper.map(emailRepository.save(map), EmailDto.class);
+        emailService.updateEmailConfig(map);
+     return modelMapper.map(emailRepository.save(map), EmailDto.class);
     }
 
     @Override
@@ -103,9 +104,13 @@ public class EmailController implements BaseController<EmailDto, Long> {
     @Override
 //    @DeleteMapping("/{id}")
     public boolean delete(@PathVariable Long id) {
-        if (emailRepository.existsById(id)) {
+
+        Optional<EmailEntity> byId = emailRepository.findById(id);
+
+        if(byId.isPresent()) {
             try {
-                emailRepository.deleteById(id);
+                emailService.unregisterEmailListener(byId.get().getUsername());
+                emailRepository.deleteById(byId.get().getId());
                 return true;
             } catch (Exception e) {
                 // Може да гръмне заради Foreign Key констрейнт (напр. имейлът е вързан към поръчка)
@@ -119,7 +124,7 @@ public class EmailController implements BaseController<EmailDto, Long> {
     @GetMapping("/sent/list")
     public Page<EmailLogDto> sentList(Pageable pageable) {
 
-        return emailLogRepository.findAllByDirectionIs(EmailDirection.SENT, pageable)
+        return emailLogRepository.findAllByDirectionIsOrderByIdDesc(EmailDirection.SENT, pageable)
                 .map(entity -> {
                     EmailLogDto map = modelMapper.map(entity, EmailLogDto.class);
                     return map;
@@ -128,7 +133,7 @@ public class EmailController implements BaseController<EmailDto, Long> {
 
     @GetMapping("/receive/list")
     public Page<EmailLogDto> receivedList(Pageable pageable) {
-        return emailLogRepository.findAllByDirectionIs(EmailDirection.RECEIVED, pageable)
+        return emailLogRepository.findAllByDirectionIsOrderByIdDesc(EmailDirection.RECEIVED, pageable)
                 .map(entity -> {
                     EmailLogDto map = modelMapper.map(entity, EmailLogDto.class);
                     return map;
@@ -184,4 +189,6 @@ public class EmailController implements BaseController<EmailDto, Long> {
             """;
         }
     }
+
+//    @GetMapping
 }

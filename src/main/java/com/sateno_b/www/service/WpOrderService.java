@@ -176,6 +176,11 @@ public class WpOrderService {
     @Transactional
     public void newOrderFromSite(WoOrderDto dto, Long siteId) {
 
+        Optional<WpOrderEntity> byWpOrderId = wpOrderRepository.findByWpOrderId(dto.getId());
+        if(byWpOrderId.isPresent()) {
+            return;
+        }
+
         String rawPhone = dto.getBilling().getPhone().replaceAll("[^0-9]", "");
         String phoneSuffix = rawPhone.length() >= 9
                 ? rawPhone.substring(rawPhone.length() - 9)

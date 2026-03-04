@@ -12,7 +12,7 @@ import java.util.Optional;
 
 @Repository
 public interface EmailLogRepository extends JpaRepository<EmailLogEntity, Long> {
-    Page<EmailLogEntity> findAllByDirectionIs(EmailDirection direction, Pageable pageable);
+    Page<EmailLogEntity> findAllByDirectionIsOrderByIdDesc(EmailDirection direction, Pageable pageable);
     Optional<EmailLogEntity> findByPrivateSeenKey(String privateSeenKey);
     Optional<EmailLogEntity> findByPrivateConfirmKey(String privateConfirmKey);
 }

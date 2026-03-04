@@ -47,4 +47,5 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
     Boolean existsByWpOrderId(Long id);
     Optional<WpOrderEntity> findByEmailsContaining(EmailLogEntity emailLog);
 
+    Optional<WpOrderEntity> findByWpOrderId(Long wpOrderId);
 }

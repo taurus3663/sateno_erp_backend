@@ -311,7 +311,6 @@ public class EmailService {
         }
     }
 
-    @Transactional
     public void updateEmailConfig(EmailEntity cfg) {
         // 1. Първо спираме стария слушател (за всеки случай)
         unregisterEmailListener(cfg.getUsername());
