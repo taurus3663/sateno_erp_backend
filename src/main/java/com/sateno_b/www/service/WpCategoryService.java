@@ -106,7 +106,7 @@ public class WpCategoryService {
 
         do {
             var response = restClient.get()
-                    .uri(site.getUrl() + CATEGORY_URL +"?per_page=100&page=" + currentPage + "&orderby=id&order=asc")
+                    .uri(site.getUrlWithHttps() + CATEGORY_URL +"?per_page=100&page=" + currentPage + "&orderby=id&order=asc")
                     .header("Authorization", "Basic " + auth)
                     .retrieve()
                     .toEntity(new ParameterizedTypeReference<List<WpCategoryResponseDto>>() {});

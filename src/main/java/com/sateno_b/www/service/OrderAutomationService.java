@@ -112,6 +112,8 @@ public class OrderAutomationService {
         request.setContent(content);
         request.setConfigId(order.getSite().getEmail().getId());
         request.setGenConfirm(true); // Важно за следващите стъпки
+        request.setShowItemsTable(true);
+        request.setWpOrderEntity(order);
 
         EmailLogEntity emailLogEntity = emailService.sendEmail(request);
         order.getEmails().add(emailLogEntity);

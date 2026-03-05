@@ -231,10 +231,6 @@ public EmailLogEntity sendEmail(EmailSendRequest request) {
     String confirmKey = null;
 
 
-
-    String customerName = (request.getWpOrderEntity() != null) ? request.getWpOrderEntity().getBilling().getFirstName() : "Клиент";
-    String orderId = (request.getWpOrderEntity() != null) ? request.getWpOrderEntity().getWpOrderId().toString() : "---";
-
     // 1. Генериране на бутони за потвърждение
     if (request.isGenConfirm()) {
         confirmKey = UUID.randomUUID().toString();
@@ -270,7 +266,7 @@ public EmailLogEntity sendEmail(EmailSendRequest request) {
                 <thead>
                     <tr>
                         <th style="background-color:#f8f8f8; border:1px solid #e5e5e5; padding:12px; text-align:left;">Продукт</th>
-                        <th style="background-color:#f8f8f8; border:1px solid #e5e5e5; padding:12px; text-align:center;">Количество</th>
+                        <th style="background-color:#f8f8f8; border:1px solid #e5e5e5; padding:12px; text-align:center;">Бр.</th>
                         <th style="background-color:#f8f8f8; border:1px solid #e5e5e5; padding:12px; text-align:right;">Цена</th>
                     </tr>
                 </thead>
@@ -278,7 +274,7 @@ public EmailLogEntity sendEmail(EmailSendRequest request) {
                 <tfoot>
                     <tr>
                         <th colspan="2" style="border:1px solid #e5e5e5; padding:12px; text-align:left;">Общо:</th>
-                        <td style="border:1px solid #e5e5e5; padding:12px; text-align:right; font-weight:bold;">%.2f %s</td>
+                        <td style="border:1px solid #e5e5e5; padding:12px; text-align:right; font-weight:bold; white-space: nowrap;">%.2f&nbsp;%s</td>
                     </tr>
                 </tfoot>
             </table>
@@ -316,16 +312,20 @@ public EmailLogEntity sendEmail(EmailSendRequest request) {
     // 3. Сглобяване на финалния HTML
     String signature = (cfg.getSignature() != null) ? "<br><br>" + cfg.getSignature() : "";
 
+//    String customerName = (request.getWpOrderEntity() != null) ? request.getWpOrderEntity().getBilling().getFirstName() : "Клиент";
+//    String orderId = (request.getWpOrderEntity() != null) ? request.getWpOrderEntity().getWpOrderId().toString() : "---";
+    String content = request.getContent()
+     .replace("(customer)", request.getWpOrderEntity().getBilling().getFirstName() + " " + request.getWpOrderEntity().getBilling().getLastName())
+     .replace("(orderId)",request.getWpOrderEntity().getWpOrderId().toString());
+
     String finalHtml = """
-        <div style="background-color: #f7f7f7; padding: 20px;">
+        <div style="background-color: #f7f7f7; padding: 0;">
             <div style="max-width: 600px; margin: auto; background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 3px;">
                 <div style="background-color: #f4b9b9; padding: 40px; text-align: center;">
                     <h1 style="color: #333; font-family: Arial, sans-serif; font-size: 30px; margin: 0;">Благодарим за вашата поръчка</h1>
                 </div>
-                <div style="padding: 40px; font-family: Arial, sans-serif; font-size: 14px; line-height: 150%%; color: #636363;">
-                    <p>Здравейте, %s,</p>
-                    <p>Вашата поръчка #%s е получена.</p>
-                    
+                <div style="padding: 5px; font-family: Arial, sans-serif; font-size: 14px; line-height: 150%%; color: #636363;">
+                                 
                     <div style="text-align: center; margin: 20px 0; font-size: 16px; color: #333;">
                                         %s
                                     </div>
@@ -334,7 +334,7 @@ public EmailLogEntity sendEmail(EmailSendRequest request) {
                     %s </div>
             </div>
             %s </div>
-        """.formatted(customerName, orderId, request.getContent(), buttonsHtml, orderTableHtml, billingAddressHtml, signature, trackingPixel);
+        """.formatted(content, buttonsHtml, orderTableHtml, billingAddressHtml, signature, trackingPixel);
 
     // 4. Изпращане
     TransportStrategy strategy = cfg.isSslSmtp() ?
@@ -349,6 +349,7 @@ public EmailLogEntity sendEmail(EmailSendRequest request) {
                 .from(cfg.getName(), cfg.getUsernameSmtp())
                 .to(request.getTo())
                 .withSubject(request.getSubject())
+                .withPlainText(request.getSubject())
                 .withHTMLText(finalHtml)
                 .buildEmail();
 

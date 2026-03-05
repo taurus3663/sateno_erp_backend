@@ -186,21 +186,36 @@ public class WpOrderService {
                 ? rawPhone.substring(rawPhone.length() - 9)
                 : rawPhone;
 
+
         CustomerEntity customer = customerRepository.findByPhoneSuffix(phoneSuffix)
                 .stream()
                 .findFirst()
-                .orElseGet(() -> {
-                    CustomerEntity customerEntity = new CustomerEntity();
-                    customerEntity.setPhone(dto.getBilling().getPhone());
-                    customerEntity.setFirstName(dto.getBilling().getFirstName());
-                    customerEntity.setLastName(dto.getBilling().getLastName());
-                    customerEntity.setEmail(dto.getBilling().getEmail());
-                    customerEntity.setAddress(dto.getBilling().getAddress1().isEmpty()
+                .orElseGet(CustomerEntity::new);
+
+//        CustomerEntity customer = customerRepository.findByPhoneSuffix(phoneSuffix)
+//                .stream()
+//                .findFirst()
+//                .orElseGet(() -> {
+//                    CustomerEntity customerEntity = new CustomerEntity();
+//                    customerEntity.setPhone(dto.getBilling().getPhone());
+//                    customerEntity.setFirstName(dto.getBilling().getFirstName());
+//                    customerEntity.setLastName(dto.getBilling().getLastName());
+//                    customerEntity.setEmail(dto.getBilling().getEmail());
+//                    customerEntity.setAddress(dto.getBilling().getAddress1().isEmpty()
+//                            ? dto.getBilling().getAddress2()
+//                            : dto.getBilling().getAddress1());
+//                    customerEntity.setEik(dto.getBilling().getCompanyName());
+//                    return customerRepository.save(customerEntity);
+//                });
+        customer.setPhone(dto.getBilling().getPhone());
+        customer.setFirstName(dto.getBilling().getFirstName());
+        customer.setLastName(dto.getBilling().getLastName());
+        customer.setEmail(dto.getBilling().getEmail());
+        customer.setAddress(dto.getBilling().getAddress1().isEmpty()
                             ? dto.getBilling().getAddress2()
                             : dto.getBilling().getAddress1());
-                    customerEntity.setEik(dto.getBilling().getCompanyName());
-                    return customerRepository.save(customerEntity);
-                });
+        customer.setEik(dto.getBilling().getCompanyName());
+        customer = customerRepository.save(customer);
 
         SiteEntity siteEntity = siteRepository.findById(siteId).get();
 
@@ -296,14 +311,7 @@ public class WpOrderService {
             }
         }
         if(siteEntity.getEmail() != null) {
-            String message = siteEntity.getNewOrderMessage();
-            String subject = "Нова поръчка"; // Стойност по подразбиране
-
-            if (message != null && !message.isEmpty()) {
-                // Взимаме 10 символа, но само ако има толкова, иначе взимаме целия текст
-                subject = message.substring(0, Math.min(message.length(), 10));
-            }
-
+            String subject = "Нова поръчка";
 
             EmailSendRequest emailSendRequest = new EmailSendRequest();
             emailSendRequest.setTo(wpOrderEntity.getCustomer().getEmail());
