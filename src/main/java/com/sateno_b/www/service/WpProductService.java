@@ -7,12 +7,21 @@ import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.SlugTool;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestClient;
 
 import java.util.*;
@@ -315,7 +324,7 @@ public class WpProductService {
             entity = new WpProductEntity();
         }
 
-        entity.setUnit(dto.getUnit());
+//        entity.setUnit(dto.getUnit());
         entity.setStockQuantity(dto.getStockQuantity());
         entity.setWeight(dto.getWeight());
         entity.setStatus(dto.getStatus());
@@ -472,6 +481,67 @@ public class WpProductService {
                 .retrieve()
                 .toEntity(new ParameterizedTypeReference<WooProductDto>() {});
         return response.getBody();
+    }
+
+    public Page<WpProductEntity> getAll(
+            Pageable pageable,
+            @RequestParam(required = false) String sku,
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Long quantity,
+            @RequestParam(required = false) Long status
+    ) {
+//        Pageable pageable1 = PageRequest.of(
+//                pageable.getPageNumber(),
+//                pageable.getPageSize(),
+//                Sort.by("id").descending()
+//        );
+
+        Specification<WpProductEntity> spec = (root, query, cb) -> {
+            query.distinct(true);
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (sku != null && !sku.isEmpty()) {
+                Join<WpProductEntity, WpProductSiteConfigEntity> siteConfig = root.join("siteConfigs");
+
+                predicates.add(cb.like(cb.lower(siteConfig.get("sku")), "%" + sku.toLowerCase() + "%"));
+            }
+            if (category != null && !category.isEmpty()) {
+                // 1. Използваме LIKE вместо EQUAL за частично търсене
+                // 2. Използваме cb.lower(), за да сме сигурни, че търсенето не зависи от главни/малки букви
+                Join<WpProductEntity, WpCategoryEntity> categoriesJoin = root.join("categories");
+                Join<WpCategoryEntity, WpCategoryTranslationEntity> translationsJoin = categoriesJoin.join("translations");
+
+                predicates.add(cb.like(
+                        cb.lower(translationsJoin.get("name")),
+                        "%" + category.toLowerCase() + "%"
+                ));
+
+                // Силно препоръчително: добави distinct, за да не се дублират продуктите
+                query.distinct(true);
+            }
+            if (brand != null && !brand.isEmpty()) {
+                // Ако brand е вложен обект: root.join("brand").get("name")
+                predicates.add(cb.equal(root.get("brand"), brand));
+            }
+            if (name != null && !name.isEmpty()) {
+                Join<Object, Object> translationsJoin = root.join("translations");
+                predicates.add(cb.like(cb.lower(translationsJoin.get("name")), "%" + name.toLowerCase() + "%"));
+            }
+            if (quantity != null) {
+                predicates.add(cb.equal(root.get("stockQuantity"), quantity));
+            }
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+       return wpProductRepository.findAll(spec, pageable);
+
     }
 
 }

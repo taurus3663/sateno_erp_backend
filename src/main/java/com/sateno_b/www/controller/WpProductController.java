@@ -2,6 +2,7 @@ package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
+import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.repository.WpAddonRepository;
 import com.sateno_b.www.model.repository.WpProductAddonConfigRepository;
 import com.sateno_b.www.model.repository.WpProductRepository;
@@ -54,15 +55,27 @@ public class WpProductController {
     }
 
     @GetMapping("/list")
-    public ResponseEntity<Page<WpProductDto>> getWpProducts(Pageable pageable) {
+    public ResponseEntity<Page<WpProductDto>> getWpProducts(
+            Pageable pageable,
+            @RequestParam(required = false) String sku,
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Long quantity,
+            @RequestParam(required = false) Long status
+    ) {
 
-        Page<WpProductEntity> dtoPage =  wpProductRepository.findAll(pageable);
+
+        Page<WpProductEntity> dtoPage =  wpProductService.getAll(pageable, sku, brand, category, name, quantity, status);
+
         Page<WpProductDto> dtos = dtoPage.map(entity -> {
             WpProductDto wpProductDto = new WpProductDto();
             wpProductDto.setWeight(entity.getWeight());
             wpProductDto.setStockQuantity(entity.getStockQuantity());
             wpProductDto.setId(entity.getId());
-            wpProductDto.setUnit(entity.getUnit());
+//            wpProductDto.setUnit(entity.getUnit());
+            wpProductDto.setBrand(modelMapper.map(entity.getBrand(), WpBrandDto.class));
+            wpProductDto.setCategories(entity.getCategories().stream().map(e -> modelMapper.map(e, WpCategoryDetailDto.class)).collect(Collectors.toList()));
 
             String names = entity.getTranslations()
                     .stream()
@@ -70,6 +83,7 @@ public class WpProductController {
                     .collect(Collectors.joining(" | "));
             wpProductDto.setNames(names);
             wpProductDto.setStatus(entity.getStatus());
+            wpProductDto.setSiteConfig(entity.getSiteConfigs().stream().map(e -> modelMapper.map(e, WpProductSiteConfigDto.class)).collect(Collectors.toList()));
 //            wpProductTranslationRepository.findA
 
             // 2. Безопасна снимка
@@ -106,7 +120,7 @@ public class WpProductController {
         dto.setWeight(entity.getWeight());
         dto.setBrand(modelMapper.map(entity.getBrand(), WpBrandDto.class)); // Тук ще върне обекта на бранда
         dto.setStatus(entity.getStatus());
-        dto.setUnit(entity.getUnit());
+//        dto.setUnit(entity.getUnit());
         dto.setCategories(entity.getCategories()
                 .stream()
                 .map(wpCategoryEntity ->

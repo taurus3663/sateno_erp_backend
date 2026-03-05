@@ -2,6 +2,7 @@ package com.sateno_b.www.model.repository;
 
 import com.sateno_b.www.model.entity.WpProductEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface WpProductRepository extends JpaRepository<WpProductEntity,Long> {
+public interface WpProductRepository extends JpaRepository<WpProductEntity,Long> , JpaSpecificationExecutor<WpProductEntity> {
 
         // 1. Намира продукта по SKU от сайт конфигурацията
         @Query("SELECT p FROM WpProductEntity p JOIN p.siteConfigs sc WHERE sc.sku = :sku")

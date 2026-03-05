@@ -30,5 +30,5 @@ public class WpProductDto {
     private String m_image;
     private List<WpProductImageDto> images = new ArrayList<>();
 
-    private ProductUnit unit;
+//    private ProductUnit unit;
 }

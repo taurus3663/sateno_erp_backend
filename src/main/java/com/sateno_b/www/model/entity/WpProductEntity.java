@@ -28,8 +28,8 @@ public class WpProductEntity extends BaseEntity {
     @Column
     private ProductStatus status;
 
-    @Enumerated(EnumType.ORDINAL)
-    private ProductUnit unit;
+//    @Enumerated(EnumType.ORDINAL)
+//    private ProductUnit unit;
 
     @Column
     private String weight;
