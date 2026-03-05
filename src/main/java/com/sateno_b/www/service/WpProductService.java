@@ -81,7 +81,6 @@ public class WpProductService {
                     wpProductImageSiteMappingRepository.flush();
                     wpAddonRepository.flush();
                     entityManager.clear();
-                    System.out.println("FLUSHED");
                 }
 
             } catch (Exception e) {
