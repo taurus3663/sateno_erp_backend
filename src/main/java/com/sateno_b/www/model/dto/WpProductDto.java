@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.dto;
 
+import com.sateno_b.www.model.enums.ProductSaleType;
 import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.enums.ProductUnit;
 import lombok.Data;
@@ -29,6 +30,6 @@ public class WpProductDto {
     private ProductStatus status_p;
     private String m_image;
     private List<WpProductImageDto> images = new ArrayList<>();
-
+    private ProductSaleType saleType;
 //    private ProductUnit unit;
 }

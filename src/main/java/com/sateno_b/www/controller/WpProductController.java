@@ -84,7 +84,8 @@ public class WpProductController {
             wpProductDto.setNames(names);
             wpProductDto.setStatus(entity.getStatus());
             wpProductDto.setSiteConfig(entity.getSiteConfigs().stream().map(e -> modelMapper.map(e, WpProductSiteConfigDto.class)).collect(Collectors.toList()));
-//            wpProductTranslationRepository.findA
+            wpProductDto.setSaleType(entity.getSaleType());
+
 
             // 2. Безопасна снимка
             if (entity.getImages() != null && !entity.getImages().isEmpty()) {
@@ -120,6 +121,7 @@ public class WpProductController {
         dto.setWeight(entity.getWeight());
         dto.setBrand(modelMapper.map(entity.getBrand(), WpBrandDto.class)); // Тук ще върне обекта на бранда
         dto.setStatus(entity.getStatus());
+        dto.setSaleType(entity.getSaleType());
 //        dto.setUnit(entity.getUnit());
         dto.setCategories(entity.getCategories()
                 .stream()

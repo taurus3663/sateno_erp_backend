@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.entity;
 
+import com.sateno_b.www.model.enums.ProductSaleType;
 import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.enums.ProductUnit;
 import jakarta.persistence.*;
@@ -62,5 +63,8 @@ public class WpProductEntity extends BaseEntity {
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WpProductSiteConfigEntity> siteConfigs = new ArrayList<>();
+
+    @Enumerated(EnumType.ORDINAL)
+    private ProductSaleType saleType;
 
 }

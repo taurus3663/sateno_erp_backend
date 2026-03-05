@@ -8,7 +8,7 @@ import lombok.Getter;
 public enum ProductStatus {
     DRAFT("draft"),      // Индекс 0
     PUBLISHED("publish"), // Индекс 1
-    PRIVATE("private");   // Индекс 2
+    PENDING("pending");   // Индекс 2
 
     private final String value;
 

@@ -26,5 +26,6 @@ public class WooProductDto {
     private List<WooBrandDto> brands;
     private List<WooAddonDto> addons;
     private Dimensions dimensions;
+    private boolean manage_stock;
 
 }

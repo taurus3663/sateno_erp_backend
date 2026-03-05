@@ -3,10 +3,13 @@ package com.sateno_b.www.service;
 
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
+import com.sateno_b.www.model.enums.ProductSaleType;
 import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.SlugTool;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -49,6 +52,8 @@ public class WpProductService {
     private final ModelMapper modelMapper;
     private final FileStorageService fileStorageService;
     private final LanguageRepository languageRepository;
+    @PersistenceContext
+    private final EntityManager entityManager;
 
     private static final String PRODUCTS_URL = "/wp-json/wc/v3/products";
 
@@ -62,11 +67,22 @@ public class WpProductService {
 
         // get All Products
         List<WooProductDto> Products = fetchAllProducts(site, auth);
-
+        int count = 0;
         for (WooProductDto product : Products) {
             try {
 
                 processSingleProduct(product, site, language);
+
+                if(++count == 50) {
+                    count = 0;
+                    wpProductRepository.flush();
+                    wpProductTranslationRepository.flush();
+                    wpProductSiteConfigRepository.flush();
+                    wpProductImageSiteMappingRepository.flush();
+                    wpAddonRepository.flush();
+                    entityManager.clear();
+                    System.out.println("FLUSHED");
+                }
 
             } catch (Exception e) {
                 log.error("грешка при обработка на продукт SKU: {}, грешка: {}", product.getSku(), e.getMessage());
@@ -83,7 +99,7 @@ public class WpProductService {
 
         do {
             var response = restClient.get()
-                    .uri(site.getUrl() + PRODUCTS_URL + "?per_page=100&page=" + currentPage + "&orderby=id&order=asc")
+                    .uri(site.getUrlWithHttps() + PRODUCTS_URL + "?per_page=100&page=" + currentPage + "&orderby=id&order=asc")
 //                    .uri(site.getUrl() + PRODUCTS_URL + "?per_page=100&page=" + currentPage + "&orderby=id&order=asc&sku=a1000")
                     .header("Authorization", "Basic " + auth)
                     .retrieve()
@@ -115,6 +131,7 @@ public class WpProductService {
         product.setStockQuantity(dto.getStock_quantity());
         product.setWeight(dto.getWeight());
         product.setStatus(dto.getStatus());
+        product.setSaleType(dto.isManage_stock() ? ProductSaleType.LIMITED: ProductSaleType.UNLIMITED);
 
         // 3. Свързваме Бранд (вече синхронизиран)
         if (dto.getBrands() != null && !dto.getBrands().isEmpty()) {
@@ -144,8 +161,6 @@ public class WpProductService {
 
         // 7. АДОНИ (Специфични за продукта и сайта)
         syncAddonsForProduct(product, dto.getAddons(), site, lang);
-
-
 
     }
 
@@ -328,6 +343,7 @@ public class WpProductService {
         entity.setStockQuantity(dto.getStockQuantity());
         entity.setWeight(dto.getWeight());
         entity.setStatus(dto.getStatus());
+        entity.setSaleType(dto.getSaleType());
 
 //         BRAND -----
         Optional<WpBrandEntity> brand = wpBrandRepository.findBySlug(dto.getBrand().getSlug());
