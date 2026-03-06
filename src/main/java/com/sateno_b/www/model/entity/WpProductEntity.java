@@ -5,6 +5,7 @@ import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.enums.ProductUnit;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -42,13 +43,16 @@ public class WpProductEntity extends BaseEntity {
     @JoinColumn(name = "brand_id")
     private WpBrandEntity brand;
 
+    @BatchSize(size = 100)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     List<WpProductTranslationEntity> translations = new ArrayList<>();
 
+    @BatchSize(size = 100)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     List<WpProductImageEntity> images = new ArrayList<>();
 
+    @BatchSize(size = 100)
     @ManyToMany
     @JoinTable(
             name = "wp_product_category_mapping",
@@ -58,9 +62,11 @@ public class WpProductEntity extends BaseEntity {
     private Set<WpCategoryEntity> categories = new HashSet<>();
 
     // В WpProductEntity.java
+    @BatchSize(size = 100)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WpProductAddonConfigEntity> addonConfig = new ArrayList<>();
 
+    @BatchSize(size = 100)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WpProductSiteConfigEntity> siteConfigs = new ArrayList<>();
 

@@ -1,6 +1,11 @@
 package com.sateno_b.www.model.repository;
 
 import com.sateno_b.www.model.entity.WpProductEntity;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -26,4 +31,16 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
                 "LEFT JOIN FETCH ac.site s " +
                 "WHERE p.id = :id")
         Optional<WpProductEntity> findByIdWithDetails(@Param("id") Long id);
+
+//    @Override
+//    @EntityGraph(attributePaths = {
+//            "brand",
+//            "translations",
+//            "images",
+//            "categories",
+////            "categories.translations",
+////            "siteConfigs"
+//    })
+//    @NotNull
+//    Page<WpProductEntity> findAll(Specification<WpProductEntity> spec, @NotNull Pageable pageable);
     }

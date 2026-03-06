@@ -14,6 +14,7 @@ public class WpCategoryDetailDto {
     private String slug;
     private Long parentId;
     private String parentName; // Името на родителя (за избрания текущ език)
+    private String name;
 
     // Map<LanguageCode, Name> -> напр. {"bg": "Обувки", "en": "Shoes"}
     private Map<String, String> translations;

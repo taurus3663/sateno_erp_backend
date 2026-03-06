@@ -62,50 +62,16 @@ public class WpProductController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Long quantity,
-            @RequestParam(required = false) Long status
+            @RequestParam(required = false) Long status,
+            @RequestParam(required = false) Long saleType
     ) {
 
 
-        Page<WpProductEntity> dtoPage =  wpProductService.getAll(pageable, sku, brand, category, name, quantity, status);
-
-        Page<WpProductDto> dtos = dtoPage.map(entity -> {
-            WpProductDto wpProductDto = new WpProductDto();
-            wpProductDto.setWeight(entity.getWeight());
-            wpProductDto.setStockQuantity(entity.getStockQuantity());
-            wpProductDto.setId(entity.getId());
-//            wpProductDto.setUnit(entity.getUnit());
-            wpProductDto.setBrand(modelMapper.map(entity.getBrand(), WpBrandDto.class));
-            wpProductDto.setCategories(entity.getCategories().stream().map(e -> modelMapper.map(e, WpCategoryDetailDto.class)).collect(Collectors.toList()));
-
-            String names = entity.getTranslations()
-                    .stream()
-                    .map(WpProductTranslationEntity::getName)
-                    .collect(Collectors.joining(" | "));
-            wpProductDto.setNames(names);
-            wpProductDto.setStatus(entity.getStatus());
-            wpProductDto.setSiteConfig(entity.getSiteConfigs().stream().map(e -> modelMapper.map(e, WpProductSiteConfigDto.class)).collect(Collectors.toList()));
-            wpProductDto.setSaleType(entity.getSaleType());
+        Page<WpProductDto> dtoPage =  wpProductService.getAll(pageable, sku, brand, category, name, quantity, status, saleType);
 
 
-            // 2. Безопасна снимка
-            if (entity.getImages() != null && !entity.getImages().isEmpty()) {
-                // Взимаме първата снимка от списъка на Entity-то
-                String localPath = entity.getImages().get(0).getLocalSrc(); // Резултат: /media/products/1/image.jpg
 
-                // Базовият URL на твоя сървър
-                //                    String baseUrl = "http://192.168.31.232:9494";
-                // Тъй като localPath вече започва с /media, просто ги съединяваме
-                //                    String fullUrl = localPath;
-                // Записваме пълния URL в DTO-то за Angular
-                wpProductDto.setM_image(localPath);
-            } else {
-                wpProductDto.setM_image(null);
-            }
-
-            return wpProductDto;
-        });
-
-        return ResponseEntity.ok(dtos);
+        return ResponseEntity.ok(dtoPage);
     }
 
     @GetMapping("/detail/{id}")

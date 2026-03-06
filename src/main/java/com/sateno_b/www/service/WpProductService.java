@@ -10,9 +10,7 @@ import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.SlugTool;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -498,64 +496,182 @@ public class WpProductService {
         return response.getBody();
     }
 
-    public Page<WpProductEntity> getAll(
+    @Transactional()
+    public Page<WpProductDto> getAll(
             Pageable pageable,
             @RequestParam(required = false) String sku,
             @RequestParam(required = false) String brand,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Long quantity,
-            @RequestParam(required = false) Long status
+            @RequestParam(required = false) Long status,
+            @RequestParam(required = false) Long saleType
     ) {
-//        Pageable pageable1 = PageRequest.of(
-//                pageable.getPageNumber(),
-//                pageable.getPageSize(),
-//                Sort.by("id").descending()
-//        );
 
+//        Specification<WpProductEntity> spec = (root, query, cb) -> {
+//            query.distinct(true);
+//            List<Predicate> predicates = new ArrayList<>();
+//
+//            if (sku != null && !sku.isEmpty()) {
+//                Join<WpProductEntity, WpProductSiteConfigEntity> siteConfig = root.join("siteConfigs");
+//
+//                predicates.add(cb.like(cb.lower(siteConfig.get("sku")), "%" + sku.toLowerCase() + "%"));
+//            }
+//            if (category != null && !category.isEmpty()) {
+//                // 1. Използваме LIKE вместо EQUAL за частично търсене
+//                // 2. Използваме cb.lower(), за да сме сигурни, че търсенето не зависи от главни/малки букви
+//                Join<WpProductEntity, WpCategoryEntity> categoriesJoin = root.join("categories");
+//                Join<WpCategoryEntity, WpCategoryTranslationEntity> translationsJoin = categoriesJoin.join("translations");
+//
+//                predicates.add(cb.like(
+//                        cb.lower(translationsJoin.get("name")),
+//                        "%" + category.toLowerCase() + "%"
+//                ));
+//
+//                // Силно препоръчително: добави distinct, за да не се дублират продуктите
+//                query.distinct(true);
+//            }
+//            if (brand != null && !brand.isEmpty()) {
+//                // Ако brand е вложен обект: root.join("brand").get("name")
+//                predicates.add(cb.equal(root.get("brand"), brand));
+//            }
+//            if (name != null && !name.isEmpty()) {
+//                Join<Object, Object> translationsJoin = root.join("translations");
+//                predicates.add(cb.like(cb.lower(translationsJoin.get("name")), "%" + name.toLowerCase() + "%"));
+//            }
+//            if (quantity != null && quantity > 0) {
+//                predicates.add(cb.equal(root.get("stockQuantity"), quantity));
+//            }
+//            if (status != null && status >= 0) {
+//                predicates.add(cb.equal(root.get("status"), status));
+//            }
+//                query.orderBy(
+//                        cb.asc(
+//                                cb.selectCase()
+//                                        .when(cb.equal(root.get("status"), ProductStatus.PUBLISHED), 1)
+//                                        .otherwise(2)
+//                        ),
+//                        cb.desc(root.get("id"))
+//                );
+//
+//
+////            System.out.println(predicates.toString());
+//            return cb.and(predicates.toArray(new Predicate[0]));
+//        };
         Specification<WpProductEntity> spec = (root, query, cb) -> {
-            query.distinct(true);
+            // 1. МАХАМЕ distinct(true), за да работи orderBy
+            query.distinct(false);
+
             List<Predicate> predicates = new ArrayList<>();
 
+            // Филтър по SKU (чрез Subquery, за да няма дубликати от siteConfigs)
             if (sku != null && !sku.isEmpty()) {
-                Join<WpProductEntity, WpProductSiteConfigEntity> siteConfig = root.join("siteConfigs");
+                Subquery<Long> skuSubquery = query.subquery(Long.class);
+                Root<WpProductEntity> subRoot = skuSubquery.from(WpProductEntity.class);
+                Join<WpProductEntity, WpProductSiteConfigEntity> siteConfigJoin = subRoot.join("siteConfigs");
 
-                predicates.add(cb.like(cb.lower(siteConfig.get("sku")), "%" + sku.toLowerCase() + "%"));
+                skuSubquery.select(subRoot.get("id"))
+                        .where(cb.like(cb.lower(siteConfigJoin.get("sku")), "%" + sku.toLowerCase() + "%"));
+
+                predicates.add(root.get("id").in(skuSubquery));
             }
+
+            // Филтър по Категория (чрез Subquery)
             if (category != null && !category.isEmpty()) {
-                // 1. Използваме LIKE вместо EQUAL за частично търсене
-                // 2. Използваме cb.lower(), за да сме сигурни, че търсенето не зависи от главни/малки букви
-                Join<WpProductEntity, WpCategoryEntity> categoriesJoin = root.join("categories");
-                Join<WpCategoryEntity, WpCategoryTranslationEntity> translationsJoin = categoriesJoin.join("translations");
+                Subquery<Long> catSubquery = query.subquery(Long.class);
+                Root<WpProductEntity> subRoot = catSubquery.from(WpProductEntity.class);
+                Join<WpProductEntity, WpCategoryEntity> catJoin = subRoot.join("categories");
+                Join<WpCategoryEntity, WpCategoryTranslationEntity> transJoin = catJoin.join("translations");
 
-                predicates.add(cb.like(
-                        cb.lower(translationsJoin.get("name")),
-                        "%" + category.toLowerCase() + "%"
-                ));
+                catSubquery.select(subRoot.get("id"))
+                        .where(cb.like(cb.lower(transJoin.get("name")), "%" + category.toLowerCase() + "%"));
 
-                // Силно препоръчително: добави distinct, за да не се дублират продуктите
-                query.distinct(true);
+                predicates.add(root.get("id").in(catSubquery));
             }
-            if (brand != null && !brand.isEmpty()) {
-                // Ако brand е вложен обект: root.join("brand").get("name")
-                predicates.add(cb.equal(root.get("brand"), brand));
-            }
+
+            // Филтър по Име (чрез Subquery)
             if (name != null && !name.isEmpty()) {
-                Join<Object, Object> translationsJoin = root.join("translations");
-                predicates.add(cb.like(cb.lower(translationsJoin.get("name")), "%" + name.toLowerCase() + "%"));
+                Subquery<Long> nameSubquery = query.subquery(Long.class);
+                Root<WpProductEntity> subRoot = nameSubquery.from(WpProductEntity.class);
+                Join<WpProductEntity, WpProductTranslationEntity> transJoin = subRoot.join("translations");
+
+                nameSubquery.select(subRoot.get("id"))
+                        .where(cb.like(cb.lower(transJoin.get("name")), "%" + name.toLowerCase() + "%"));
+
+                predicates.add(root.get("id").in(nameSubquery));
             }
-            if (quantity != null) {
+
+            // Обикновени филтри (директни полета)
+            if (brand != null && !brand.isEmpty()) {
+                predicates.add(cb.equal(root.get("brand").get("name"), brand));
+            }
+            if (quantity != null && quantity > 0) {
                 predicates.add(cb.equal(root.get("stockQuantity"), quantity));
             }
-            if (status != null) {
+            if (status != null && status >= 0) {
                 predicates.add(cb.equal(root.get("status"), status));
             }
 
+            if(saleType != null && saleType >= 0) {
+                predicates.add(cb.equal(root.get("saleType"), saleType));
+            }
+
+            // 2. ВЕЧЕ МОЖЕШ ДА СОРТИРАШ БЕЗОПАСНО
+            query.orderBy(
+                    cb.asc(
+                            cb.selectCase()
+                                    .when(cb.equal(root.get("status"), ProductStatus.PUBLISHED), 1)
+                                    .otherwise(2)
+                    ),
+                    cb.desc(root.get("id"))
+            );
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-       return wpProductRepository.findAll(spec, pageable);
+        Page<WpProductEntity> dtoPage = wpProductRepository.findAll(spec, pageable);
+
+        Page<WpProductDto> dtos = dtoPage.map(entity -> {
+            WpProductDto wpProductDto = new WpProductDto();
+            wpProductDto.setWeight(entity.getWeight());
+            wpProductDto.setStockQuantity(entity.getStockQuantity());
+            wpProductDto.setId(entity.getId());
+            wpProductDto.setBrand(entity.getBrand() != null ? modelMapper.map(entity.getBrand(), WpBrandDto.class) : null);
+            wpProductDto.setCategories(entity.getCategories().stream().map(e -> {
+                WpCategoryDetailDto map = modelMapper.map(e, WpCategoryDetailDto.class);
+                map.setName(e.getTranslations().stream().map(WpCategoryTranslationEntity::getName).collect(Collectors.joining(",")));
+                return map;
+            }).collect(Collectors.toList()));
+//
+            String names = entity.getTranslations()
+                    .stream()
+                    .map(WpProductTranslationEntity::getName)
+                    .collect(Collectors.joining(" | "));
+            wpProductDto.setNames(names);
+            wpProductDto.setStatus(entity.getStatus());
+            wpProductDto.setSiteConfig(entity.getSiteConfigs().stream().map(e -> modelMapper.map(e, WpProductSiteConfigDto.class)).collect(Collectors.toList()));
+            wpProductDto.setSaleType(entity.getSaleType());
+
+
+            // 2. Безопасна снимка
+            if (entity.getImages() != null && !entity.getImages().isEmpty()) {
+                // Взимаме първата снимка от списъка на Entity-то
+                String localPath = entity.getImages().get(0).getLocalSrc();
+
+                // Базовият URL на твоя сървър
+                //                    String baseUrl = "http://192.168.31.232:9494";
+                // Тъй като localPath вече започва с /media, просто ги съединяваме
+                //                    String fullUrl = localPath;
+                // Записваме пълния URL в DTO-то за Angular
+                wpProductDto.setM_image(localPath);
+            } else {
+                wpProductDto.setM_image(null);
+            }
+
+            return wpProductDto;
+        });
+
+       return dtos;
 
     }
 
