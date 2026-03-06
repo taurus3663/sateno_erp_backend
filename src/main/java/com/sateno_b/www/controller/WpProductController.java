@@ -42,6 +42,21 @@ public class WpProductController {
     private final WpProductAddonConfigRepository wpProductAddonConfigRepository;
     private final WpAddonRepository wpAddonRepository;
 
+    @PatchMapping("/patch")
+    public ResponseEntity<?> patchProduct(@RequestBody WpProductDto wpProductDto) {
+        try {
+            WpProductDto p = wpProductService.patchProduct(wpProductDto);
+            return ResponseEntity.ok(p);
+        } catch (Exception e) {
+            // Логваме грешката в конзолата на сървъра за дебъг
+            e.printStackTrace();
+
+            // Връщаме 409 Conflict със съобщението като чист текст
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body("Грешка при частично обновяване: " + e.getMessage());
+        }
+    }
 
     @PostMapping("/save")
     public ResponseEntity<WpProductDto> saveProduct(@RequestBody WpProductDto productDto) {
@@ -85,7 +100,10 @@ public class WpProductController {
         dto.setId(entity.getId());
         dto.setStockQuantity(entity.getStockQuantity());
         dto.setWeight(entity.getWeight());
-        dto.setBrand(modelMapper.map(entity.getBrand(), WpBrandDto.class)); // Тук ще върне обекта на бранда
+        if(entity.getBrand() != null) {
+            dto.setBrand(modelMapper.map(entity.getBrand(), WpBrandDto.class));
+        }
+
         dto.setStatus(entity.getStatus());
         dto.setSaleType(entity.getSaleType());
 //        dto.setUnit(entity.getUnit());

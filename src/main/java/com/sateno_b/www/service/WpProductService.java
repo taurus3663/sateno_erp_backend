@@ -676,4 +676,20 @@ public class WpProductService {
 
     }
 
+    public WpProductDto patchProduct(WpProductDto wpProductDto) {
+        Optional<WpProductEntity> byId = wpProductRepository.findById(wpProductDto.getId());
+        if (byId.isPresent()) {
+            WpProductEntity wpProductEntity = byId.get();
+            if (wpProductDto.getSaleType() != null) {
+                wpProductEntity.setSaleType(wpProductDto.getSaleType());
+            }
+            if(wpProductDto.getStockQuantity() != null) {
+                wpProductEntity.setStockQuantity(wpProductDto.getStockQuantity());
+            }
+
+            WpProductEntity saved = wpProductRepository.save(wpProductEntity);
+            return modelMapper.map(saved, WpProductDto.class);
+        }
+        throw new RuntimeException("Product not found");
+    }
 }

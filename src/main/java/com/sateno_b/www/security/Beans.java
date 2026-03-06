@@ -35,15 +35,33 @@ public class Beans {
         return new BCryptPasswordEncoder();
     }
 
+
     @Bean
     public ModelMapper modelMapper() {
-        ModelMapper modelMapper = new ModelMapper();
 
-        modelMapper.getConfiguration()
+        ModelMapper mapper = new ModelMapper();
+
+        mapper.getConfiguration()
+                .setMatchingStrategy(MatchingStrategies.STRICT)
                 .setAmbiguityIgnored(true)
-                .setMatchingStrategy(MatchingStrategies.STRICT);
-        return modelMapper;
+                .setSkipNullEnabled(true)
+                .setFieldMatchingEnabled(true)
+                .setFieldAccessLevel(org.modelmapper.config.Configuration.AccessLevel.PRIVATE)
+                .setPropertyCondition(ctx -> ctx.getSource() != null);
+
+        return mapper;
     }
+//    @Bean
+//    public ModelMapper modelMapper() {
+//        ModelMapper modelMapper = new ModelMapper();
+//
+//        modelMapper.getConfiguration()
+//                .setAmbiguityIgnored(true)
+//                .setMatchingStrategy(MatchingStrategies.STRICT)
+//                .setSkipNullEnabled(true);
+//
+//        return modelMapper;
+//    }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -57,7 +75,7 @@ public class Beans {
 //        ));
         config.setAllowedOrigins(allowedOrigins);
 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
