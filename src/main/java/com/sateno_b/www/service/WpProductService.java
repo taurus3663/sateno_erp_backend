@@ -129,7 +129,7 @@ public class WpProductService {
         product.setWeight(dto.getWeight());
         product.setStatus(dto.getStatus());
         product.setSaleType(dto.isManage_stock() ? ProductSaleType.LIMITED: ProductSaleType.UNLIMITED);
-
+        product.setSku(dto.getSku());
         // 3. Свързваме Бранд (вече синхронизиран)
         if (dto.getBrands() != null && !dto.getBrands().isEmpty()) {
             wpBrandRepository.findBySlug(SlugTool.decodeSlug(dto.getBrands().get(0).getSlug()))

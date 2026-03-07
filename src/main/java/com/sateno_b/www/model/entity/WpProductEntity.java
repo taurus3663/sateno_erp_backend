@@ -73,4 +73,7 @@ public class WpProductEntity extends BaseEntity {
     @Enumerated(EnumType.ORDINAL)
     private ProductSaleType saleType;
 
+    @Column
+    private String sku;
+
 }

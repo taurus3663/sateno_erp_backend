@@ -32,6 +32,8 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
                 "WHERE p.id = :id")
         Optional<WpProductEntity> findByIdWithDetails(@Param("id") Long id);
 
+        Optional<WpProductEntity> findBySku(String sku);
+
 //    @Override
 //    @EntityGraph(attributePaths = {
 //            "brand",

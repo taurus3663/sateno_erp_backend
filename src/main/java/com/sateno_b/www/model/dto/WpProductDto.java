@@ -31,5 +31,6 @@ public class WpProductDto {
     private String m_image;
     private List<WpProductImageDto> images = new ArrayList<>();
     private ProductSaleType saleType;
+    private String sku;
 //    private ProductUnit unit;
 }

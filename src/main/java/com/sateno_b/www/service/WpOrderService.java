@@ -8,11 +8,9 @@ import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.data.PaoIdValue;
 import com.sateno_b.www.model.entity.data.PaoIdValueValue;
 import com.sateno_b.www.model.enums.OrderStatus;
+import com.sateno_b.www.model.enums.ProductSaleType;
 import com.sateno_b.www.model.enums.TaskType;
-import com.sateno_b.www.model.repository.CustomerRepository;
-import com.sateno_b.www.model.repository.SiteRepository;
-import com.sateno_b.www.model.repository.UserSignalRepository;
-import com.sateno_b.www.model.repository.WpOrderRepository;
+import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -56,6 +54,8 @@ public class WpOrderService {
     private final UserSignalRepository userSignalRepository;
     private final EmailService emailService;
     private final OrderAutomationService orderAutomationService;
+    private final WpProductRepository wpProductRepository;
+    private final WpProductHistoryRepository wpProductHistoryRepository;
 
 
     public void syncOrderToDB(Long siteId){
@@ -295,7 +295,6 @@ public class WpOrderService {
         LocalDateTime ldt = LocalDateTime.parse(dto.getDateCreated());
         Instant instant = ldt.atZone(ZoneId.of("Europe/Sofia")).toInstant();
         wpOrderEntity.setWpOrderTime(instant);
-//        wpOrderRepository.save(wpOrderEntity);
 
         NekorektenResponseDto nekorektenResponseDto = nekorektenService.checkPhone(rawPhone);
         if(nekorektenResponseDto != null) {
@@ -322,7 +321,10 @@ public class WpOrderService {
             emailSendRequest.setShowItemsTable(true);
             emailSendRequest.setWpOrderEntity(wpOrderEntity);
             EmailLogEntity emailLogEntity = emailService.sendEmail(emailSendRequest);
-            wpOrderEntity.getEmails().add(emailLogEntity);
+            if(emailLogEntity != null) {
+                wpOrderEntity.getEmails().add(emailLogEntity);
+            }
+
 
             if(siteEntity.getSecondOrderMessageTimer() != null && siteEntity.getSecondOrderMessageTimer() > 0){
                 orderAutomationService.scheduleTask(wpOrderEntity, TaskType.SECOND_EMAIL, siteEntity.getSecondOrderMessageTimer());
@@ -334,7 +336,33 @@ public class WpOrderService {
 
         }
 
-        wpOrderRepository.save(wpOrderEntity);
+    wpOrderRepository.save(wpOrderEntity);
+
+        for (WoOrderLineItemDto orderLineItem : dto.getLineItems()) {
+            if(orderLineItem.getQuantity() > 0){
+                Optional<WpProductEntity> byId = wpProductRepository.findBySku(orderLineItem.getSku());
+                if(byId.isPresent()){
+                    WpProductEntity product = byId.get();
+                    WpProductHistoryEntity wpProductHistoryEntity = new WpProductHistoryEntity();
+
+                    if(product.getSaleType() == ProductSaleType.UNLIMITED){
+                        product.setStockQuantity((product.getStockQuantity() - orderLineItem.getQuantity()));
+                        wpProductHistoryEntity.setQuantity(orderLineItem.getQuantity());
+                    } else if(product.getSaleType() == ProductSaleType.LIMITED && product.getStockQuantity() >= 0 &&
+                            product.getStockQuantity() >= orderLineItem.getQuantity()) {
+                        product.setStockQuantity((product.getStockQuantity() - orderLineItem.getQuantity()));
+                        wpProductHistoryEntity.setQuantity(orderLineItem.getQuantity());
+                    }
+                    if(wpProductHistoryEntity.getQuantity() != null && wpProductHistoryEntity.getQuantity() > 0){
+                        wpProductHistoryEntity.setProduct(product);
+                        wpProductHistoryEntity.setOrder(wpOrderEntity);
+                        wpProductHistoryEntity.setReason("Order");
+                        wpProductHistoryRepository.save(wpProductHistoryEntity);
+                    }
+                wpProductRepository.save(product);
+                }
+            }
+        }
     }
 
     private List<WoOrderDto> fetchAllOrders(SiteEntity site){
