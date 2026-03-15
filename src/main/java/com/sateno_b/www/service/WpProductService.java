@@ -3,6 +3,7 @@ package com.sateno_b.www.service;
 
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
+import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.ProductSaleType;
 import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.repository.*;
@@ -17,14 +18,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestClient;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -54,6 +55,7 @@ public class WpProductService {
     private final EntityManager entityManager;
 
     private static final String PRODUCTS_URL = "/wp-json/wc/v3/products";
+    private final WpProductHistoryRepository wpProductHistoryRepository;
 
 
     @Transactional
@@ -125,11 +127,17 @@ public class WpProductService {
                 .orElseGet(() -> wpProductRepository.save(new WpProductEntity()));
 
         // 2. Обновяваме Глобалните данни (технически)
-        product.setStockQuantity(dto.getStock_quantity());
+        product.setStockQuantity(dto.getStock_quantity() == null? 0: dto.getStock_quantity());
         product.setWeight(dto.getWeight());
         product.setStatus(dto.getStatus());
         product.setSaleType(dto.isManage_stock() ? ProductSaleType.LIMITED: ProductSaleType.UNLIMITED);
+        product.setManage_stock(dto.isManage_stock());
         product.setSku(dto.getSku());
+        product.setStock_status(dto.getStock_status());
+        product.setType(dto.getType());
+        product.setFeatured(dto.isFeatured());
+        product.setCatalog_visibility(dto.getCatalog_visibility());
+        product.setDimensions(dto.getDimensions());
         // 3. Свързваме Бранд (вече синхронизиран)
         if (dto.getBrands() != null && !dto.getBrands().isEmpty()) {
             wpBrandRepository.findBySlug(SlugTool.decodeSlug(dto.getBrands().get(0).getSlug()))
@@ -183,7 +191,6 @@ public class WpProductService {
 
         translation.setDescription(dto.getDescription());
         translation.setShortDescription(dto.getShort_description());
-
         wpProductTranslationRepository.save(translation);
     }
 
@@ -199,7 +206,7 @@ public class WpProductService {
         // Специфични данни за сайта от WooCommerce
         config.setPrice(parsePrice(dto.getPrice()));
         config.setRegularPrice(parsePrice(dto.getRegular_price()));
-        config.setSku(dto.getSku()); // SKU-то от този конкретен сайт
+        config.setSalePrice(parsePrice(dto.getSale_price()));
         config.setSlug(SlugTool.decodeSlug(dto.getSlug()));
         config.setWpProductId(dto.getId());
 
@@ -211,15 +218,19 @@ public class WpProductService {
 
         for (WooProductImageDto wooImg : wooImages) {
             // Проверяваме дали тази снимка (по WP Media ID) вече е свалена за ТОЗИ сайт
-            boolean alreadyExists = wpProductImageSiteMappingRepository.existsByWpMediaIdAndSite(wooImg.getId(), site);
+//            boolean alreadyExists = wpProductImageSiteMappingRepository.existsByWpMediaIdAndSite(wooImg.getId(), site);
 
-            if (!alreadyExists) {
+
+//            if (!alreadyExists) {
+
+
                 try {
                     // 1. Теглим байтовете на снимката
                     byte[] imageBytes = restClient.get()
                             .uri(wooImg.getSrc())
                             .retrieve()
                             .body(byte[].class);
+
 
                     if (imageBytes != null) {
                         // 2. Записваме на диска чрез FileStorageService
@@ -242,7 +253,7 @@ public class WpProductService {
                 } catch (Exception e) {
                     log.error("Грешка при теглене на снимка {}: {}", wooImg.getSrc(), e.getMessage());
                 }
-            }
+//            }
         }
     }
 
@@ -328,7 +339,7 @@ public class WpProductService {
     }
 
     @Transactional
-    public WpProductDto saveProductWithImages(WpProductDto dto) {
+    public WpProductDto saveProduct(WpProductDto dto) {
         WpProductEntity entity;
         if (dto.getId() != null && dto.getId() > 0) {
             entity = wpProductRepository.findById(dto.getId()).orElseThrow();
@@ -481,7 +492,7 @@ public class WpProductService {
                 }
             }
         }
-
+        updateProductOnSites(entity, null);
         return modelMapper.map(entity, WpProductDto.class);
     }
 
@@ -566,14 +577,15 @@ public class WpProductService {
 
             // Филтър по SKU (чрез Subquery, за да няма дубликати от siteConfigs)
             if (sku != null && !sku.isEmpty()) {
-                Subquery<Long> skuSubquery = query.subquery(Long.class);
-                Root<WpProductEntity> subRoot = skuSubquery.from(WpProductEntity.class);
-                Join<WpProductEntity, WpProductSiteConfigEntity> siteConfigJoin = subRoot.join("siteConfigs");
+//                Subquery<Long> skuSubquery = query.subquery(Long.class);
+//                Root<WpProductEntity> subRoot = skuSubquery.from(WpProductEntity.class);
+////                Join<WpProductEntity, WpProductSiteConfigEntity> siteConfigJoin = subRoot.join("siteConfigs");
+//
+//                skuSubquery.select(subRoot.get("id"))
+//                        .where(cb.like(cb.lower(siteConfigJoin.get("sku")), "%" + sku.toLowerCase() + "%"));
 
-                skuSubquery.select(subRoot.get("id"))
-                        .where(cb.like(cb.lower(siteConfigJoin.get("sku")), "%" + sku.toLowerCase() + "%"));
-
-                predicates.add(root.get("id").in(skuSubquery));
+                predicates.add(cb.equal(root.get("sku"), sku));
+//                predicates.add(root.get("id").in(skuSubquery));
             }
 
             // Филтър по Категория (чрез Subquery)
@@ -643,6 +655,7 @@ public class WpProductService {
                 map.setName(e.getTranslations().stream().map(WpCategoryTranslationEntity::getName).collect(Collectors.joining(",")));
                 return map;
             }).collect(Collectors.toList()));
+            wpProductDto.setSku(entity.getSku());
 //
             String names = entity.getTranslations()
                     .stream()
@@ -688,8 +701,712 @@ public class WpProductService {
             }
 
             WpProductEntity saved = wpProductRepository.save(wpProductEntity);
+            updateProductOnSites(saved, null);
             return modelMapper.map(saved, WpProductDto.class);
         }
         throw new RuntimeException("Product not found");
     }
+
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public void restoreQuantity(WpOrderEntity wpOrderEntity) {
+
+        for (OrderLineItem orderLineItem : wpOrderEntity.getOrderLine()) {
+            String pSku = orderLineItem.getSku();
+
+            Optional<WpProductHistoryEntity> byProductSku = wpProductHistoryRepository.findByProductSkuAndOrder(pSku, wpOrderEntity);
+            if (byProductSku.isPresent()) {
+               WpProductHistoryEntity pHistory = byProductSku.get();
+
+                Optional<WpProductEntity> byId = wpProductRepository.findById(pHistory.getProduct().getId());
+                if (byId.isPresent()) {
+                    WpProductEntity wpProductEntity = byId.get();
+                    wpProductEntity.setStockQuantity(wpProductEntity.getStockQuantity() + pHistory.getQuantity());
+                    wpProductRepository.save(wpProductEntity);
+                    updateProductOnSites(wpProductEntity, null);
+                }
+
+                wpProductHistoryRepository.delete(pHistory);
+            }
+        }
+    }
+
+    @Transactional
+    public void postUpdate(WpProductEntity old, WpProductEntity wpProductEntity) {
+
+
+//        obnovqvame vsicki saytove
+
+
+
+
+
+//        Map<String, String> oldNamesMap = old.getTranslations().stream()
+//                .collect(Collectors.toMap(
+//                        t -> t.getLanguage().getCode(), // Взимаме кода от LanguageEntity
+//                        WpProductTranslationEntity::getName,
+//                        (v1, v2) -> v1
+//                ));
+//
+//        for (WpProductTranslationEntity currentTrans : wpProductEntity.getTranslations()) {
+//            String langCode = currentTrans.getLanguage().getCode();
+//            String newName = currentTrans.getName();
+//            String oldName = oldNamesMap.get(langCode);
+//
+//            System.out.println(newName);
+//            System.out.println(oldName);
+//
+//            // Сравняваме
+//            if (oldName != null && !oldName.equals(newName)) {
+//                System.out.println("Името е променено за език: " + langCode);
+//
+//                // Извикваш обновяването на външния сайт само за този език
+////                syncWithExternalSite(product.getSku(), langCode, newName);
+//            }
+//        }
+
+    }
+
+
+    @Transactional
+    public void syncProductsToSite(Long siteId) {
+        SiteEntity site = siteRepository.findById(siteId).orElseThrow();
+        if(site.getUrl().contains("sateno.bg")) {
+            throw new RuntimeException("sateno.bg");
+        }
+
+//        try { clearAllProductsFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на продукти: {}", e.getMessage()); }
+//        try { clearAllCategoriesFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на категории: {}", e.getMessage()); }
+//        try { clearAllBrandsFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на брандове: {}", e.getMessage()); }
+
+        // Взимаме тестовия продукт
+//        WpProductEntity product = wpProductRepository.findById(533L).orElseThrow();
+        int count = 1;
+        List<WpProductEntity> allWithAddons = wpProductRepository.findAll();
+        for (WpProductEntity wpProductEntity : allWithAddons) {
+            try {
+//                massSyncAllToSite(wpProductEntity, site);
+                syncSalePriceBySku(site, wpProductEntity);
+                count++;
+                System.out.println(count);
+            } catch (Exception e) {
+                // Ако един продукт гръмне, записваме грешката и преминаваме на следващия
+                log.error("КРИТИЧНА ГРЕШКА за продукт SKU {}: {}", wpProductEntity.getSku(), e.getMessage());
+            }
+        }
+        log.info("Синхронизацията приключи. Успешно обработени: {} продукта.брой {}", count, allWithAddons.size());
+
+
+    }
+
+
+    private void syncSalePriceBySku(SiteEntity site, WpProductEntity product) {
+        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+
+        try {
+
+            WpProductSiteConfigEntity satenoConfig = wpProductSiteConfigRepository
+                    .findBySiteUrlAndProduct("sateno.bg", product);
+
+            // СТЪПКА 1: Намираме продукта в сайта по SKU, за да му вземем ID-то
+            var searchResponse = restClient.get()
+                    .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products?sku=" + product.getSku())
+                    .header("Authorization", "Basic " + auth)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+
+            if (searchResponse == null || searchResponse.isEmpty()) {
+                log.warn("Продукт с SKU {} не е намерен в сайта {}", product.getSku(), site.getUrl());
+                return;
+            }
+
+            // Взимаме WordPress ID-то от първия намерен резултат
+            Integer wpId = (Integer) searchResponse.get(0).get("id");
+
+
+            // СТЪПКА 3 & 4: Подготвяме PATCH заявката за обновяване
+            Map<String, Object> updateBody = new HashMap<>();
+            String salePriceValue = (satenoConfig.getSalePrice() != null && satenoConfig.getSalePrice().compareTo(BigDecimal.ZERO) > 0)
+                    ? satenoConfig.getSalePrice().toString()
+                    : ""; // Изпращаме празен низ, за да премахнем промоцията
+            updateBody.put("manage_stock", product.getSaleType() != ProductSaleType.UNLIMITED);
+            updateBody.put("stock_quantity", product.getStockQuantity());
+
+
+//            updateBody.put("sale_price", salePriceValue);
+//            updateBody.put("featured", false);
+
+            // 1. Взимаме конфигурациите от Sateno
+//            SiteEntity satenoSite = siteRepository.findSiteEntityByUrl("sateno.bg");
+//            for (WpProductAddonConfigEntity wpProductAddonConfigEntity : product.getAddonConfig()) {
+//                WpAddonValueEntity addonValue = wpProductAddonConfigEntity.getAddonValue();
+//
+//                List<WpAddonEntity> groups = addonValue.getGroups();
+//                for (WpAddonEntity group : groups) {
+//                    List<WpAddonTranslationEntity> translations1 = group.getTranslations();
+//                    for (WpAddonTranslationEntity wpAddonTranslationEntity : translations1) {
+//                        System.out.println(wpAddonTranslationEntity.getName());
+//                    }
+//                }
+//
+//                List<WpAddonValueTranslationEntity> translations = addonValue.getTranslations();
+//                for (WpAddonValueTranslationEntity wpAddonValueTranslationEntity : translations) {
+//                    System.out.println(wpAddonValueTranslationEntity.getLabel());
+//                }
+//            }
+
+
+            // 2. ГРУПИРАНЕ НА АДОНИТЕ (със защита против дублиране по име)
+            // Ключ: Името на групата (чисто), Стойност: Картата на адона за WP
+//            Map<String, Map<String, Object>> uniqueAddonsByName = new LinkedHashMap<>();
+//
+//            for (WpProductAddonConfigEntity config : product.getAddonConfig()) {
+//                WpAddonValueEntity addonValue = config.getAddonValue();
+//                List<WpAddonEntity> addonGroups = wpAddonRepository.findAllByValuesContaining(addonValue);
+//
+//                for (WpAddonEntity group : addonGroups) {
+//                    // Взимаме името на ГРУПАТА за текущия език
+//                    String groupName = group.getTranslations().stream()
+//                            .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
+//                            .map(WpAddonTranslationEntity::getName)
+//                            .findFirst()
+//                            .orElse("Опция");
+//
+//                    // Вместо split(",")[0], използвай по-интелигентно рязане
+//                    String cleanGroupName = groupName;
+//                    if (groupName.contains("модел")) {
+//                        cleanGroupName = groupName.split("модел")[0].trim();
+//                        // Премахваме запетаята, ако е останала накрая
+//                        if (cleanGroupName.endsWith(",")) {
+//                            cleanGroupName = cleanGroupName.substring(0, cleanGroupName.length() - 1).trim();
+//                        }
+//                    }
+//                    // Ако тази група още не съществува в мапа, създаваме я
+//                    uniqueAddonsByName.computeIfAbsent(cleanGroupName, name -> {
+//                        Map<String, Object> newGroup = new HashMap<>();
+//                        newGroup.put("name", name);
+//                        newGroup.put("type", "multiple_choice");
+//                        newGroup.put("display", "radiobutton");
+//                        newGroup.put("required", true);
+//                        newGroup.put("position", uniqueAddonsByName.size());
+//                        newGroup.put("title_format", "label");
+//                        newGroup.put("adjust_price", false);
+//                        newGroup.put("options", new ArrayList<Map<String, Object>>());
+//                        return newGroup;
+//                    });
+//
+//                    // 3. Подготвяме опцията
+//                    Map<String, Object> option = new HashMap<>();
+//                    String label = addonValue.getTranslations().stream()
+//                            .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
+//                            .map(WpAddonValueTranslationEntity::getLabel)
+//                            .findFirst()
+//                            .orElse("Стойност");
+//
+//                    option.put("label", label);
+//                    option.put("price", (config.getPriceModifier() != null && config.getPriceModifier().compareTo(BigDecimal.ZERO) > 0)
+//                            ? config.getPriceModifier().toString() : "");
+//                    option.put("price_type", "flat_fee");
+//                    option.put("image", 0);
+//                    option.put("visibility", true);
+//
+//                    // Добавяме опцията към правилната група (без да дублираме самата група)
+//                    List<Map<String, Object>> optionsList = (List<Map<String, Object>>) uniqueAddonsByName.get(cleanGroupName).get("options");
+//
+//                    // Опционално: Проверка за дублирана опция вътре в групата (по label)
+//                    boolean alreadyExists = optionsList.stream().anyMatch(o -> o.get("label").equals(label));
+//                    if (!alreadyExists) {
+//                        optionsList.add(option);
+//                    }
+//                }
+//            }
+//
+//            // 4. Превръщаме мапа обратно в списък за PATCH тялото
+//            List<Map<String, Object>> finalAddons = new ArrayList<>(uniqueAddonsByName.values());
+//
+//            if (!finalAddons.isEmpty()) {
+//                updateBody.put("addons", finalAddons);
+//            }
+
+
+            System.out.println(updateBody.toString());
+            restClient.patch()
+                    .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
+                    .header("Authorization", "Basic " + auth)
+                    .body(updateBody)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("Успешно обновен sale_price за SKU {}: {}", product.getSku(), salePriceValue);
+
+        } catch (Exception e) {
+            log.error("Грешка при синхронизация на цена за SKU {}: {}", product.getSku(), e.getMessage());
+        }
+    }
+
+    private void massSyncAllToSite(WpProductEntity product, SiteEntity site) {
+
+
+
+        WpProductSiteConfigEntity siteConfig = wpProductSiteConfigRepository
+                .findByProductAndSite(product, site)
+                .orElse(new WpProductSiteConfigEntity());
+
+        WpProductSiteConfigEntity satenoConfig = wpProductSiteConfigRepository
+                .findBySiteUrlAndProduct("sateno.bg", product);
+
+        WpProductTranslationEntity translation = wpProductTranslationRepository
+                .findByProductAndLanguage(product, site.getLanguage())
+                .orElseThrow(() -> new RuntimeException("Липсва превод за този сайт"));
+
+        // --- ЛОГИКА ЗА СНИМКИ ---
+        List<Map<String, Object>> imageList = new ArrayList<>();
+        if (product.getImages() != null) {
+            for (WpProductImageEntity imgEntity : product.getImages()) {
+                // Викаме твоя метод за качване
+                Long wpMediaId = uploadImageToWordPress(site, imgEntity.getLocalSrc());
+                if (wpMediaId != null) {
+                    Map<String, Object> imgMap = new HashMap<>();
+                    imgMap.put("id", wpMediaId); // Свързваме чрез ID в Media Library
+                    imageList.add(imgMap);
+                }
+            }
+        }
+
+        // Подготвяме тялото на заявката
+        Map<String, Object> body = new HashMap<>();
+        body.put("sku", product.getSku());
+        body.put("name", translation.getName());
+        body.put("type", product.getType());
+        body.put("status", product.getStatus().getValue());
+        body.put("description", translation.getDescription());
+        body.put("short_description", translation.getShortDescription());
+//        body.put("regular_price", siteConfig.getRegularPrice() != null ? siteConfig.getRegularPrice().toString() : "0");
+        body.put("regular_price", satenoConfig.getRegularPrice() != null ? satenoConfig.getRegularPrice().toString() : "0");
+        body.put("price", satenoConfig.getRegularPrice() != null ? satenoConfig.getRegularPrice().toString() : "0");
+        body.put("manage_stock", product.isManage_stock());
+        body.put("catalog_visibility", product.getCatalog_visibility());
+        body.put("stock_quantity", product.isManage_stock()? product.getStockQuantity(): null);
+        body.put("featured", product.isFeatured());
+        body.put("images", imageList); // ДОБАВЯМЕ СНИМКИТЕ ТУК
+        body.put("sale_price", satenoConfig.getSalePrice() != null? satenoConfig.getSalePrice().toString() : "0");
+//        if(product.getSaleType() == ProductSaleType.UNLIMITED){
+            body.put("stock_status",product.getStock_status());
+//        }
+
+
+
+        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+
+
+        List<Map<String, Object>> categoryList = uploadCategoriesToWordpress(site, product, auth);
+        body.put("categories", categoryList);
+
+        List<Map<String, Object>> brandList = uploadBrandsToWordpress(site, product, auth);
+        body.put("brands", brandList);
+
+        try {
+            var response = restClient.post()
+                    .uri(site.getUrlWithHttps() + PRODUCTS_URL)
+                    .header("Authorization", "Basic " + auth)
+                    .body(body)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+
+            if (response != null && response.containsKey("id")) {
+                Integer wpId = (Integer) response.get("id");
+                siteConfig.setProduct(product);
+                siteConfig.setSite(site);
+                siteConfig.setWpProductId(Long.valueOf(wpId));
+                wpProductSiteConfigRepository.save(siteConfig);
+                log.info("Успешно създаден продукт в WP с ID: {} и прикачени {} снимки", wpId, imageList.size());
+            }
+
+        } catch (Exception e) {
+            log.error("Грешка при POST към WooCommerce: {}", e.getMessage());
+        }
+    }
+
+    private Long uploadImageToWordPress(SiteEntity site, String localPath) {
+        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+
+        // Взимаме байтовете от локалния диск
+        byte[] imageBytes = fileStorageService.getImageBytes(localPath);
+        String fileName = localPath.substring(localPath.lastIndexOf("/") + 1);
+
+        try {
+            var response = restClient.post()
+                    .uri(site.getUrlWithHttps() + "/wp-json/wp/v2/media")
+                    .header("Authorization", "Basic " + auth)
+                    .header("Content-Disposition", "attachment; filename=" + fileName)
+                    .header("Content-Type", "image/jpeg") // или динамично според разширението
+                    .body(imageBytes)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+
+            // Връща ID-то на новосъздадената медия в WordPress
+            return Long.valueOf(response.get("id").toString());
+        } catch (Exception e) {
+            log.error("Грешка при качване на снимка в WP: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private List<Map<String, Object>> uploadCategoriesToWordpress(SiteEntity site, WpProductEntity product, String auth) {
+        List<Map<String, Object>> productCategories = new ArrayList<>();
+        for (WpCategoryEntity category : product.getCategories()) {
+
+            try {
+
+                var searchResponse = restClient.get()
+                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories?slug=" + category.getSlug())
+                        .header("Authorization", "Basic " + auth)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+
+                Long wpCategoryId;
+
+                if (searchResponse != null && !searchResponse.isEmpty()) {
+                    // Категорията съществува
+                    wpCategoryId = Long.valueOf(searchResponse.get(0).get("id").toString());
+                    log.info("Намерена съществуваща категория: {} с ID: {}", category.getSlug(), wpCategoryId);
+                } else {
+                    // 2. Категорията липсва - СЪЗДАВАМЕ Я (POST)
+                    // Взимаме превода за езика на сайта
+                    String catName = category.getTranslations().stream()
+                            .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
+                            .map(WpCategoryTranslationEntity::getName)
+                            .findFirst()
+                            .orElse(category.getSlug()); // Fallback към slug ако няма превод
+
+                    Map<String, Object> body = new HashMap<>();
+                    body.put("name", catName);
+                    body.put("slug", category.getSlug());
+
+                    var createResponse = restClient.post()
+                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories")
+                            .header("Authorization", "Basic " + auth)
+                            .body(body)
+                            .retrieve()
+                            .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+
+                    wpCategoryId = Long.valueOf(createResponse.get("id").toString());
+                    log.info("Създадена нова категория: {} с ID: {}", category.getSlug(), wpCategoryId);
+                }
+
+                Map<String, Object> catMap = new HashMap<>();
+                catMap.put("id", wpCategoryId);
+                productCategories.add(catMap);
+
+            } catch (Exception e) {
+                log.error("Грешка при търсене на категория по slug '{}': {}", category.getSlug(), e.getMessage());
+            }
+        }
+
+        return productCategories;
+
+
+    }
+
+    private List<Map<String, Object>> uploadBrandsToWordpress(SiteEntity site, WpProductEntity product, String auth) {
+        List<Map<String, Object>> productBrands = new ArrayList<>();
+
+        if (product.getBrand() == null) {
+            return productBrands;
+        }
+
+        WpBrandEntity brand = product.getBrand();
+
+        try {
+            // 1. Търсим дали брандът съществува по Slug
+            // Забележка: Пътят може да варира според плъгина (пробвай този първо)
+            var searchResponse = restClient.get()
+                    .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/brands?slug=" + brand.getSlug())
+                    .header("Authorization", "Basic " + auth)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+
+            Long wpBrandId;
+
+            if (searchResponse != null && !searchResponse.isEmpty()) {
+                // Вече съществува
+                wpBrandId = Long.valueOf(searchResponse.get(0).get("id").toString());
+                log.info("Намерен съществуващ бранд: {} с ID: {}", brand.getSlug(), wpBrandId);
+            } else {
+                // 2. Липсва - създаваме го
+                Map<String, Object> body = new HashMap<>();
+                body.put("name", brand.getName());
+                body.put("slug", brand.getSlug());
+
+                var createResponse = restClient.post()
+                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/brands")
+                        .header("Authorization", "Basic " + auth)
+                        .body(body)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+
+                wpBrandId = Long.valueOf(createResponse.get("id").toString());
+                log.info("Създаден нов бранд: {} с ID: {}", brand.getSlug(), wpBrandId);
+            }
+
+            // Подготвяме мапа за масива "brands" в обекта на продукта
+            Map<String, Object> brandMap = new HashMap<>();
+            brandMap.put("id", wpBrandId);
+            productBrands.add(brandMap);
+
+        } catch (Exception e) {
+            log.error("Грешка при синхронизация на бранд '{}': {}", brand.getSlug(), e.getMessage());
+        }
+
+        return productBrands;
+    }
+
+//    @Transactional
+//    protected void clearAllProductsFromSite(SiteEntity site) {
+//        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+//
+//        log.info("Започва изчистване на всички продукти от сайт: {}", site.getUrl());
+//
+//        while (true) {
+//            // 1. Четем само ID-тата на първите 100 продукта (pageable не ни трябва, защото трием първите и следващите 100 стават първи)
+//            var response = restClient.get()
+//                    .uri(site.getUrlWithHttps() + PRODUCTS_URL + "?per_page=100&_fields=id")
+//                    .header("Authorization", "Basic " + auth)
+//                    .retrieve()
+//                    .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+//
+//            if (response == null || response.isEmpty()) {
+//                log.info("Няма повече продукти за изтриване.");
+//                break;
+//            }
+//
+//            // Извличаме само ID-тата
+//            List<Long> idsToDelete = response.stream()
+//                    .map(m -> Long.valueOf(m.get("id").toString()))
+//                    .toList();
+//
+//            // 2. Изтриваме ги чрез Batch API (force=true за окончателно изтриване без кошче)
+//            Map<String, Object> deleteBody = new HashMap<>();
+//            deleteBody.put("delete", idsToDelete);
+//
+//            try {
+//                restClient.post()
+//                        .uri(site.getUrlWithHttps() + PRODUCTS_URL + "/batch")
+//                        .header("Authorization", "Basic " + auth)
+//                        .body(deleteBody)
+//                        .retrieve()
+//                        .toBodilessEntity();
+//
+//                log.info("Успешно изтрити {} продукта (Batch).", idsToDelete.size());
+//            } catch (Exception e) {
+//                log.error("Грешка при batch изтриване: {}", e.getMessage());
+//                break; // Спираме при грешка, за да не влезем в безкраен цикъл
+//            }
+//        }
+//
+//        // 3. СЛЕД КАТО СМЕ ИЗТРИЛИ ВСИЧКО В WP:
+//        // Трябва да занулим wpProductId в нашата база, за да знае системата, че следващия път прави POST
+////        wpProductSiteConfigRepository.clearWpIdsForSite(site.getId());
+//    }
+
+@Transactional
+protected void clearAllProductsFromSite(SiteEntity site) {
+    String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+    log.info("Започва пълно изчистване на продукти и медия от сайт: {}", site.getUrl());
+
+    while (true) {
+        // 1. Взимаме продуктите ЗАЕДНО със снимките им
+        var response = restClient.get()
+                .uri(site.getUrlWithHttps() + PRODUCTS_URL + "?per_page=100&_fields=id,images")
+                .header("Authorization", "Basic " + auth)
+                .retrieve()
+                .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+
+        if (response == null || response.isEmpty()) {
+            log.info("Няма повече продукти за изтриване.");
+            break;
+        }
+
+        List<Long> productIds = new ArrayList<>();
+        Set<Long> mediaIdsToDelete = new HashSet<>();
+
+        for (Map<String, Object> product : response) {
+            productIds.add(Long.valueOf(product.get("id").toString()));
+
+            // Извличаме ID-тата на снимките на този продукт
+            List<Map<String, Object>> images = (List<Map<String, Object>>) product.get("images");
+            if (images != null) {
+                for (Map<String, Object> img : images) {
+                    mediaIdsToDelete.add(Long.valueOf(img.get("id").toString()));
+                }
+            }
+        }
+
+        // 2. ИЗТРИВАМЕ ПРОДУКТИТЕ (Batch)
+        deleteProductsBatch(site, productIds, auth);
+
+        // 3. ИЗТРИВАМЕ СНИМКИТЕ (Една по една, защото WP Media API няма Batch Delete по подразбиране)
+        deleteMediaOneByOne(site, mediaIdsToDelete, auth);
+    }
+}
+
+    private void deleteProductsBatch(SiteEntity site, List<Long> ids, String auth) {
+        Map<String, Object> deleteBody = Map.of("delete", ids);
+        try {
+            restClient.post()
+                    .uri(site.getUrlWithHttps() + PRODUCTS_URL + "/batch")
+                    .header("Authorization", "Basic " + auth)
+                    .body(deleteBody)
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("Успешно изтрити {} продукта.", ids.size());
+        } catch (Exception e) {
+            log.error("Грешка при batch изтриване на продукти: {}", e.getMessage());
+        }
+    }
+
+    private void deleteMediaOneByOne(SiteEntity site, Set<Long> mediaIds, String auth) {
+        for (Long mediaId : mediaIds) {
+            try {
+                // force=true е задължително за медия, за да не отиде в Trash, а да се изтрие физически файлът
+                restClient.delete()
+                        .uri(site.getUrlWithHttps() + "/wp-json/wp/v2/media/" + mediaId + "?force=true")
+                        .header("Authorization", "Basic " + auth)
+                        .retrieve()
+                        .toBodilessEntity();
+            } catch (Exception e) {
+                // Често една снимка е свързана с няколко продукта, затова ако вече е изтрита, просто игнорираме
+                log.warn("Медия ID {} вече не съществува или не може да бъде изтрита.", mediaId);
+            }
+        }
+        log.info("Изчистени {} медийни файла от WordPress.", mediaIds.size());
+    }
+
+    @Transactional
+    protected void clearAllCategoriesFromSite(SiteEntity site) {
+        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+        log.info("Започва изчистване на категории от сайт: {}", site.getUrl());
+
+        while (true) {
+            // Взимаме първите 100 категории
+            var response = restClient.get()
+                    .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories?per_page=100&_fields=id")
+                    .header("Authorization", "Basic " + auth)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+
+            // Филтрираме ID 18 (обикновено Uncategorized), защото не може да се трие
+            List<Long> idsToDelete = response.stream()
+                    .map(m -> Long.valueOf(m.get("id").toString()))
+                    .filter(id -> id != 18) // Замени 18 с ID-то на твоята default категория ако е различно
+                    .toList();
+
+            if (idsToDelete.isEmpty()) break;
+
+            Map<String, Object> deleteBody = Map.of("delete", idsToDelete);
+
+            restClient.post()
+                    .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories/batch")
+                    .header("Authorization", "Basic " + auth)
+                    .body(deleteBody)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("Изтрити {} категории.", idsToDelete.size());
+        }
+    }
+
+    @Transactional
+    protected void clearAllBrandsFromSite(SiteEntity site) {
+        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+        log.info("Започва изчистване на брандове от сайт: {}", site.getUrl());
+
+        while (true) {
+            // Внимание: Endpoint-ът трябва да съвпада с този, който ползваш за качване
+            var response = restClient.get()
+                    .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/brands?per_page=100&_fields=id")
+                    .header("Authorization", "Basic " + auth)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+
+            if (response == null || response.isEmpty()) break;
+
+            List<Long> idsToDelete = response.stream()
+                    .map(m -> Long.valueOf(m.get("id").toString()))
+                    .toList();
+
+            Map<String, Object> deleteBody = Map.of("delete", idsToDelete);
+
+            restClient.post()
+                    .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/brands/batch")
+                    .header("Authorization", "Basic " + auth)
+                    .body(deleteBody)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("Изтрити {} бранда.", idsToDelete.size());
+        }
+    }
+
+    public void updateProductOnSites(WpProductEntity product, Long sourceSiteId) {
+//        System.out.println(product.isManage_stock());
+//        if(!product.isManage_stock()) {
+//            return;
+//        }
+//        System.out.println("gg");
+        List<SiteEntity> siteList = siteRepository.findAll();
+        for (SiteEntity site : siteList) {
+            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
+
+            try {
+                System.out.println(site.getUrl());
+                System.out.println(product.getSku());
+                Map<String, Object> updateBody = new HashMap<>();
+                updateBody.put("stock_quantity", product.getStockQuantity());
+                updateBody.put("manage_stock", product.getSaleType() != ProductSaleType.UNLIMITED);
+
+                String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+
+                var searchResponse = restClient.get()
+                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products?sku=" + product.getSku())
+                        .header("Authorization", "Basic " + auth)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+
+                if (searchResponse == null || searchResponse.isEmpty()) {
+                    log.warn("Продукт с SKU {} не е намерен в сайта {}", product.getSku(), site.getUrl());
+                    return;
+                }
+
+                // Взимаме WordPress ID-то от първия намерен резултат
+                Integer wpId = (Integer) searchResponse.get(0).get("id");
+
+                ResponseEntity<Void> authorization = restClient.patch()
+                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
+                        .header("Authorization", "Basic " + auth)
+                        .body(updateBody)
+                        .retrieve()
+                        .toBodilessEntity();
+                System.out.println(wpId);
+                System.out.println(authorization.getBody());
+                log.info("Успешно обновен sale_price за SKU {}", product.getSku());
+
+
+
+
+
+
+
+
+            } catch (Exception e) {
+                log.error("Грешка при обновяване на сайт {}: {}", site.getUrl(), e.getMessage());
+            }
+
+
+
+        }
+
+
+    }
+
+
 }

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -25,4 +26,5 @@ public interface WpAddonRepository extends JpaRepository<WpAddonEntity, Long> {
     @Query("SELECT v FROM WpAddonValueEntity v JOIN v.translations t WHERE t.label = :label AND t.language = :lang")
     Optional<WpAddonValueEntity> findByLabelAndLanguage(@Param("label") String label, @Param("lang") LanguageEntity lang);
 
+    List<WpAddonEntity> findAllByValuesContaining(WpAddonValueEntity value);
 }

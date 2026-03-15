@@ -2,7 +2,6 @@ package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
-import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.repository.WpAddonRepository;
 import com.sateno_b.www.model.repository.WpProductAddonConfigRepository;
 import com.sateno_b.www.model.repository.WpProductRepository;
@@ -62,7 +61,7 @@ public class WpProductController {
     public ResponseEntity<WpProductDto> saveProduct(@RequestBody WpProductDto productDto) {
 
         try {
-            WpProductDto savedDto = wpProductService.saveProductWithImages(productDto);
+            WpProductDto savedDto = wpProductService.saveProduct(productDto);
             return ResponseEntity.ok(savedDto);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
@@ -153,6 +152,12 @@ public class WpProductController {
     public boolean syncWpProducts(@PathVariable Long siteId) {
         wpProductService.syncProductsToDB(siteId);
         return true;
+    }
+
+    @PostMapping("/sync/products/web/{siteId}")
+    public boolean syncWpProductsToWeb(@PathVariable Long siteId) {
+            wpProductService.syncProductsToSite(siteId);
+            return true;
     }
 
     @PostMapping("/upload_temp")

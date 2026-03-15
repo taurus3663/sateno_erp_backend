@@ -61,6 +61,18 @@ public class WpOrderController {
             wpOrderService.syncOrderToDB(siteId);
     }
 
+    @PatchMapping("/patch")
+    public ResponseEntity<?> patch(@RequestBody WpOrderDto wpOrderDto) {
+        try {
+            WpOrderDto wpOrder = wpOrderService.patchOrder(wpOrderDto);
+            return  ResponseEntity.ok(wpOrder);
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body("Грешка при частично обновяване: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/save")
     @Transactional
     public ResponseEntity<WpOrderDto> saveWpOrder(@RequestBody WpOrderDto wpOrderDto){
@@ -106,6 +118,8 @@ public class WpOrderController {
                 }
                 
             }
+
+            byId.get().setComment(wpOrderDto.getComment());
 
             wpOrderRepository.save(byId.get());
 //            notificationService.sendUpdate("orders", WsAction.UPDATED);

@@ -19,6 +19,7 @@ public class WooProductDto {
     private String short_description;
     private String price;
     private String regular_price;
+    private String sale_price;
     private String weight;
     private Integer stock_quantity;
     private List<WooProductImageDto> images;
@@ -27,5 +28,8 @@ public class WooProductDto {
     private List<WooAddonDto> addons;
     private Dimensions dimensions;
     private boolean manage_stock;
+    private String stock_status;
+    private boolean featured;
+    private String catalog_visibility;
 
 }

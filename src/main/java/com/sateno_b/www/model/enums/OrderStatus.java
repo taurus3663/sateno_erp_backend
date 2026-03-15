@@ -13,8 +13,8 @@ public enum OrderStatus {
     COMPLETED("completed"),
     APPROVED("approved"),
     JOINT("joint"),
-    WAITING("waiting");
-
+    WAITING("waiting"),
+    FAILED("failed");
     private final String value;
 
     OrderStatus(String value) {

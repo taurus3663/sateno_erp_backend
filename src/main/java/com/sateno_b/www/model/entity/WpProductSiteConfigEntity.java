@@ -17,13 +17,15 @@ public class WpProductSiteConfigEntity extends BaseEntity{
 
     @Column
     private Long wpProductId;
-    @Column
-    private String sku;
+//    @Column
+//    private String sku;
 
     @Column
     private BigDecimal price;
     @Column
     private BigDecimal regularPrice;
+    @Column
+    private BigDecimal salePrice;
     @Column
     private String slug;
 

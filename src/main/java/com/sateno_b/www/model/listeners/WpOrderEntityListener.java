@@ -1,23 +1,50 @@
 package com.sateno_b.www.model.listeners;
 
 import com.sateno_b.www.model.entity.WpOrderEntity;
+import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.WsAction;
 import com.sateno_b.www.service.NotificationService;
+import com.sateno_b.www.service.WpProductService;
 import jakarta.persistence.PostPersist;
 import jakarta.persistence.PostRemove;
 import jakarta.persistence.PostUpdate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.stereotype.Component;
 
-@RequiredArgsConstructor
+
+@Component
 public class WpOrderEntityListener {
 
-    private final NotificationService notificationService;
+
+    private final ObjectProvider<NotificationService> notificationServiceProvider;
+    private final ObjectProvider<WpProductService> wpProductServiceProvider;
+
+    public WpOrderEntityListener(
+            ObjectProvider<NotificationService> notificationServiceProvider,
+            ObjectProvider<WpProductService> wpProductServiceProvider) {
+        this.notificationServiceProvider = notificationServiceProvider;
+        this.wpProductServiceProvider = wpProductServiceProvider;
+    }
 
     @PostUpdate
     @PostPersist
     @PostRemove
     public void onOrderChange(WpOrderEntity wpOrderEntity) {
-//        NotificationService notificationService = Bean
-        notificationService.sendUpdate("orders", WsAction.UPDATED);
+        WpOrderEntity old = wpOrderEntity.getSnapshot();
+
+        // Проверка за статус CANCELLED
+        if (old != null && old.getStatus() != wpOrderEntity.getStatus()
+                && (wpOrderEntity.getStatus() == OrderStatus.CANCELLED ||
+                wpOrderEntity.getStatus() == OrderStatus.FAILED) ) {
+
+            // Извикваме сервиза само при нужда през Provider-а
+            wpProductServiceProvider.ifAvailable(service -> service.restoreQuantity(wpOrderEntity));
+        }
+
+        // Изпращаме WebSocket нотификация
+        notificationServiceProvider.ifAvailable(service ->
+                service.sendUpdate("orders", WsAction.UPDATED)
+        );
     }
 }

@@ -16,9 +16,8 @@ import java.util.List;
 @Table(name = "wp_addon_value")
 public class WpAddonValueEntity extends BaseEntity {
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "group_id")
-//    private WpAddonEntity group;
+    @ManyToMany(mappedBy = "values")
+    private List<WpAddonEntity> groups = new ArrayList<>();
 
     @Column
     private String slug; // green, xl, black

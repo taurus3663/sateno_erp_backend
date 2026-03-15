@@ -17,4 +17,8 @@ public interface WpProductSiteConfigRepository extends JpaRepository<WpProductSi
 
     // Ако искаш да вземеш всички цени за един продукт (за показване в таблица)
     List<WpProductSiteConfigEntity> findAllByProduct(WpProductEntity product);
+
+    WpProductSiteConfigEntity findBySiteUrl(String siteUrl);
+
+    WpProductSiteConfigEntity findBySiteUrlAndProduct(String siteUrl, WpProductEntity product);
 }

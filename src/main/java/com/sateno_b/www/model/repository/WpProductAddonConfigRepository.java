@@ -7,6 +7,7 @@ import com.sateno_b.www.model.entity.WpProductEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -18,4 +19,7 @@ public interface WpProductAddonConfigRepository extends JpaRepository<WpProductA
             WpAddonValueEntity addonValue,
             SiteEntity site
     );
+
+
+     List<WpProductAddonConfigEntity> findAllByProductAndSite(WpProductEntity product, SiteEntity site);
 }

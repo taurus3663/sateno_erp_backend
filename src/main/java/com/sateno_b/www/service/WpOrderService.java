@@ -345,14 +345,19 @@ public class WpOrderService {
                     WpProductEntity product = byId.get();
                     WpProductHistoryEntity wpProductHistoryEntity = new WpProductHistoryEntity();
 
-                    if(product.getSaleType() == ProductSaleType.UNLIMITED){
-                        product.setStockQuantity((product.getStockQuantity() - orderLineItem.getQuantity()));
-                        wpProductHistoryEntity.setQuantity(orderLineItem.getQuantity());
-                    } else if(product.getSaleType() == ProductSaleType.LIMITED && product.getStockQuantity() >= 0 &&
-                            product.getStockQuantity() >= orderLineItem.getQuantity()) {
-                        product.setStockQuantity((product.getStockQuantity() - orderLineItem.getQuantity()));
-                        wpProductHistoryEntity.setQuantity(orderLineItem.getQuantity());
+                    if(product.getStockQuantity() == null){
+                        product.setStockQuantity(0);
                     }
+                    product.setStockQuantity((product.getStockQuantity() - orderLineItem.getQuantity()));
+                    wpProductHistoryEntity.setQuantity(orderLineItem.getQuantity());
+//                    if(product.getSaleType() == ProductSaleType.UNLIMITED){
+//                        product.setStockQuantity((product.getStockQuantity() - orderLineItem.getQuantity()));
+//                        wpProductHistoryEntity.setQuantity(orderLineItem.getQuantity());
+//                    } else if(product.getSaleType() == ProductSaleType.LIMITED && product.getStockQuantity() >= 0 &&
+//                            product.getStockQuantity() >= orderLineItem.getQuantity()) {
+//                        product.setStockQuantity((product.getStockQuantity() - orderLineItem.getQuantity()));
+//                        wpProductHistoryEntity.setQuantity(orderLineItem.getQuantity());
+//                    }
                     if(wpProductHistoryEntity.getQuantity() != null && wpProductHistoryEntity.getQuantity() > 0){
                         wpProductHistoryEntity.setProduct(product);
                         wpProductHistoryEntity.setOrder(wpOrderEntity);
@@ -360,6 +365,7 @@ public class WpOrderService {
                         wpProductHistoryRepository.save(wpProductHistoryEntity);
                     }
                 wpProductRepository.save(product);
+                    wpProductService.updateProductOnSites(product, wpOrderEntity.getSite().getId());
                 }
             }
         }
@@ -496,5 +502,14 @@ public class WpOrderService {
     }
 
 
-
+    public WpOrderDto patchOrder(WpOrderDto wpOrderDto) {
+        Optional<WpOrderEntity> byId = wpOrderRepository.findById(wpOrderDto.getId());
+        if(byId.isPresent()) {
+            WpOrderEntity wpOrderEntity = byId.get();
+            wpOrderEntity.setComment(wpOrderDto.getComment());
+            wpOrderRepository.save(wpOrderEntity);
+            return modelMapper.map(wpOrderEntity, WpOrderDto.class);
+        }
+        throw new RuntimeException("Order not found");
+    }
 }

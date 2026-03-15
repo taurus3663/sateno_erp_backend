@@ -99,4 +99,28 @@ public class FileStorageService {
             log.error("Грешка при изтриване на файл {}: {}", virtualPath, e.getMessage());
         }
     }
+
+    public byte[] getImageBytes(String virtualPath) {
+        try {
+            if (virtualPath == null || !virtualPath.startsWith("/media/")) {
+                log.error("Невалиден виртуален път: {}", virtualPath);
+                return null;
+            }
+
+            // Превръщаме виртуалния път (/media/products/1/file.jpg)
+            // във физически (/home/user/uploads/sateno_pim/products/1/file.jpg)
+            String relativePath = virtualPath.replace("/media/", "");
+            Path filePath = Paths.get(ROOT_PATH, relativePath);
+
+            if (Files.exists(filePath)) {
+                return Files.readAllBytes(filePath);
+            } else {
+                log.error("Файлът не съществува на физически адрес: {}", filePath);
+                return null;
+            }
+        } catch (IOException e) {
+            log.error("Грешка при четене на байтове от файл {}: {}", virtualPath, e.getMessage());
+            return null;
+        }
+    }
 }
