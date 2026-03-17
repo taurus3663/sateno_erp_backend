@@ -92,6 +92,7 @@ public class WpProductEntity extends BaseEntity {
         this.snapshot.setBuyPrice(buyPrice);
         this.snapshot.setStockQuantity(stockQuantity);
         this.snapshot.setSaleType(saleType);
+        this.snapshot.setBrand(brand);
     }
 
     @Column

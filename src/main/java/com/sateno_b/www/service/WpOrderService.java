@@ -56,6 +56,7 @@ public class WpOrderService {
     private final OrderAutomationService orderAutomationService;
     private final WpProductRepository wpProductRepository;
     private final WpProductHistoryRepository wpProductHistoryRepository;
+    private final WpProductAsyncService wpProductAsyncService;
 
 
     public void syncOrderToDB(Long siteId){
@@ -365,7 +366,7 @@ public class WpOrderService {
                         wpProductHistoryRepository.save(wpProductHistoryEntity);
                     }
                 wpProductRepository.save(product);
-                    wpProductService.updateProductOnSites(product, wpOrderEntity.getSite().getId());
+                    wpProductAsyncService.updateProductOnSites(product, wpOrderEntity.getSite().getId());
                 }
             }
         }

@@ -9,6 +9,7 @@ import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.SlugTool;
+import com.sateno_b.www.shared.ImageToWordPress;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.*;
@@ -20,7 +21,6 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestClient;
@@ -53,9 +53,11 @@ public class WpProductService {
     private final LanguageRepository languageRepository;
     @PersistenceContext
     private final EntityManager entityManager;
+    private final WpProductAsyncService  wpProductAsyncService;
 
     private static final String PRODUCTS_URL = "/wp-json/wc/v3/products";
     private final WpProductHistoryRepository wpProductHistoryRepository;
+    private final ImageToWordPress imageToWordPress;
 
 
     @Transactional
@@ -492,7 +494,7 @@ public class WpProductService {
                 }
             }
         }
-        updateProductOnSites(entity, null);
+        wpProductAsyncService.updateProductOnSites(entity, null);
         return modelMapper.map(entity, WpProductDto.class);
     }
 
@@ -701,7 +703,7 @@ public class WpProductService {
             }
 
             WpProductEntity saved = wpProductRepository.save(wpProductEntity);
-            updateProductOnSites(saved, null);
+            wpProductAsyncService.updateProductOnSites(saved, null);
             return modelMapper.map(saved, WpProductDto.class);
         }
         throw new RuntimeException("Product not found");
@@ -722,7 +724,7 @@ public class WpProductService {
                     WpProductEntity wpProductEntity = byId.get();
                     wpProductEntity.setStockQuantity(wpProductEntity.getStockQuantity() + pHistory.getQuantity());
                     wpProductRepository.save(wpProductEntity);
-                    updateProductOnSites(wpProductEntity, null);
+                    wpProductAsyncService.updateProductOnSites(wpProductEntity, null);
                 }
 
                 wpProductHistoryRepository.delete(pHistory);
@@ -963,7 +965,7 @@ public class WpProductService {
         if (product.getImages() != null) {
             for (WpProductImageEntity imgEntity : product.getImages()) {
                 // Викаме твоя метод за качване
-                Long wpMediaId = uploadImageToWordPress(site, imgEntity.getLocalSrc());
+                Long wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
                 if (wpMediaId != null) {
                     Map<String, Object> imgMap = new HashMap<>();
                     imgMap.put("id", wpMediaId); // Свързваме чрез ID в Media Library
@@ -1026,30 +1028,30 @@ public class WpProductService {
         }
     }
 
-    private Long uploadImageToWordPress(SiteEntity site, String localPath) {
-        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
-
-        // Взимаме байтовете от локалния диск
-        byte[] imageBytes = fileStorageService.getImageBytes(localPath);
-        String fileName = localPath.substring(localPath.lastIndexOf("/") + 1);
-
-        try {
-            var response = restClient.post()
-                    .uri(site.getUrlWithHttps() + "/wp-json/wp/v2/media")
-                    .header("Authorization", "Basic " + auth)
-                    .header("Content-Disposition", "attachment; filename=" + fileName)
-                    .header("Content-Type", "image/jpeg") // или динамично според разширението
-                    .body(imageBytes)
-                    .retrieve()
-                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
-
-            // Връща ID-то на новосъздадената медия в WordPress
-            return Long.valueOf(response.get("id").toString());
-        } catch (Exception e) {
-            log.error("Грешка при качване на снимка в WP: {}", e.getMessage());
-            return null;
-        }
-    }
+//    public Long uploadImageToWordPress(SiteEntity site, String localPath) {
+//        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+//
+//        // Взимаме байтовете от локалния диск
+//        byte[] imageBytes = fileStorageService.getImageBytes(localPath);
+//        String fileName = localPath.substring(localPath.lastIndexOf("/") + 1);
+//
+//        try {
+//            var response = restClient.post()
+//                    .uri(site.getUrlWithHttps() + "/wp-json/wp/v2/media")
+//                    .header("Authorization", "Basic " + auth)
+//                    .header("Content-Disposition", "attachment; filename=" + fileName)
+//                    .header("Content-Type", "image/jpeg") // или динамично според разширението
+//                    .body(imageBytes)
+//                    .retrieve()
+//                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+//
+//            // Връща ID-то на новосъздадената медия в WordPress
+//            return Long.valueOf(response.get("id").toString());
+//        } catch (Exception e) {
+//            log.error("Грешка при качване на снимка в WP: {}", e.getMessage());
+//            return null;
+//        }
+//    }
 
     private List<Map<String, Object>> uploadCategoriesToWordpress(SiteEntity site, WpProductEntity product, String auth) {
         List<Map<String, Object>> productCategories = new ArrayList<>();
@@ -1245,7 +1247,7 @@ protected void clearAllProductsFromSite(SiteEntity site) {
         deleteProductsBatch(site, productIds, auth);
 
         // 3. ИЗТРИВАМЕ СНИМКИТЕ (Една по една, защото WP Media API няма Batch Delete по подразбиране)
-        deleteMediaOneByOne(site, mediaIdsToDelete, auth);
+//        deleteMediaOneByOne(site, mediaIdsToDelete, auth);
     }
 }
 
@@ -1264,22 +1266,22 @@ protected void clearAllProductsFromSite(SiteEntity site) {
         }
     }
 
-    private void deleteMediaOneByOne(SiteEntity site, Set<Long> mediaIds, String auth) {
-        for (Long mediaId : mediaIds) {
-            try {
-                // force=true е задължително за медия, за да не отиде в Trash, а да се изтрие физически файлът
-                restClient.delete()
-                        .uri(site.getUrlWithHttps() + "/wp-json/wp/v2/media/" + mediaId + "?force=true")
-                        .header("Authorization", "Basic " + auth)
-                        .retrieve()
-                        .toBodilessEntity();
-            } catch (Exception e) {
-                // Често една снимка е свързана с няколко продукта, затова ако вече е изтрита, просто игнорираме
-                log.warn("Медия ID {} вече не съществува или не може да бъде изтрита.", mediaId);
-            }
-        }
-        log.info("Изчистени {} медийни файла от WordPress.", mediaIds.size());
-    }
+//    private void deleteMediaOneByOne(SiteEntity site, Set<Long> mediaIds, String auth) {
+//        for (Long mediaId : mediaIds) {
+//            try {
+//                // force=true е задължително за медия, за да не отиде в Trash, а да се изтрие физически файлът
+//                restClient.delete()
+//                        .uri(site.getUrlWithHttps() + "/wp-json/wp/v2/media/" + mediaId + "?force=true")
+//                        .header("Authorization", "Basic " + auth)
+//                        .retrieve()
+//                        .toBodilessEntity();
+//            } catch (Exception e) {
+//                // Често една снимка е свързана с няколко продукта, затова ако вече е изтрита, просто игнорираме
+//                log.warn("Медия ID {} вече не съществува или не може да бъде изтрита.", mediaId);
+//            }
+//        }
+//        log.info("Изчистени {} медийни файла от WordPress.", mediaIds.size());
+//    }
 
     @Transactional
     protected void clearAllCategoriesFromSite(SiteEntity site) {
@@ -1347,66 +1349,8 @@ protected void clearAllProductsFromSite(SiteEntity site) {
         }
     }
 
-    public void updateProductOnSites(WpProductEntity product, Long sourceSiteId) {
-//        System.out.println(product.isManage_stock());
-//        if(!product.isManage_stock()) {
-//            return;
-//        }
-//        System.out.println("gg");
-        List<SiteEntity> siteList = siteRepository.findAll();
-        for (SiteEntity site : siteList) {
-            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
-
-            try {
-                System.out.println(site.getUrl());
-                System.out.println(product.getSku());
-                Map<String, Object> updateBody = new HashMap<>();
-                updateBody.put("stock_quantity", product.getStockQuantity());
-                updateBody.put("manage_stock", product.getSaleType() != ProductSaleType.UNLIMITED);
-
-                String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
-
-                var searchResponse = restClient.get()
-                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products?sku=" + product.getSku())
-                        .header("Authorization", "Basic " + auth)
-                        .retrieve()
-                        .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
-
-                if (searchResponse == null || searchResponse.isEmpty()) {
-                    log.warn("Продукт с SKU {} не е намерен в сайта {}", product.getSku(), site.getUrl());
-                    return;
-                }
-
-                // Взимаме WordPress ID-то от първия намерен резултат
-                Integer wpId = (Integer) searchResponse.get(0).get("id");
-
-                ResponseEntity<Void> authorization = restClient.patch()
-                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
-                        .header("Authorization", "Basic " + auth)
-                        .body(updateBody)
-                        .retrieve()
-                        .toBodilessEntity();
-                System.out.println(wpId);
-                System.out.println(authorization.getBody());
-                log.info("Успешно обновен sale_price за SKU {}", product.getSku());
 
 
-
-
-
-
-
-
-            } catch (Exception e) {
-                log.error("Грешка при обновяване на сайт {}: {}", site.getUrl(), e.getMessage());
-            }
-
-
-
-        }
-
-
-    }
 
 
 }
