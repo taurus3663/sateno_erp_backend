@@ -119,7 +119,12 @@ public class WpOrderController {
                 
             }
 
-            byId.get().setComment(wpOrderDto.getComment());
+            WpOrderEntity order = byId.get();
+            order.setComment(wpOrderDto.getComment());
+            order.getBilling().setFirstName(wpOrderDto.getBilling().getFirstName());
+            order.getBilling().setLastName(wpOrderDto.getBilling().getLastName());
+            order.getBilling().setEmail(wpOrderDto.getBilling().getEmail());
+            order.getBilling().setPhone(wpOrderDto.getBilling().getPhone());
 
             wpOrderRepository.save(byId.get());
 //            notificationService.sendUpdate("orders", WsAction.UPDATED);
