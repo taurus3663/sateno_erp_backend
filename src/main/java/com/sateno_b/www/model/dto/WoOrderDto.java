@@ -3,6 +3,7 @@ package com.sateno_b.www.model.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.sateno_b.www.model.entity.data.OrderSavedCourierSettings;
 import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
 import com.sateno_b.www.model.entity.data.ShippingLines;
 import com.sateno_b.www.model.enums.OrderStatus;

@@ -1,6 +1,7 @@
 package com.sateno_b.www.model.dto;
 
 import com.sateno_b.www.model.entity.data.OrderLineItem;
+import com.sateno_b.www.model.entity.data.OrderSavedCourierSettings;
 import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
 import com.sateno_b.www.model.entity.data.ShippingLines;
 import com.sateno_b.www.model.enums.CourierType;
@@ -54,4 +55,6 @@ public class WpOrderDto {
     private boolean confirmed = false;
 
     private String comment;
+
+    private OrderSavedCourierSettings savedCourierBilling;
 }

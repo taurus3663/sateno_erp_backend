@@ -3,6 +3,7 @@ package com.sateno_b.www.model.entity;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sateno_b.www.model.dto.EmailLogDto;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
+import com.sateno_b.www.model.entity.data.OrderSavedCourierSettings;
 import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
 import com.sateno_b.www.model.entity.data.ShippingLines;
 import com.sateno_b.www.model.enums.CourierType;
@@ -120,4 +121,8 @@ public class WpOrderEntity extends BaseEntity {
 //        this.snapshot.setCourierType(this.courierType);
 //        this.snapshot.setComment(this.comment);
     }
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private OrderSavedCourierSettings savedCourierBilling;
 }

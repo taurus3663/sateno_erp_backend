@@ -494,6 +494,7 @@ public class WpOrderService {
                     break;
                 }
             }
+            dto.setSavedCourierBilling(entity.getSavedCourierBilling());
 
             return dto;
         });
@@ -507,7 +508,15 @@ public class WpOrderService {
         Optional<WpOrderEntity> byId = wpOrderRepository.findById(wpOrderDto.getId());
         if(byId.isPresent()) {
             WpOrderEntity wpOrderEntity = byId.get();
-            wpOrderEntity.setComment(wpOrderDto.getComment());
+
+            if(wpOrderDto.getComment() != null) {
+                wpOrderEntity.setComment(wpOrderDto.getComment());
+            }
+
+            if(wpOrderDto.getSavedCourierBilling() != null) {
+                wpOrderEntity.setSavedCourierBilling(wpOrderDto.getSavedCourierBilling());
+            }
+
             wpOrderRepository.save(wpOrderEntity);
             return modelMapper.map(wpOrderEntity, WpOrderDto.class);
         }
