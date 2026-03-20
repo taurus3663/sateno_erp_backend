@@ -126,6 +126,11 @@ public class WpOrderController {
             order.getBilling().setEmail(wpOrderDto.getBilling().getEmail());
             order.getBilling().setPhone(wpOrderDto.getBilling().getPhone());
 
+            if (!order.getOrderLine().equals(wpOrderDto.getOrderLine())) {
+                List<OrderLineItem> list = wpOrderDto.getOrderLine().stream().map(e -> modelMapper.map(e, OrderLineItem.class)).toList();
+                order.setOrderLine(list);
+            }
+
             wpOrderRepository.save(byId.get());
 //            notificationService.sendUpdate("orders", WsAction.UPDATED);
             return ResponseEntity.ok(wpOrderDto);
