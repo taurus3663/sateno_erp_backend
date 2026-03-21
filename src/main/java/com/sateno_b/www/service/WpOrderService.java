@@ -290,6 +290,7 @@ public class WpOrderService {
         wpOrderEntity.setCustomerIp(dto.getCustomerIpAddress());
         wpOrderEntity.setCustomerAgent(dto.getCustomerUserAgent());
         wpOrderEntity.setTotalPrice(new BigDecimal(totalPriceRs.get()));
+        wpOrderEntity.setTotalPriceFCoutier(new BigDecimal(totalPriceRs.get()));
         wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
         wpOrderEntity.setTransactionId(dto.getTransactionId());
         wpOrderEntity.setShippingLines(dto.getShippingLines());

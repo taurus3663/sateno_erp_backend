@@ -57,4 +57,5 @@ public class WpOrderDto {
     private String comment;
 
     private OrderSavedCourierSettings savedCourierBilling;
+    private Double customShippingTotal;
 }

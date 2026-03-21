@@ -7,12 +7,7 @@ import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
-import com.sateno_b.www.model.enums.PaymentMethod;
-import com.sateno_b.www.model.enums.WsAction;
-import com.sateno_b.www.model.repository.CourierSettingsRepository;
-import com.sateno_b.www.model.repository.EmailLogRepository;
-import com.sateno_b.www.model.repository.UserSignalRepository;
-import com.sateno_b.www.model.repository.WpOrderRepository;
+import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.service.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +20,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 @RestController
@@ -46,6 +43,7 @@ public class WpOrderController {
     private final BoxNowService boxNowService;
     private final UserSignalRepository userSignalRepository;
     private final EmailLogRepository emailLogRepository;
+    private final SiteRepository siteRepository;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status,
@@ -125,10 +123,26 @@ public class WpOrderController {
             order.getBilling().setLastName(wpOrderDto.getBilling().getLastName());
             order.getBilling().setEmail(wpOrderDto.getBilling().getEmail());
             order.getBilling().setPhone(wpOrderDto.getBilling().getPhone());
+            order.setTotalPrice(wpOrderDto.getTotalPrice());
+            order.setCustomShippingTotal(wpOrderDto.getCustomShippingTotal());
+            order.setPaymentMethod(wpOrderDto.getPaymentMethod());
+
 
             if (!order.getOrderLine().equals(wpOrderDto.getOrderLine())) {
                 List<OrderLineItem> list = wpOrderDto.getOrderLine().stream().map(e -> modelMapper.map(e, OrderLineItem.class)).toList();
                 order.setOrderLine(list);
+            }
+
+            AtomicReference<BigDecimal> totalPrice = new AtomicReference<>(BigDecimal.ZERO);
+            order.getOrderLine().forEach(orderLineItem -> {
+                totalPrice.updateAndGet(v -> v.add(orderLineItem.getTotalPrice()));
+                // Използвай totalPrice на реда, за да хванеш Quantity * Price
+            });
+            order.setTotalPriceFCoutier(totalPrice.get());
+
+            if(!Objects.equals(wpOrderDto.getSite().getId(), order.getSite().getId())){
+                SiteEntity site = siteRepository.getReferenceById(wpOrderDto.getSite().getId());
+                order.setSite(site);
             }
 
             wpOrderRepository.save(byId.get());

@@ -80,6 +80,9 @@ public class WpOrderEntity extends BaseEntity {
     private BigDecimal totalPrice;
 
     @Column
+    private BigDecimal totalPriceFCoutier;
+
+    @Column
     private String currency;
     @Column
     private String currency_symbol;
@@ -125,4 +128,7 @@ public class WpOrderEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private OrderSavedCourierSettings savedCourierBilling;
+
+    @Column
+    private Double customShippingTotal;
 }
