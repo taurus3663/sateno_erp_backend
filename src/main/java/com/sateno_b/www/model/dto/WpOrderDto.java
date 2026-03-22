@@ -1,9 +1,6 @@
 package com.sateno_b.www.model.dto;
 
-import com.sateno_b.www.model.entity.data.OrderLineItem;
-import com.sateno_b.www.model.entity.data.OrderSavedCourierSettings;
-import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
-import com.sateno_b.www.model.entity.data.ShippingLines;
+import com.sateno_b.www.model.entity.data.*;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
@@ -58,4 +55,5 @@ public class WpOrderDto {
 
     private OrderSavedCourierSettings savedCourierBilling;
     private Double customShippingTotal;
+    private List<WpOrderCourierHistory> courierHistory =  new ArrayList<>();
 }

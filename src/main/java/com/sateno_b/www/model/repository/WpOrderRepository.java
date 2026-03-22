@@ -3,6 +3,7 @@ package com.sateno_b.www.model.repository;
 import com.sateno_b.www.model.entity.CustomerEntity;
 import com.sateno_b.www.model.entity.EmailLogEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
+import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,8 +40,6 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
             @Param("currentId") Long currentId
     );
 
-    long countByCustomer(CustomerEntity customer);
-
     @Query("SELECT o.customer.id, COUNT(o) FROM WpOrderEntity o WHERE o.customer IN :customers GROUP BY o.customer.id")
     List<Object[]> countByCustomersBatch(@Param("customers") List<CustomerEntity> customers);
 
@@ -48,4 +47,6 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
     Optional<WpOrderEntity> findByEmailsContaining(EmailLogEntity emailLog);
 
     Optional<WpOrderEntity> findByWpOrderId(Long wpOrderId);
+
+    List<WpOrderEntity> findAllByCourierTypeAndStatus(CourierType courierType, OrderStatus status);
 }

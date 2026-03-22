@@ -53,8 +53,8 @@ public class BoxNowService implements ShippingProvider {
                         System.currentTimeMillis()
         );
         body.put("paymentMode", "prepaid");
-        body.put("amountToBeCollected", order.getTotalPrice().toString());
-        body.put("invoiceValue", order.getTotalPrice().toString());
+        body.put("amountToBeCollected", (String.valueOf(Double.parseDouble(order.getTotalPriceFCoutier().toString()) + order.getCustomShippingTotal())));
+        body.put("invoiceValue", (String.valueOf(Double.parseDouble(order.getTotalPriceFCoutier().toString()) + order.getCustomShippingTotal())));
         body.put("allowReturn", false);
 
         /*ORIGIN*/
@@ -99,7 +99,7 @@ public class BoxNowService implements ShippingProvider {
                     Map<String, Object> item = new HashMap<>();
 //            item.put("id", orderLineItem.getSku() == null? "b": orderLineItem.getSku());
 //            item.put("name", orderLineItem.getProductName());
-            item.put("value", order.getTotalPrice().toString());
+            item.put("value", (String.valueOf(Double.parseDouble(order.getTotalPriceFCoutier().toString()) + order.getCustomShippingTotal())));
             item.put("weight", createLabelDto.getWeight());
             item.put("compartmentSize", createLabelDto.getBoxNowPacketSize().ordinal()+ 1);
             items.add(item);

@@ -2,10 +2,7 @@ package com.sateno_b.www.model.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sateno_b.www.model.dto.EmailLogDto;
-import com.sateno_b.www.model.entity.data.OrderLineItem;
-import com.sateno_b.www.model.entity.data.OrderSavedCourierSettings;
-import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
-import com.sateno_b.www.model.entity.data.ShippingLines;
+import com.sateno_b.www.model.entity.data.*;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.PaymentMethod;
@@ -131,4 +128,8 @@ public class WpOrderEntity extends BaseEntity {
 
     @Column
     private Double customShippingTotal;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<WpOrderCourierHistory> courierHistory =  new ArrayList<>();
 }

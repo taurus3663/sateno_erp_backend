@@ -26,6 +26,8 @@ public interface CourierSettingsRepository extends JpaRepository<CourierSettings
     Optional<CourierSettingsEntity> findFirstBySiteIdAndCourierTypeAndActiveTrueAndIdNot(Long id, CourierType courierType, Long id1);
 
     Optional<CourierSettingsEntity> findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(SiteEntity site, CourierType courierType);
+
+    Optional<CourierSettingsEntity> findBySiteIdAndCourierTypeAndActiveTrue(Long siteId, CourierType courierType);
 //    Optional<CourierSettingsEntity> findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(SiteEntity site, CourierType courierType, CourierShipmentType courierShipmentType);
 
 }

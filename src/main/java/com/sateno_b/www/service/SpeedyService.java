@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -176,7 +177,6 @@ public class SpeedyService implements ShippingProvider {
     }
 
     public boolean createWayBill(CreateLabelDto createLabelDto) {
-//        System.out.println(createLabelDto.toString());
         CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findById(createLabelDto.getCourierId()).get();
         WpOrderEntity order = wpOrderRepository.findById(createLabelDto.getId()).get();
         Map<String, Object> body = createBaseBody(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
@@ -195,7 +195,7 @@ public class SpeedyService implements ShippingProvider {
         content.put("totalWeight", createLabelDto.getWeight());
         content.put("parcelsCount", createLabelDto.getPackCount());
         content.put("package", "STANDARD");
-        content.put("valueOfGoods", order.getTotalPrice());
+        content.put("valueOfGoods", order.getTotalPriceFCoutier());
 
         List<Map<String, Object>> parcels = new ArrayList<>();
 
@@ -223,7 +223,7 @@ public class SpeedyService implements ShippingProvider {
 
 
         Map<String, Object> payment = new HashMap<>();
-        payment.put("courierServicePayer", "RECIPIENT");
+        payment.put("courierServicePayer", "SENDER");  // RECIPIENT
         payment.put("declaredValuePayer", "RECIPIENT");
         body.put("payment", payment);
 
@@ -254,6 +254,18 @@ public class SpeedyService implements ShippingProvider {
                 fiscalReceiptItems.add(fiscalItem);
                 checkSum += lineTotal;
             }
+
+            if(order.getCustomShippingTotal() > 0) {
+                Map<String, Object> shippingPrice = new HashMap<>();
+                String name = "Доставка";
+                shippingPrice.put("description", name);
+                shippingPrice.put("VatGroup", "A");
+                shippingPrice.put("amount", order.getCustomShippingTotal());
+                shippingPrice.put("amountWithVat", order.getCustomShippingTotal());
+                shippingPrice.put("quantity", 1);
+                fiscalReceiptItems.add(shippingPrice);
+            }
+
 
             // ВЗЕМАМЕ ОБЩАТА СУМА НА ПОРЪЧКАТА (Наложения платеж)
 //            double totalOrderAmount = Double.parseDouble(order.getTotalPrice().toString());
@@ -304,14 +316,14 @@ public class SpeedyService implements ShippingProvider {
         // 3. НАЛОЖЕН ПЛАТЕЖ (Cash on Delivery)
         Map<String, Object> additionalServices = new HashMap<>();
 
-        cod.put("amount", order.getTotalPrice()); // Сумата за събиране
+        cod.put("amount", order.getTotalPriceFCoutier()); // Сумата за събиране
         cod.put("currency", order.getCurrency());
         cod.put("processingType", "CASH");
 
         additionalServices.put("cod", cod);
 
         Map<String, Object> declaredValue = new HashMap<>();
-        declaredValue.put("amount", order.getTotalPrice());
+        declaredValue.put("amount", order.getTotalPriceFCoutier());
         declaredValue.put("currency", order.getCurrency());
 
         additionalServices.put("declaredValue", declaredValue);
@@ -758,5 +770,48 @@ public class SpeedyService implements ShippingProvider {
         // Добавяме средна такса гориво (напр. 10%) и ДДС (20%)
         double fuelSurcharge = 1.10;
         return basePrice * fuelSurcharge * 1.20;
+    }
+
+    @Scheduled(fixedRate = 9 * 60 * 1000)
+    private void sheckShipments() {
+        List<WpOrderEntity> allByCourierTypeAndStatusSent = wpOrderRepository.findAllByCourierTypeAndStatus(CourierType.SPEEDY, OrderStatus.SENT);
+
+        Map<Long, List<WpOrderEntity>> ordersBySite = allByCourierTypeAndStatusSent.stream()
+                .collect(Collectors.groupingBy(order -> order.getSite().getId()));
+
+
+
+        for (Map.Entry<Long, List<WpOrderEntity>> entry : ordersBySite.entrySet()) {
+            Long siteId = entry.getKey();
+            List<WpOrderEntity> siteOrders = entry.getValue();
+
+            // 4. Вземаме настройките за Еконт за конкретния сайт
+            CourierSettingsEntity settings = courierSettingsRepository
+                    .findBySiteIdAndCourierTypeAndActiveTrue(siteId, CourierType.SPEEDY)
+                    .orElse(null);
+
+            if (settings == null) continue;
+
+            // 5. Събираме номерата на товарителниците (wayBillShipmentNumber)
+            List<String> waybillNumbers = siteOrders.stream()
+                    .map(order -> order.getWayBillShipmentNumber().toString())
+                    .toList();
+
+            if (waybillNumbers.isEmpty()) continue;
+
+//            List<String> waybillNumbers = List.of("1055101154014", "1055101141069");
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("shipmentNumbers", waybillNumbers);
+
+            try {
+//                var response = postToEcont("services/Shipments/ShipmentService.getShipmentStatuses.json", requestBody, settings.getUsername(), settings.getPassword());
+//                processStatuses(response, siteOrders);
+            }  catch (Exception e) {
+//                log.error("Error parsing JSON from Econt: {}", e.getMessage());
+            }
+
+        }
+
+
     }
 }

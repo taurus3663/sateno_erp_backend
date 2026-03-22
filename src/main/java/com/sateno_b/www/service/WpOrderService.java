@@ -298,6 +298,13 @@ public class WpOrderService {
         Instant instant = ldt.atZone(ZoneId.of("Europe/Sofia")).toInstant();
         wpOrderEntity.setWpOrderTime(instant);
 
+        AtomicReference<BigDecimal> totalPrice = new AtomicReference<>(BigDecimal.ZERO);
+        wpOrderEntity.getOrderLine().forEach(orderLineItem -> {
+            totalPrice.updateAndGet(v -> v.add(orderLineItem.getTotalPrice()));
+            // Използвай totalPrice на реда, за да хванеш Quantity * Price
+        });
+        wpOrderEntity.setTotalPriceFCoutier(totalPrice.get());
+
         NekorektenResponseDto nekorektenResponseDto = nekorektenService.checkPhone(rawPhone);
         if(nekorektenResponseDto != null) {
 //
@@ -496,6 +503,7 @@ public class WpOrderService {
                 }
             }
             dto.setSavedCourierBilling(entity.getSavedCourierBilling());
+            dto.setCourierHistory(entity.getCourierHistory());
 
             return dto;
         });
