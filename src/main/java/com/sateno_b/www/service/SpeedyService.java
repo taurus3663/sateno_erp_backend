@@ -772,46 +772,46 @@ public class SpeedyService implements ShippingProvider {
         return basePrice * fuelSurcharge * 1.20;
     }
 
-    @Scheduled(fixedRate = 9 * 60 * 1000)
-    private void sheckShipments() {
-        List<WpOrderEntity> allByCourierTypeAndStatusSent = wpOrderRepository.findAllByCourierTypeAndStatus(CourierType.SPEEDY, OrderStatus.SENT);
-
-        Map<Long, List<WpOrderEntity>> ordersBySite = allByCourierTypeAndStatusSent.stream()
-                .collect(Collectors.groupingBy(order -> order.getSite().getId()));
-
-
-
-        for (Map.Entry<Long, List<WpOrderEntity>> entry : ordersBySite.entrySet()) {
-            Long siteId = entry.getKey();
-            List<WpOrderEntity> siteOrders = entry.getValue();
-
-            // 4. Вземаме настройките за Еконт за конкретния сайт
-            CourierSettingsEntity settings = courierSettingsRepository
-                    .findBySiteIdAndCourierTypeAndActiveTrue(siteId, CourierType.SPEEDY)
-                    .orElse(null);
-
-            if (settings == null) continue;
-
-            // 5. Събираме номерата на товарителниците (wayBillShipmentNumber)
-            List<String> waybillNumbers = siteOrders.stream()
-                    .map(order -> order.getWayBillShipmentNumber().toString())
-                    .toList();
-
-            if (waybillNumbers.isEmpty()) continue;
-
-//            List<String> waybillNumbers = List.of("1055101154014", "1055101141069");
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("shipmentNumbers", waybillNumbers);
-
-            try {
-//                var response = postToEcont("services/Shipments/ShipmentService.getShipmentStatuses.json", requestBody, settings.getUsername(), settings.getPassword());
-//                processStatuses(response, siteOrders);
-            }  catch (Exception e) {
-//                log.error("Error parsing JSON from Econt: {}", e.getMessage());
-            }
-
-        }
-
-
-    }
+//    @Scheduled(fixedRate = 9 * 60 * 1000)
+//    private void sheckShipments() {
+//        List<WpOrderEntity> allByCourierTypeAndStatusSent = wpOrderRepository.findAllByCourierTypeAndStatus(CourierType.SPEEDY, OrderStatus.SENT);
+//
+//        Map<Long, List<WpOrderEntity>> ordersBySite = allByCourierTypeAndStatusSent.stream()
+//                .collect(Collectors.groupingBy(order -> order.getSite().getId()));
+//
+//
+//
+//        for (Map.Entry<Long, List<WpOrderEntity>> entry : ordersBySite.entrySet()) {
+//            Long siteId = entry.getKey();
+//            List<WpOrderEntity> siteOrders = entry.getValue();
+//
+//            // 4. Вземаме настройките за Еконт за конкретния сайт
+//            CourierSettingsEntity settings = courierSettingsRepository
+//                    .findBySiteIdAndCourierTypeAndActiveTrue(siteId, CourierType.SPEEDY)
+//                    .orElse(null);
+//
+//            if (settings == null) continue;
+//
+//            // 5. Събираме номерата на товарителниците (wayBillShipmentNumber)
+//            List<String> waybillNumbers = siteOrders.stream()
+//                    .map(order -> order.getWayBillShipmentNumber().toString())
+//                    .toList();
+//
+//            if (waybillNumbers.isEmpty()) continue;
+//
+////            List<String> waybillNumbers = List.of("1055101154014", "1055101141069");
+//            Map<String, Object> requestBody = new HashMap<>();
+//            requestBody.put("shipmentNumbers", waybillNumbers);
+//
+//            try {
+////                var response = postToEcont("services/Shipments/ShipmentService.getShipmentStatuses.json", requestBody, settings.getUsername(), settings.getPassword());
+////                processStatuses(response, siteOrders);
+//            }  catch (Exception e) {
+////                log.error("Error parsing JSON from Econt: {}", e.getMessage());
+//            }
+//
+//        }
+//
+//
+//    }
 }

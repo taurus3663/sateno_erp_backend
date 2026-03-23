@@ -800,7 +800,8 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
     }
 
     @Scheduled(fixedRate = 10 * 60 * 1000)
-    private void sheckShipments() {
+    @Transactional
+    protected void sheckShipments() {
         List<WpOrderEntity> allByCourierTypeAndStatusSent = wpOrderRepository.findAllByCourierTypeAndStatus(CourierType.ECONT, OrderStatus.SENT);
 
         Map<Long, List<WpOrderEntity>> ordersBySite = allByCourierTypeAndStatusSent.stream()
@@ -842,8 +843,7 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
 
     }
 
-    @Transactional
-    protected void processStatuses(Object response, List<WpOrderEntity> siteOrders) {
+    private void processStatuses(Object response, List<WpOrderEntity> siteOrders) {
         if (!(response instanceof Map)) return;
         Map<String, Object> resMap = (Map<String, Object>) response;
         List<Map<String, Object>> statuses = (List<Map<String, Object>>) resMap.get("shipmentStatuses");
