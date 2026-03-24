@@ -130,7 +130,12 @@ public class WpOrderController {
 
 
             if (!order.getOrderLine().equals(wpOrderDto.getOrderLine())) {
-                List<OrderLineItem> list = wpOrderDto.getOrderLine().stream().map(e -> modelMapper.map(e, OrderLineItem.class)).toList();
+                List<OrderLineItem> list = wpOrderDto.getOrderLine().stream().map(e -> {
+                    OrderLineItem map = modelMapper.map(e, OrderLineItem.class);
+                    map.setTotalPrice(e.getTotalPrice());
+                    map.setPrice(e.getTotalPrice());
+                    return map;
+                }).toList();
                 order.setOrderLine(list);
             }
 

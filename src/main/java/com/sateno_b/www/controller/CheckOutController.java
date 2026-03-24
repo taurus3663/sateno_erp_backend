@@ -140,6 +140,7 @@ public class CheckOutController {
     @PostMapping("/recalculate-price")
     public double recalculate(@RequestBody CheckCourierRequest request) {
         double v = 0;
+        System.out.println(request.toString());
         if(request.getCourierType() == CourierType.SPEEDY) {
             v = speedyService.calculatePrice(request);
         } else if(request.getCourierType() == CourierType.ECONT) {

@@ -303,7 +303,7 @@ public class EcontService implements ShippingProvider {
 
         Map<String, Object> services = new HashMap<>();
 
-        services.put("cdAmount", order.getTotalPriceFCoutier());
+        services.put("cdAmount", Double.parseDouble(order.getTotalPriceFCoutier().toString()) + order.getCustomShippingTotal());
         services.put("cdCurrency", order.getCurrency());
         services.put("cdType", "get"); // 'get' е стандартната стойност за събиране на сумата
         services.put("cdPayOptionsTemplate", "CD257894");
@@ -542,7 +542,8 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
         label.put("receiverOfficeCode", createLabelDto.getTargetId());
 //            receiverCity.put("id", createLabelDto.getCity().getId());
 //            receiverAddress.put("street", createLabelDto.getOffice().getAddress());
-    } else {
+    }
+    else {
         receiverCity.put("country", Map.of("code3", "BGR"));
         receiverCity.put("name", createLabelDto.getCityName());
         receiverCity.put("postCode", createLabelDto.getPostcode());
@@ -603,10 +604,12 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
 
     services.put("cdAmount", createLabelDto.getCart_total());
     services.put("cdCurrency", createLabelDto.getCurrency());
+    services.put("cdPaySide", "receiver");
     services.put("cdType", "get"); // 'get' е стандартната стойност за събиране на сумата
     services.put("cdPayOptionsTemplate", "CD257894");
 // 2. Слагаме services в label
     label.put("services", services);
+      label.put("paySide", "receiver");
 
 // 3. Други важни полета от спецификацията:
     label.put("paymentReceiverMethod", "cash"); // Получателят плаща в брой
@@ -799,7 +802,7 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
         return null;
     }
 
-    @Scheduled(fixedRate = 10 * 60 * 1000)
+//    @Scheduled(fixedRate = 10 * 60 * 1000)
     @Transactional
     protected void sheckShipments() {
         List<WpOrderEntity> allByCourierTypeAndStatusSent = wpOrderRepository.findAllByCourierTypeAndStatus(CourierType.ECONT, OrderStatus.SENT);

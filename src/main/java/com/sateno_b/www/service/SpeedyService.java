@@ -238,7 +238,11 @@ public class SpeedyService implements ShippingProvider {
             double checkSum = 0.0;
             for (OrderLineItem item : order.getOrderLine()) {
 
-                double unitPrice = (item.getPrice() != null) ? Double.parseDouble(item.getPrice().toString()) : 0.0;                int quantity = item.getQuantity();
+                double unitPrice = (item.getPrice() != null) ? Double.parseDouble(item.getPrice().toString()) : 0.0;
+                if(unitPrice <= 0) continue;
+                System.out.println(unitPrice);
+
+                int quantity = item.getQuantity();
 
                 double lineTotal = unitPrice * quantity;
 
@@ -259,56 +263,15 @@ public class SpeedyService implements ShippingProvider {
                 Map<String, Object> shippingPrice = new HashMap<>();
                 String name = "Доставка";
                 shippingPrice.put("description", name);
-                shippingPrice.put("VatGroup", "A");
+                shippingPrice.put("vatGroup", "А");
                 shippingPrice.put("amount", order.getCustomShippingTotal());
                 shippingPrice.put("amountWithVat", order.getCustomShippingTotal());
-                shippingPrice.put("quantity", 1);
+                shippingPrice.put("quantity", 1.0);
                 fiscalReceiptItems.add(shippingPrice);
+                checkSum += order.getCustomShippingTotal();
             }
 
 
-            // ВЗЕМАМЕ ОБЩАТА СУМА НА ПОРЪЧКАТА (Наложения платеж)
-//            double totalOrderAmount = Double.parseDouble(order.getTotalPrice().toString());
-
-            // АКО ИМА РАЗЛИКА (Доставка), ТЯ ТРЯБВА ДА СЕ ДОБАВИ, ЗА ДА СЪВПАДНЕ С БОНА
-//            if (Math.abs(totalOrderAmount - checkSum) > 0.001) {
-//                double deliveryPrice = totalOrderAmount - checkSum;
-//
-//                Map<String, Object> deliveryLine = new HashMap<>();
-//                deliveryLine.put("description", "Доставка");
-//                deliveryLine.put("vatGroup", "А");
-//                deliveryLine.put("amount", deliveryPrice);
-//                deliveryLine.put("amountWithVat", deliveryPrice);
-//                deliveryLine.put("quantity", 1);
-//
-//                fiscalReceiptItems.add(deliveryLine);
-//            }
-
-//        double checkSum = 0.0;
-//        for (OrderLineItem item : order.getOrderLine()) {
-//            Map<String, Object> fiscalItem = new HashMap<>();
-//            String name = item.getProductName();
-//            fiscalItem.put("description", name.length() > 50 ? name.substring(0, 47) + "..." : name);
-//            fiscalItem.put("vatGroup", "A");
-//            double itemTotalWithVat = Double.parseDouble(item.getPrice().toString()) * item.getQuantity();
-////            double itemTotalWithoutVat = itemTotalWithVat / 1.2;
-////            fiscalItem.put("amountWithVat", itemTotalWithVat);
-//            fiscalItem.put("amount", itemTotalWithVat);
-////            fiscalItem.put("amount", Math.round(itemTotalWithoutVat * 100.0) / 100.0);
-//            fiscalReceiptItems.add(fiscalItem);
-////            checkSum += itemTotalWithVat;
-//        }
-        // 2. Добавяне на доставката като отделен ред, ако клиентът я плаща
-//        if (Double.parseDouble(order.getTotalPrice().toString()) > checkSum) {
-//            double deliveryPrice = Double.parseDouble(order.getTotalPrice().toString()) - checkSum;
-//            Map<String, Object> deliveryLine = new HashMap<>();
-//            deliveryLine.put("description", "Доставка");
-//            deliveryLine.put("vatGroup", "A");
-//            deliveryLine.put("amountWithVat", deliveryPrice);
-//            deliveryLine.put("amount", Double.parseDouble(order.getTotalPrice().toString()));
-////            deliveryLine.put("amount", Math.round((deliveryPrice / 1.2) * 100.0) / 100.0);
-//            fiscalReceiptItems.add(deliveryLine);
-//        }
 
             cod.put("fiscalReceiptItems", fiscalReceiptItems);
         }
@@ -316,14 +279,14 @@ public class SpeedyService implements ShippingProvider {
         // 3. НАЛОЖЕН ПЛАТЕЖ (Cash on Delivery)
         Map<String, Object> additionalServices = new HashMap<>();
 
-        cod.put("amount", order.getTotalPriceFCoutier()); // Сумата за събиране
+        cod.put("amount", (Double.parseDouble(order.getTotalPriceFCoutier().toString()) + order.getCustomShippingTotal())); // Сумата за събиране
         cod.put("currency", order.getCurrency());
         cod.put("processingType", "CASH");
 
         additionalServices.put("cod", cod);
 
         Map<String, Object> declaredValue = new HashMap<>();
-        declaredValue.put("amount", order.getTotalPriceFCoutier());
+        declaredValue.put("amount", (Double.parseDouble(order.getTotalPriceFCoutier().toString()) + order.getCustomShippingTotal()));
         declaredValue.put("currency", order.getCurrency());
 
         additionalServices.put("declaredValue", declaredValue);
@@ -772,7 +735,7 @@ public class SpeedyService implements ShippingProvider {
         return basePrice * fuelSurcharge * 1.20;
     }
 
-//    @Scheduled(fixedRate = 9 * 60 * 1000)
+//    @Scheduled(fixedRate = 1 * 60 * 1000)
 //    private void sheckShipments() {
 //        List<WpOrderEntity> allByCourierTypeAndStatusSent = wpOrderRepository.findAllByCourierTypeAndStatus(CourierType.SPEEDY, OrderStatus.SENT);
 //

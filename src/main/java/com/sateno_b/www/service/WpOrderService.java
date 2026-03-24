@@ -7,22 +7,21 @@ import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.data.PaoIdValue;
 import com.sateno_b.www.model.entity.data.PaoIdValueValue;
-import com.sateno_b.www.model.enums.OrderStatus;
-import com.sateno_b.www.model.enums.ProductSaleType;
-import com.sateno_b.www.model.enums.TaskType;
+import com.sateno_b.www.model.enums.*;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
+import com.sateno_b.www.shared.CourierParser;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.modelmapper.ModelMapper;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestClient;
@@ -37,6 +36,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Log4j2
 public class WpOrderService {
 
     private final WpOrderRepository wpOrderRepository;
@@ -57,6 +57,10 @@ public class WpOrderService {
     private final WpProductRepository wpProductRepository;
     private final WpProductHistoryRepository wpProductHistoryRepository;
     private final WpProductAsyncService wpProductAsyncService;
+    private final EcontService econtService;
+    private final SpeedyService speedyService;
+    private final BoxNowService boxnowService;
+    private final CourierSettingsRepository courierSettingsRepository;
 
 
     public void syncOrderToDB(Long siteId){
@@ -75,6 +79,7 @@ public class WpOrderService {
     @Transactional
     protected void saveAllToDb(List<WoOrderDto> orders, Long siteId) {
         int count = 0;
+        List<Long> nulls = new ArrayList<>();
         for (WoOrderDto dto : orders) {
 
             if(wpOrderRepository.existsByWpOrderId(dto.getId())) {
@@ -165,12 +170,163 @@ public class WpOrderService {
             LocalDateTime ldt = LocalDateTime.parse(dto.getDateCreated());
             Instant instant = ldt.atZone(ZoneId.of("Europe/Sofia")).toInstant();
             wpOrderEntity.setWpOrderTime(instant);
+
+            AtomicReference<BigDecimal> totalPrice = new AtomicReference<>(BigDecimal.ZERO);
+            wpOrderEntity.getOrderLine().forEach(orderLineItem -> {
+                totalPrice.updateAndGet(v -> v.add(orderLineItem.getTotalPrice()));
+                // Използвай totalPrice на реда, за да хванеш Quantity * Price
+            });
+            wpOrderEntity.setTotalPriceFCoutier(totalPrice.get());
+//            CourierParser.CourierMatch parse = CourierParser.parse(wpOrderEntity.getBilling().getAddress1());
+//            if(parse == null) continue;
+//            double totalWeight = 0;
+//            List<CheckOutCourierItemsDto> items = new ArrayList<>();
+//            for (OrderLineItem item : wpOrderEntity.getOrderLine()) {
+//                totalWeight += Double.parseDouble(item.getWeight() != null? item.getWeight():"0.5");
+//                CheckOutCourierItemsDto  checkOutCourierItemsDto = new CheckOutCourierItemsDto();
+//                checkOutCourierItemsDto.setName("tt");
+//                items.add(checkOutCourierItemsDto);
+//            }
+//            CheckCourierRequest request = new CheckCourierRequest();
+//            request.setCart_total(totalPrice.get().toString());
+//            request.setCart_weight(totalWeight);
+//            request.setItems_count(String.valueOf(wpOrderEntity.getOrderLine().size()));
+//            request.setItems(items);
+//            request.setCurrency(wpOrderEntity.getCurrency());
+//            if( !parse.getCode().isEmpty()){
+//                request.setTargetId(parse.getCode());
+//            }
+//            request.setCityName("Медовец");
+//            request.setPostcode("9238");
+//            request.setCourierType(CourierType.valueOf(parse.getCourier()));
+//            request.setCourierShipmentType(CourierShipmentType.valueOf(parse.getTargetType()));
+//            request.setSite(siteEntity.getUrl());
+//
+//            double totalShipmentPrice = 0;
+//
+//            if(parse.getCourier().equals("BOXNOW")) {
+//                totalShipmentPrice = boxnowService.calculatePrice(request);
+//            } else if(parse.getCourier().equals("ECONT")) {
+//
+//                totalShipmentPrice = econtService.calculatePrice(request);
+//
+//            } else if(parse.getCourier().equals("SPEEDY")) {
+//                totalShipmentPrice = speedyService.calculatePrice(request);
+//            }
+
+            CourierParser.CourierMatch parse = CourierParser.parseWithFallback(wpOrderEntity);
+            if(parse != null) {
+                AtomicReference<Double> tPrice = new AtomicReference<>(0.0);
+// Вземаме сумата на поръчката като double за сравнение
+                double orderAmount = wpOrderEntity.getTotalPrice().doubleValue();
+
+// Корекция на името на куриера за Enum-а
+                String courierKey = parse.getCourier().equals("BOXNOW") ? "BOX_NOW" : parse.getCourier();
+
+                Optional<CourierSettingsEntity> allBySiteAndActive = courierSettingsRepository
+                        .findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(siteEntity, CourierType.valueOf(courierKey));
+
+                allBySiteAndActive.ifPresent(settings -> {
+                    CourierShipmentType target = CourierShipmentType.valueOf(parse.getTargetType());
+
+                    // --- 1. ДО ОФИС ---
+                    if (target == CourierShipmentType.OFFICE && settings.isOffice()) {
+                        if (settings.isOfficeFreeShippingPriceMaxBol() && settings.getOfficeFreeShippingPriceMax() != null && orderAmount >= settings.getOfficeFreeShippingPriceMax()) {
+                            tPrice.set(0.0);
+                        } else if (settings.isOfficeAutoShippingPrice()) {
+                            tPrice.set(calculateAutoPrice(wpOrderEntity, parse, siteEntity));
+                        } else {
+                            tPrice.set(settings.getOfficeFixedShippingPrice() != null ? settings.getOfficeFixedShippingPrice() : 0.0);
+                        }
+                    }
+                    // --- 2. ДО АВТОМАТ / LOCKER ---
+                    else if (target == CourierShipmentType.LOCKER && settings.isLocker()) {
+                        if (settings.isLockerFreeShippingPriceMaxBol() && settings.getLockerFreeShippingPriceMax() != null && orderAmount >= settings.getLockerFreeShippingPriceMax()) {
+                            tPrice.set(0.0);
+                        } else if (settings.isLockerAutoShippingPrice()) {
+                            tPrice.set(calculateAutoPrice(wpOrderEntity, parse, siteEntity));
+                        } else {
+                            tPrice.set(settings.getLockerFixedShippingPrice() != null ? settings.getLockerFixedShippingPrice() : 0.0);
+                        }
+                    }
+                    // --- 3. ДО АДРЕС ---
+                    else if (target == CourierShipmentType.ADDRESS && settings.isAddress()) {
+                        if (settings.isAddressFreeShippingPriceMaxBol() && settings.getAddressFreeShippingPriceMax() != null && orderAmount >= settings.getAddressFreeShippingPriceMax()) {
+                            tPrice.set(0.0);
+                        } else if (settings.isAddressAutoShippingPrice()) {
+                            tPrice.set(calculateAutoPrice(wpOrderEntity, parse, siteEntity));
+                        } else {
+                            tPrice.set(settings.getAddressFixedShippingPrice() != null ? settings.getAddressFixedShippingPrice() : 0.0);
+                        }
+                    }
+                });
+                wpOrderEntity.setCustomShippingTotal(tPrice.get());
+            }
+
+
             wpOrderRepository.save(wpOrderEntity);
             if (++count == 50) {
                 count = 0;
                 wpOrderRepository.flush();
                 entityManager.clear();
             }
+        }
+        System.out.println("NULLS " + nulls);
+    }
+
+    private Double calculateAutoPrice(WpOrderEntity entity, CourierParser.CourierMatch parse, SiteEntity site) {
+        CheckCourierRequest request = new CheckCourierRequest();
+
+        // 1. Използваме totalPriceFCoutier, за да сме сигурни, че сумата е за ВСИЧКИ бройки
+        request.setCart_total(entity.getTotalPrice().toString());
+        request.setCurrency(entity.getCurrency());
+        request.setTargetId(parse.getCode());
+        request.setCourierType(CourierType.valueOf(parse.getCourier().equals("BOXNOW") ? "BOX_NOW" : parse.getCourier()));
+        request.setCourierShipmentType(CourierShipmentType.valueOf(parse.getTargetType()));
+        request.setSite(site.getUrl());
+
+        // Правилно броене на реалните пакети/артикули
+        int totalItemsQty = entity.getOrderLine().stream().mapToInt(OrderLineItem::getQuantity).sum();
+        request.setItems_count(String.valueOf(totalItemsQty));
+
+        request.setCityName(parse.getCity());
+        request.setPostcode(parse.getPostcode());
+
+        List<CheckOutCourierItemsDto> items = new ArrayList<>();
+        double totalWeightCalculated = 0;
+
+        for (OrderLineItem item : entity.getOrderLine()) {
+            double singleWeight = Double.parseDouble(item.getWeight() != null ? item.getWeight() : "0.5");
+            int qty = item.getQuantity();
+
+            // Натрупваме общото тегло (Тегло * Количество)
+            totalWeightCalculated += (singleWeight * qty);
+
+            CheckOutCourierItemsDto dto = new CheckOutCourierItemsDto();
+            dto.setName(item.getProductName());
+            dto.setPrice(item.getPrice().doubleValue());
+            dto.setQuantity((long) qty); // Твоят Long
+            dto.setWeight((long) singleWeight); // ПРАВИЛНО: Double/double, не (long) 0!
+            dto.setSku(item.getSku());
+            items.add(dto);
+        }
+
+        // ВАЖНО: Слагаме изчисленото общо тегло и НЕ го презаписваме долу!
+        request.setCart_weight(totalWeightCalculated);
+        request.setItems(items);
+
+        // ИЗТРИЙ СТАРИЯ STREAM ОТ ТУК (който презаписваше теглото)
+
+        try {
+            return switch (request.getCourierType()) {
+                case ECONT -> econtService.calculatePrice(request);
+                case SPEEDY -> speedyService.calculatePrice(request);
+                case BOX_NOW -> boxnowService.calculatePrice(request);
+                default -> 0.0;
+            };
+        } catch (Exception e) {
+            log.error("API calculation failed: {}", e.getMessage());
+            return null;
         }
     }
 
@@ -305,6 +461,55 @@ public class WpOrderService {
         });
         wpOrderEntity.setTotalPriceFCoutier(totalPrice.get());
 
+        CourierParser.CourierMatch parse = CourierParser.parseWithFallback(wpOrderEntity);
+        if(parse != null) {
+            AtomicReference<Double> tPrice = new AtomicReference<>(0.0);
+// Вземаме сумата на поръчката като double за сравнение
+            double orderAmount = wpOrderEntity.getTotalPrice().doubleValue();
+
+// Корекция на името на куриера за Enum-а
+            String courierKey = parse.getCourier().equals("BOXNOW") ? "BOX_NOW" : parse.getCourier();
+
+            Optional<CourierSettingsEntity> allBySiteAndActive = courierSettingsRepository
+                    .findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(siteEntity, CourierType.valueOf(courierKey));
+
+            allBySiteAndActive.ifPresent(settings -> {
+                CourierShipmentType target = CourierShipmentType.valueOf(parse.getTargetType());
+
+                // --- 1. ДО ОФИС ---
+                if (target == CourierShipmentType.OFFICE && settings.isOffice()) {
+                    if (settings.isOfficeFreeShippingPriceMaxBol() && settings.getOfficeFreeShippingPriceMax() != null && orderAmount >= settings.getOfficeFreeShippingPriceMax()) {
+                        tPrice.set(0.0);
+                    } else if (settings.isOfficeAutoShippingPrice()) {
+                        tPrice.set(calculateAutoPrice(wpOrderEntity, parse, siteEntity));
+                    } else {
+                        tPrice.set(settings.getOfficeFixedShippingPrice() != null ? settings.getOfficeFixedShippingPrice() : 0.0);
+                    }
+                }
+                // --- 2. ДО АВТОМАТ / LOCKER ---
+                else if (target == CourierShipmentType.LOCKER && settings.isLocker()) {
+                    if (settings.isLockerFreeShippingPriceMaxBol() && settings.getLockerFreeShippingPriceMax() != null && orderAmount >= settings.getLockerFreeShippingPriceMax()) {
+                        tPrice.set(0.0);
+                    } else if (settings.isLockerAutoShippingPrice()) {
+                        tPrice.set(calculateAutoPrice(wpOrderEntity, parse, siteEntity));
+                    } else {
+                        tPrice.set(settings.getLockerFixedShippingPrice() != null ? settings.getLockerFixedShippingPrice() : 0.0);
+                    }
+                }
+                // --- 3. ДО АДРЕС ---
+                else if (target == CourierShipmentType.ADDRESS && settings.isAddress()) {
+                    if (settings.isAddressFreeShippingPriceMaxBol() && settings.getAddressFreeShippingPriceMax() != null && orderAmount >= settings.getAddressFreeShippingPriceMax()) {
+                        tPrice.set(0.0);
+                    } else if (settings.isAddressAutoShippingPrice()) {
+                        tPrice.set(calculateAutoPrice(wpOrderEntity, parse, siteEntity));
+                    } else {
+                        tPrice.set(settings.getAddressFixedShippingPrice() != null ? settings.getAddressFixedShippingPrice() : 0.0);
+                    }
+                }
+            });
+            wpOrderEntity.setCustomShippingTotal(tPrice.get());
+        }
+
         NekorektenResponseDto nekorektenResponseDto = nekorektenService.checkPhone(rawPhone);
         if(nekorektenResponseDto != null) {
 //
@@ -408,6 +613,7 @@ public class WpOrderService {
 
             currentPage++;
         } while (currentPage <= totalPages);
+//        } while (currentPage <= 1);
 
 //        System.out.println(allOrders.size());
         return allOrders;
