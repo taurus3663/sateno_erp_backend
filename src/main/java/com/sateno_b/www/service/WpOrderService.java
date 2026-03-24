@@ -306,7 +306,7 @@ public class WpOrderService {
             dto.setName(item.getProductName());
             dto.setPrice(item.getPrice().doubleValue());
             dto.setQuantity((long) qty); // Твоят Long
-            dto.setWeight((long) singleWeight); // ПРАВИЛНО: Double/double, не (long) 0!
+            dto.setWeight(singleWeight); // ПРАВИЛНО: Double/double, не (long) 0!
             dto.setSku(item.getSku());
             items.add(dto);
         }

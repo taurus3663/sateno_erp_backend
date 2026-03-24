@@ -10,5 +10,5 @@ public class CheckOutCourierItemsDto {
     private Double price;
     private Long quantity;
     private String sku;
-    private Long weight;
+    private Double weight;
 }

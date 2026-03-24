@@ -56,4 +56,5 @@ public class WpOrderDto {
     private OrderSavedCourierSettings savedCourierBilling;
     private Double customShippingTotal;
     private List<WpOrderCourierHistory> courierHistory =  new ArrayList<>();
+    private BigDecimal totalPriceFCoutier;
 }
