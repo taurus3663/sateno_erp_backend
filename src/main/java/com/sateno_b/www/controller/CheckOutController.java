@@ -12,6 +12,7 @@ import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.service.BoxNowService;
 import com.sateno_b.www.service.EcontService;
 import com.sateno_b.www.service.SpeedyService;
+import com.sateno_b.www.service.WpOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,7 @@ public class CheckOutController {
     private final SpeedyService speedyService;
     private final EcontService econtService;
     private final BoxNowService boxNowService;
+    private final WpOrderService wpOrderService;
 
     @PostMapping("/check-couriers")
     public ResponseEntity<CheckOutCourierListDto> check(@RequestBody CheckCourierRequest request) {
@@ -146,6 +148,16 @@ public class CheckOutController {
         } else if(request.getCourierType() == CourierType.ECONT) {
             v = econtService.calculatePrice(request);
         }
+
+        return v;
+    }
+
+    @PostMapping("/recalculate-price-custom-field-shipping-price")
+    public double recalculatePriceCustomFieldShippingPrice(@RequestBody CheckCourierRequest request) {
+        double v = 0;
+
+       v = wpOrderService.checkCustomShippingField(request);
+
 
         return v;
     }

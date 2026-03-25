@@ -475,7 +475,6 @@ public class WpOrderService {
 
             allBySiteAndActive.ifPresent(settings -> {
                 CourierShipmentType target = CourierShipmentType.valueOf(parse.getTargetType());
-
                 // --- 1. ДО ОФИС ---
                 if (target == CourierShipmentType.OFFICE && settings.isOffice()) {
                     if (settings.isOfficeFreeShippingPriceMaxBol() && settings.getOfficeFreeShippingPriceMax() != null && orderAmount >= settings.getOfficeFreeShippingPriceMax()) {
@@ -736,5 +735,57 @@ public class WpOrderService {
             return modelMapper.map(wpOrderEntity, WpOrderDto.class);
         }
         throw new RuntimeException("Order not found");
+    }
+
+
+    public double checkCustomShippingField(CheckCourierRequest request) {
+
+        AtomicReference<Double> totalPrice = new AtomicReference<>(0D);
+        request.getItems().forEach(item -> {
+            totalPrice.updateAndGet(v -> v + (item.getPrice() * item.getQuantity()));
+        });
+
+        SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
+        Optional<CourierSettingsEntity> bySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue = courierSettingsRepository.findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(site, request.getCourierType());
+
+        AtomicReference<Double> tPrice = new AtomicReference<>(0.0);
+
+        bySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue.ifPresent(courierSettings -> {
+            CourierShipmentType target = request.getCourierShipmentType();
+
+            if(target == CourierShipmentType.OFFICE && courierSettings.isOffice()) {
+                if(courierSettings.isOfficeFreeShippingPriceMaxBol() && courierSettings.getOfficeFreeShippingPriceMax() != null && totalPrice.get() >= courierSettings.getOfficeFreeShippingPriceMax()) {
+                    tPrice.set(0.0);
+                } else if(courierSettings.isOfficeAutoShippingPrice()) {
+
+                } else {
+                    tPrice.set(courierSettings.getOfficeFixedShippingPrice() != null ? courierSettings.getOfficeFixedShippingPrice() : 0.0);
+                }
+            }
+            else if(target == CourierShipmentType.LOCKER && courierSettings.isLocker()) {
+                if(courierSettings.isLockerFreeShippingPriceMaxBol() && totalPrice.get() >= courierSettings.getLockerFreeShippingPriceMax()) {
+                    tPrice.set(0.0);
+                } else if(courierSettings.isLockerAutoShippingPrice()) {
+
+                } else {
+                    tPrice.set(courierSettings.getLockerFixedShippingPrice() != null?  courierSettings.getLockerFixedShippingPrice() : 0.0);
+                }
+            }
+            else if(target == CourierShipmentType.ADDRESS && courierSettings.isAddress()) {
+                if(courierSettings.isAddressFreeShippingPriceMaxBol() && totalPrice.get() >= courierSettings.getAddressFreeShippingPriceMax()) {
+                    tPrice.set(0.0);
+                } else if(courierSettings.isAddressAutoShippingPrice()) {
+
+                } else {
+                    tPrice.set(courierSettings.getAddressFixedShippingPrice() != null ? courierSettings.getAddressFixedShippingPrice() : 0.0);
+                }
+            }
+
+
+
+        });
+
+
+        return tPrice.get();
     }
 }
