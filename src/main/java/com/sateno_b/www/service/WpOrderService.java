@@ -740,6 +740,8 @@ public class WpOrderService {
 
     public double checkCustomShippingField(CheckCourierRequest request) {
 
+        Optional<WpOrderEntity> orderEntity = wpOrderRepository.findById(request.getOrderId());
+
         AtomicReference<Double> totalPrice = new AtomicReference<>(0D);
         request.getItems().forEach(item -> {
             totalPrice.updateAndGet(v -> v + (item.getPrice() * item.getQuantity()));
@@ -753,11 +755,13 @@ public class WpOrderService {
         bySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue.ifPresent(courierSettings -> {
             CourierShipmentType target = request.getCourierShipmentType();
 
+//            CourierParser.CourierMatch parse = new CourierParser.CourierMatch(request.getCourierType().name(), request.getCourierShipmentType().name(), request.getTargetId(), "", request.getCityName(), request.getPostcode());
+            CourierParser.CourierMatch parse = CourierParser.parseWithFallback(orderEntity.get());
             if(target == CourierShipmentType.OFFICE && courierSettings.isOffice()) {
                 if(courierSettings.isOfficeFreeShippingPriceMaxBol() && courierSettings.getOfficeFreeShippingPriceMax() != null && totalPrice.get() >= courierSettings.getOfficeFreeShippingPriceMax()) {
                     tPrice.set(0.0);
                 } else if(courierSettings.isOfficeAutoShippingPrice()) {
-
+                    tPrice.set(calculateAutoPrice(orderEntity.get(), parse, site));
                 } else {
                     tPrice.set(courierSettings.getOfficeFixedShippingPrice() != null ? courierSettings.getOfficeFixedShippingPrice() : 0.0);
                 }
@@ -766,7 +770,7 @@ public class WpOrderService {
                 if(courierSettings.isLockerFreeShippingPriceMaxBol() && totalPrice.get() >= courierSettings.getLockerFreeShippingPriceMax()) {
                     tPrice.set(0.0);
                 } else if(courierSettings.isLockerAutoShippingPrice()) {
-
+                    tPrice.set(calculateAutoPrice(orderEntity.get(), parse, site));
                 } else {
                     tPrice.set(courierSettings.getLockerFixedShippingPrice() != null?  courierSettings.getLockerFixedShippingPrice() : 0.0);
                 }
@@ -775,7 +779,7 @@ public class WpOrderService {
                 if(courierSettings.isAddressFreeShippingPriceMaxBol() && totalPrice.get() >= courierSettings.getAddressFreeShippingPriceMax()) {
                     tPrice.set(0.0);
                 } else if(courierSettings.isAddressAutoShippingPrice()) {
-
+                    tPrice.set(calculateAutoPrice(orderEntity.get(), parse, site));
                 } else {
                     tPrice.set(courierSettings.getAddressFixedShippingPrice() != null ? courierSettings.getAddressFixedShippingPrice() : 0.0);
                 }

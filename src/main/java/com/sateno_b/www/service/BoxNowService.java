@@ -6,6 +6,7 @@ import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
+import com.sateno_b.www.model.entity.data.WpOrderCourierHistory;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
@@ -14,16 +15,21 @@ import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
+import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
+@Log4j2
 @Service
 public class BoxNowService implements ShippingProvider {
 
@@ -447,6 +453,159 @@ public class BoxNowService implements ShippingProvider {
 //                .body(body)
                 .retrieve()
                 .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+    }
+
+
+    @Scheduled(fixedRate = 10 * 60 * 1000)
+    private void checkShipments() {
+        System.out.println("Checking Shipments");
+        List<WpOrderEntity> allByCourierTypeAndStatusSent = wpOrderRepository.findAllByCourierTypeAndStatus(CourierType.BOX_NOW, OrderStatus.SENT);
+        Map<Long, List<WpOrderEntity>> ordersBySite = allByCourierTypeAndStatusSent.stream()
+                .collect(Collectors.groupingBy(order -> order.getSite().getId()));
+        System.out.println(allByCourierTypeAndStatusSent.size());
+        for (Map.Entry<Long, List<WpOrderEntity>> entry : ordersBySite.entrySet()) {
+            Long siteId = entry.getKey();
+            List<WpOrderEntity> siteOrders = entry.getValue();
+
+            // 4. Вземаме настройките за Еконт за конкретния сайт
+            CourierSettingsEntity settings = courierSettingsRepository
+                    .findBySiteIdAndCourierTypeAndActiveTrue(siteId, CourierType.BOX_NOW)
+                    .orElse(null);
+
+            if (settings == null) continue;
+
+
+
+            // 5. Събираме номерата на товарителниците (wayBillShipmentNumber)
+            List<Map<String, String>> parcels = siteOrders.stream()
+                    .filter(order -> order.getWayBillShipmentNumber() != null)
+                    .map(order -> Map.of("id", order.getWayBillShipmentNumber().toString()))
+                    .toList();
+
+            if (parcels.isEmpty()) continue;
+
+
+            Map<String, Object> body =  new HashMap<>();
+//            body.put("parcels", parcels);
+            List<String> vouchers = siteOrders.stream()
+                    .map(o -> o.getWayBillShipmentNumber().toString())
+                    .toList();
+            String joinedVouchers = String.join(",", vouchers);
+
+            try {
+                Map<String, Object> response = getToBoxNow("/api/v1/parcels", body, settings.getApiKey(), settings.getApiSecret());
+//                System.out.println(response);
+                processBoxNowBulkResponse(response, siteOrders);
+            }  catch (Exception e) {
+                log.error("Error parsing JSON from Econt: {}", e.getMessage());
+            }
+
+        }
+
+
+
+
+
+
+    }
+
+    private void processBoxNowBulkResponse(Map<String, Object> resMap, List<WpOrderEntity> siteOrders) {
+        System.out.println("Processing BoxNow Response. Orders to match: " + siteOrders.size());
+
+        List<Map<String, Object>> parcels = (List<Map<String, Object>>) resMap.get("data");
+        if (parcels == null) return;
+
+        for (Map<String, Object> parcel : parcels) {
+            String apiVoucherId = String.valueOf(parcel.get("id"));
+            String currentState = (String) parcel.get("state");
+
+            // 1. Търсим поръчката БЕЗ да викаме .get() веднага
+            Optional<WpOrderEntity> targetOrder = siteOrders.stream()
+                    .filter(o -> {
+                        if (o.getParcelIds() == null) return false;
+                        String storedParcelIds = String.valueOf(o.getParcelIds());
+                        return storedParcelIds.contains(apiVoucherId);
+                    })
+                    .findFirst();
+
+            // 2. Проверяваме дали е намерена. Ако НЕ Е, просто продължаваме към следващия пакет от API-то
+            if (targetOrder.isEmpty()) {
+                // Вече не принтираме нищо тук, за да не ни зарива конзолата с 34 "skip" съобщения
+                continue;
+            }
+
+            // 3. Вече сме сигурни, че имаме поръчка
+            WpOrderEntity order = targetOrder.get();
+            System.out.println("Found match for Order ID: " + order.getId() + " with API Voucher: " + apiVoucherId);
+
+            List<Map<String, Object>> events = (List<Map<String, Object>>) parcel.get("events");
+            if (events == null) continue;
+
+            boolean isUpdated = false;
+            if (order.getCourierHistory() == null) {
+                order.setCourierHistory(new ArrayList<>());
+            }
+
+            for (Map<String, Object> event : events) {
+                String type = (String) event.get("type");
+                String createTimeStr = (String) event.get("createTime");
+                String translatedStatus = translateBoxNowStatus(type);
+
+                try {
+                    Instant eventTime = Instant.parse(createTimeStr);
+
+                    // Проверка дали този ивент вече е записан
+                    boolean exists = order.getCourierHistory().stream()
+                            .anyMatch(h -> h.getStatusDescription().equals(translatedStatus));
+
+                    if (!exists) {
+                        WpOrderCourierHistory history = new WpOrderCourierHistory();
+
+                        // ПРЕВОД ТУК:
+                        String bulgarianStatus = translateBoxNowStatus(type);
+                        history.setStatusDescription(bulgarianStatus);
+
+                        history.setEventTime(eventTime);
+                        order.getCourierHistory().add(history);
+                        isUpdated = true;
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to parse event time: {}", createTimeStr);
+                }
+            }
+
+            // Обновяване на главния статус на поръчката
+            if ("delivered".equalsIgnoreCase(currentState) && order.getStatus() != OrderStatus.COMPLETED) {
+                order.setStatus(OrderStatus.COMPLETED);
+                isUpdated = true;
+            } else if ("canceled".equalsIgnoreCase(currentState) && order.getStatus() != OrderStatus.CANCELLED) {
+                order.setStatus(OrderStatus.CANCELLED);
+                isUpdated = true;
+            }
+
+            if (isUpdated) {
+                wpOrderRepository.save(order);
+                System.out.println("Order " + order.getId() + " successfully updated in DB.");
+            }
+        }
+    }
+
+    private String translateBoxNowStatus(String status) {
+        if (status == null) return "Неизвестен статус";
+
+        return switch (status.toLowerCase()) {
+            case "new" -> "Генерирана товарителница";
+            case "accepted-to-locker" -> "Оставена в клетка от подател";
+            case "in-depot" -> "В сортировъчен център";
+            case "in-transit" -> "Пратката пътува";
+            case "final-destination" -> "Пратката е в твоята клетка (изчаква вземане)";
+            case "delivered" -> "Взета от клиент";
+            case "canceled" -> "Анулирана";
+            case "expired" -> "Изтекъл срок за вземане";
+            case "missing" -> "Липсваща пратка";
+            case "returned-to-sender" -> "Върната към подател";
+            default -> status; // Връща оригиналния статус, ако не е в списъка
+        };
     }
 
 }

@@ -802,7 +802,7 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
         return null;
     }
 
-//    @Scheduled(fixedRate = 10 * 60 * 1000)
+    @Scheduled(fixedRate = 10 * 60 * 1000)
     @Transactional
     protected void sheckShipments() {
         List<WpOrderEntity> allByCourierTypeAndStatusSent = wpOrderRepository.findAllByCourierTypeAndStatus(CourierType.ECONT, OrderStatus.SENT);

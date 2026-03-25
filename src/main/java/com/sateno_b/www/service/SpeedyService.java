@@ -7,6 +7,7 @@ import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.CourierContractDetails;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
+import com.sateno_b.www.model.entity.data.WpOrderCourierHistory;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
@@ -15,6 +16,7 @@ import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -22,11 +24,16 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
+@Log4j2
 @Service
 public class SpeedyService implements ShippingProvider {
 
@@ -735,46 +742,111 @@ public class SpeedyService implements ShippingProvider {
         return basePrice * fuelSurcharge * 1.20;
     }
 
-//    @Scheduled(fixedRate = 1 * 60 * 1000)
-//    private void sheckShipments() {
-//        List<WpOrderEntity> allByCourierTypeAndStatusSent = wpOrderRepository.findAllByCourierTypeAndStatus(CourierType.SPEEDY, OrderStatus.SENT);
-//
-//        Map<Long, List<WpOrderEntity>> ordersBySite = allByCourierTypeAndStatusSent.stream()
-//                .collect(Collectors.groupingBy(order -> order.getSite().getId()));
-//
-//
-//
-//        for (Map.Entry<Long, List<WpOrderEntity>> entry : ordersBySite.entrySet()) {
-//            Long siteId = entry.getKey();
-//            List<WpOrderEntity> siteOrders = entry.getValue();
-//
-//            // 4. Вземаме настройките за Еконт за конкретния сайт
-//            CourierSettingsEntity settings = courierSettingsRepository
-//                    .findBySiteIdAndCourierTypeAndActiveTrue(siteId, CourierType.SPEEDY)
-//                    .orElse(null);
-//
-//            if (settings == null) continue;
-//
-//            // 5. Събираме номерата на товарителниците (wayBillShipmentNumber)
+    @Scheduled(fixedRate = 10 * 60 * 1000)
+    private void sheckShipments() {
+        List<WpOrderEntity> allByCourierTypeAndStatusSent = wpOrderRepository.findAllByCourierTypeAndStatus(CourierType.SPEEDY, OrderStatus.SENT);
+        Map<Long, List<WpOrderEntity>> ordersBySite = allByCourierTypeAndStatusSent.stream()
+                .collect(Collectors.groupingBy(order -> order.getSite().getId()));
+
+
+
+        for (Map.Entry<Long, List<WpOrderEntity>> entry : ordersBySite.entrySet()) {
+            Long siteId = entry.getKey();
+            List<WpOrderEntity> siteOrders = entry.getValue();
+
+            // 4. Вземаме настройките за Еконт за конкретния сайт
+            CourierSettingsEntity settings = courierSettingsRepository
+                    .findBySiteIdAndCourierTypeAndActiveTrue(siteId, CourierType.SPEEDY)
+                    .orElse(null);
+
+            if (settings == null) continue;
+
+
+
+            // 5. Събираме номерата на товарителниците (wayBillShipmentNumber)
 //            List<String> waybillNumbers = siteOrders.stream()
 //                    .map(order -> order.getWayBillShipmentNumber().toString())
 //                    .toList();
-//
+
 //            if (waybillNumbers.isEmpty()) continue;
-//
-////            List<String> waybillNumbers = List.of("1055101154014", "1055101141069");
-//            Map<String, Object> requestBody = new HashMap<>();
-//            requestBody.put("shipmentNumbers", waybillNumbers);
-//
-//            try {
-////                var response = postToEcont("services/Shipments/ShipmentService.getShipmentStatuses.json", requestBody, settings.getUsername(), settings.getPassword());
-////                processStatuses(response, siteOrders);
-//            }  catch (Exception e) {
-////                log.error("Error parsing JSON from Econt: {}", e.getMessage());
-//            }
-//
-//        }
-//
-//
-//    }
+
+//            List<String> waybillNumbers = List.of("1055101154014", "1055101141069");
+            Map<String, Object> body = createBaseBody(settings.getUsername(), settings.getPassword());
+
+
+            // Промени това:
+            List<Map<String, String>> parcels = siteOrders.stream()
+                    .filter(order -> order.getWayBillShipmentNumber() != null)
+                    .map(order -> Map.of("id", order.getWayBillShipmentNumber().toString()))
+                    .toList();
+                if(parcels.isEmpty()) continue;
+            body.put("parcels", parcels); // Ключът е parcelIds, стойността е List<String>
+            System.out.println(body);
+            try {
+                var response = postToSpeedy("track", body);
+//                System.out.println(response);
+                processSpeedyStatuses(response, siteOrders);
+            }  catch (Exception e) {
+                log.error("Error parsing JSON from Econt: {}", e.getMessage());
+            }
+
+        }
+
+
+    }
+
+    private void processSpeedyStatuses(Object response, List<WpOrderEntity> siteOrders) {
+        if (!(response instanceof Map)) return;
+        Map<String, Object> resMap = (Map<String, Object>) response;
+        List<Map<String, Object>> parcels = (List<Map<String, Object>>) resMap.get("parcels");
+        if (parcels == null) return;
+
+        for (Map<String, Object> parcel : parcels) {
+            String shipmentNum = parcel.get("parcelId").toString();
+            List<Map<String, Object>> operations = (List<Map<String, Object>>) parcel.get("operations");
+
+            if (operations == null || operations.isEmpty()) continue;
+
+            siteOrders.stream()
+                    .filter(o -> o.getWayBillShipmentNumber() != null &&
+                            o.getWayBillShipmentNumber().toString().equals(shipmentNum))
+                    .findFirst()
+                    .ifPresent(order -> {
+                        if (order.getCourierHistory() == null) {
+                            order.setCourierHistory(new ArrayList<>());
+                        }
+
+                        boolean isUpdated = false;
+
+                        for (Map<String, Object> op : operations) {
+                            // Спиди описанието обикновено е в "description"
+                            String desc = (String) op.get("description");
+                            // Времето е в ISO формат стринг: "2023-10-24T14:30:00+03:00"
+                            String dateTimeStr = (String) op.get("dateTime");
+                            DateTimeFormatter speedyFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
+                            ZonedDateTime zdt = ZonedDateTime.parse(dateTimeStr, speedyFormatter);
+//                            OffsetDateTime odt = OffsetDateTime.parse(dateTimeStr, formatter);
+                            Instant eventTime = zdt.toInstant();
+
+
+
+                            boolean alreadyExists = order.getCourierHistory().stream()
+                                    .anyMatch(h -> h.getEventTime().equals(eventTime) &&
+                                            h.getStatusDescription().equals(desc));
+
+                            if (!alreadyExists) {
+                                WpOrderCourierHistory newEntry = new WpOrderCourierHistory();
+                                newEntry.setStatusDescription(desc);
+                                newEntry.setEventTime(eventTime);
+                                order.getCourierHistory().add(newEntry);
+                                isUpdated = true;
+                            }
+                        }
+
+                        if (isUpdated) {
+                            wpOrderRepository.save(order);
+                        }
+                    });
+        }
+    }
 }
