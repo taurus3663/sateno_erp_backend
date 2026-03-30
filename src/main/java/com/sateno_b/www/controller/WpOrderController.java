@@ -55,6 +55,13 @@ public class WpOrderController {
         return ResponseEntity.ok(all);
     }
 
+    @GetMapping("/status/stats")
+    public ResponseEntity<OrderStatusStatsDto> getStat() {
+
+        OrderStatusStatsDto orderStatusStatsDto = wpOrderService.statusStats();
+        return ResponseEntity.ok(orderStatusStatsDto);
+    }
+
     @PostMapping("/sync/{siteId}")
     public void syncWpOrder(@PathVariable Long siteId){
             wpOrderService.syncOrderToDB(siteId);
@@ -215,6 +222,15 @@ public class WpOrderController {
             rs = speedyService.createWayBill(createLabelDto);
         } else if(createLabelDto.getCourierType() == CourierType.BOX_NOW) {
             rs = boxNowService.createWayBill(createLabelDto);
+        }
+        if(rs instanceof Boolean && (boolean) rs) {
+            Optional<WpOrderEntity> byId1 = wpOrderRepository.findById(createLabelDto.getId());
+            if(byId1.isPresent()){
+                WpOrderEntity order = byId1.get();
+                order.setStatus(OrderStatus.SENT);
+                wpOrderRepository.saveAndFlush(order);
+            }
+
         }
         return ResponseEntity.ok(rs);
     } catch (Exception e) {

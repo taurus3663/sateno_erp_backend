@@ -1,6 +1,8 @@
 package com.sateno_b.www.service;
 
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
@@ -17,6 +19,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +31,10 @@ import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,6 +66,7 @@ public class WpProductService {
     private static final String PRODUCTS_URL = "/wp-json/wc/v3/products";
     private final WpProductHistoryRepository wpProductHistoryRepository;
     private final ImageToWordPress imageToWordPress;
+    private final ChatGptService chatGptService;
 
 
     @Transactional
@@ -341,6 +350,7 @@ public class WpProductService {
     }
 
     @Transactional
+    @CacheEvict(value = "productsList", allEntries = true)
     public WpProductDto saveProduct(WpProductDto dto) {
         WpProductEntity entity;
         if (dto.getId() != null && dto.getId() > 0) {
@@ -510,6 +520,7 @@ public class WpProductService {
     }
 
     @Transactional()
+    @Cacheable(value = "productsList", key = "{#pageable, #sku, #brand, #category, #name, #quantity, #status, #saleType}")
     public Page<WpProductDto> getAll(
             Pageable pageable,
             @RequestParam(required = false) String sku,
@@ -691,6 +702,7 @@ public class WpProductService {
 
     }
 
+    @CacheEvict(value = "productsList", allEntries = true)
     public WpProductDto patchProduct(WpProductDto wpProductDto) {
         Optional<WpProductEntity> byId = wpProductRepository.findById(wpProductDto.getId());
         if (byId.isPresent()) {
@@ -769,7 +781,7 @@ public class WpProductService {
     }
 
 
-    @Transactional
+//    @Transactional
     public void syncProductsToSite(Long siteId) {
         SiteEntity site = siteRepository.findById(siteId).orElseThrow();
         if(site.getUrl().contains("sateno.bg")) {
@@ -782,24 +794,120 @@ public class WpProductService {
 
         // Взимаме тестовия продукт
 //        WpProductEntity product = wpProductRepository.findById(533L).orElseThrow();
-        int count = 1;
+        AtomicInteger count = new AtomicInteger(1);
         List<WpProductEntity> allWithAddons = wpProductRepository.findAll();
+        ExecutorService executor = Executors.newFixedThreadPool(10);
+
+
         for (WpProductEntity wpProductEntity : allWithAddons) {
-            try {
+            executor.submit(() -> {
+                try {
 //                massSyncAllToSite(wpProductEntity, site);
-                syncSalePriceBySku(site, wpProductEntity);
-                count++;
-                System.out.println(count);
-            } catch (Exception e) {
-                // Ако един продукт гръмне, записваме грешката и преминаваме на следващия
-                log.error("КРИТИЧНА ГРЕШКА за продукт SKU {}: {}", wpProductEntity.getSku(), e.getMessage());
-            }
+//                syncSalePriceBySku(site, wpProductEntity);
+                    translateProductInfos(wpProductEntity, site);
+                    count.getAndIncrement();
+                    System.out.println(count.get());
+                }
+                catch (Exception e) {
+                    // Ако един продукт гръмне, записваме грешката и преминаваме на следващия
+                    log.error("КРИТИЧНА ГРЕШКА за продукт SKU {}: {}", wpProductEntity.getSku(), e.getMessage());
+                }
+
+            });
+
         }
-        log.info("Синхронизацията приключи. Успешно обработени: {} продукта.брой {}", count, allWithAddons.size());
+        executor.shutdown();
+
+        try {
+            // Чакаме нишките да приключат. Сложи достатъчно време (напр. 1 час)
+            if (!executor.awaitTermination(10, TimeUnit.HOURS)) {
+                executor.shutdownNow(); // Ако не приключат за 1 час, ги спри принудително
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        log.info("Синхронизацията приключи. Успешно обработени: {} продукта.брой {}", count.get(), allWithAddons.size());
 
 
     }
 
+    private void translateProductInfos(WpProductEntity product, SiteEntity site) {
+        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+
+        var searchResponse = restClient.get()
+                .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products?sku=" + product.getSku())
+                .header("Authorization", "Basic " + auth)
+                .retrieve()
+                .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+        if (searchResponse == null || searchResponse.isEmpty()) {
+            log.warn("Продукт с SKU {} не е намерен в сайта {}", product.getSku(), site.getUrl());
+            return;
+        }
+        Integer wpId = (Integer) searchResponse.get(0).get("id");
+        String description = (String) searchResponse.get(0).get("description");
+        String shortDescription = (String) searchResponse.get(0).get("short_description");
+        String name = (String) searchResponse.get(0).get("name");
+        List<Map<String, Object>> addons = (List<Map<String, Object>>) searchResponse.get(0).get("addons");
+
+        String targetLang = "полски"; // Може да е site.getLanguage().getName()
+        String instruction = "Преведи на " + targetLang + ". Запази всички HTML тагове, емотикони и форматиране.";
+        String instructionJson = """
+    Ти си JSON преводач за WooCommerce. 
+    Твоята задача е да преведеш съдържанието на предоставения JSON на %s език.
+    1. Преведи стойностите срещу ключовете "name" и "label".
+    2. НЕ променяй нищо друго в структурата на JSON-а.
+    3. Запази всички числа и размери (напр. 180 х 240 см).
+    4. Върни САМО валиден JSON код, без никакви обяснения.
+    """.formatted(targetLang); // Тук вмъкваме езика динамично
+
+
+        String translatedName = chatGptService.translateText(name, instruction);
+        String translatedDesc = chatGptService.translateText(description, instruction);
+        String translatedShortDesc = chatGptService.translateText(shortDescription, instruction);
+
+        // 3. ОБНОВЯВАНЕ в WordPress
+        Map<String, Object> updateBody = new HashMap<>();
+        updateBody.put("name", translatedName);
+        updateBody.put("description", translatedDesc);
+        updateBody.put("short_description", translatedShortDesc);
+        if (addons != null && !addons.isEmpty()) {
+            log.info("Намерени са {} адона за превод.", addons.size());
+
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                // 1. Превръщаме списъка в JSON String
+                String originalAddonsJson = mapper.writeValueAsString(addons);
+                String translatedAddonsJson = chatGptService.translateText(originalAddonsJson, instructionJson);
+                // 3. Превръщаме преведения JSON обратно в Java списък
+                List<Map<String, Object>> translatedAddons = mapper.readValue(
+                        translatedAddonsJson,
+                        new TypeReference<List<Map<String, Object>>>() {}
+                );
+
+                // 4. Добавяме ги към тялото за обновяване под същия ключ
+                updateBody.put("addons", translatedAddons);
+
+            } catch (Exception e) {
+                log.error("Грешка при превода на директните адони: {}", e.getMessage());
+            }
+        }
+
+//        System.out.println(updateBody);
+
+        try {
+            restClient.put()
+                    .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
+                    .header("Authorization", "Basic " + auth)
+                    .body(updateBody)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("✅ Успешно преведен и обновен продукт SKU: {} в сайта {}", product.getSku(), site.getUrl());
+        } catch (Exception e) {
+            log.error("❌ Грешка при запис на превода за SKU {}: {}", product.getSku(), e.getMessage());
+        }
+    }
 
     private void syncSalePriceBySku(SiteEntity site, WpProductEntity product) {
         String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());

@@ -5,9 +5,11 @@ import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.UserEntity;
 import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.UserRepository;
+import com.sateno_b.www.service.ChatGptService;
 import com.sateno_b.www.service.EmailService;
 import com.sateno_b.www.service.NekorektenService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -26,8 +28,8 @@ public class initDB implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         initAdmin();
-        sendEmailTest();
-
+//        sendEmailTest();
+//        callAi();
 //        nekorektenService.checkPhone("0888182076");
 //        {"message":null,"items":
 //        [{"id":"6PpryA2Zxz","firstName":"Не**","lastName":"Желяз****","email":"nelit****@gmail.com",
@@ -86,5 +88,13 @@ public class initDB implements CommandLineRunner {
         emailSendRequest.setSubject("TEST");
         emailSendRequest.setContent(fullHtmlBody);
 //        emailService.sendEmail(emailSendRequest);
+    }
+
+    private final ChatGptService chatGptService;
+
+    private void callAi() {
+        System.out.println("TEST11");
+        String tr = chatGptService.translateText("КАКВО ПРАВИШ?", "преведи го на английски");
+        System.out.println(tr);
     }
 }

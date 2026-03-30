@@ -58,4 +58,7 @@ public class WoOrderDto {
 
     @JsonProperty("shipping_lines")
     private List<ShippingLines> shippingLines;
+
+    @JsonProperty("meta_data")
+    private List<WoPaoIdValueDto> metaData;
 }

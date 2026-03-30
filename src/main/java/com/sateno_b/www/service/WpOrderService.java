@@ -17,6 +17,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.modelmapper.ModelMapper;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -304,7 +306,7 @@ public class WpOrderService {
 
             CheckOutCourierItemsDto dto = new CheckOutCourierItemsDto();
             dto.setName(item.getProductName());
-            dto.setPrice(item.getPrice().doubleValue());
+            dto.setPrice(item.getTotalPrice().doubleValue() / qty);
             dto.setQuantity((long) qty); // Твоят Long
             dto.setWeight(singleWeight); // ПРАВИЛНО: Double/double, не (long) 0!
             dto.setSku(item.getSku());
@@ -331,6 +333,7 @@ public class WpOrderService {
     }
 
     @Transactional
+//    @CacheEvict(value = "ordersList", allEntries = true)
     public void newOrderFromSite(WoOrderDto dto, Long siteId) {
 
         Optional<WpOrderEntity> byWpOrderId = wpOrderRepository.findByWpOrderId(dto.getId());
@@ -376,6 +379,18 @@ public class WpOrderService {
 
         SiteEntity siteEntity = siteRepository.findById(siteId).get();
 
+        boolean isPayed;
+        if(dto.getPaymentMethod() != PaymentMethod.COD) {
+            boolean stripeConfirmed = dto.getMetaData().stream()
+                    .anyMatch(m -> "_wc_stripe_charge_status".equals(m.getKey()) && "succeeded".equals(m.getValue()));
+            if(stripeConfirmed) {
+                isPayed = true;
+            } else {
+                isPayed = false;
+            }
+        } else {
+            isPayed = false;
+        }
 
         AtomicReference<Double> totalPriceRs = new AtomicReference<>(0.0);
         WpOrderEntity wpOrderEntity = new WpOrderEntity();
@@ -392,7 +407,7 @@ public class WpOrderService {
                     orderLineItem.setPrice(woOrderLineItemDto.getPrice());
                     orderLineItem.setProductId(woOrderLineItemDto.getProductId());
                     orderLineItem.setProductName(woOrderLineItemDto.getProductName());
-                    orderLineItem.setTotalPrice(woOrderLineItemDto.getTotal());
+                    orderLineItem.setTotalPrice(isPayed ? BigDecimal.valueOf(0): woOrderLineItemDto.getTotal());
                     orderLineItem.setImage(woOrderLineItemDto.getImage());
                     orderLineItem.setPaoIdValue(woOrderLineItemDto.getPaoIdValue()
                             .stream()
@@ -459,10 +474,10 @@ public class WpOrderService {
             totalPrice.updateAndGet(v -> v.add(orderLineItem.getTotalPrice()));
             // Използвай totalPrice на реда, за да хванеш Quantity * Price
         });
-        wpOrderEntity.setTotalPriceFCoutier(totalPrice.get());
+        wpOrderEntity.setTotalPriceFCoutier(isPayed? BigDecimal.valueOf(0): totalPrice.get());
 
         CourierParser.CourierMatch parse = CourierParser.parseWithFallback(wpOrderEntity);
-        if(parse != null) {
+        if(parse != null && !isPayed) {
             AtomicReference<Double> tPrice = new AtomicReference<>(0.0);
 // Вземаме сумата на поръчката като double за сравнение
             double orderAmount = wpOrderEntity.getTotalPrice().doubleValue();
@@ -507,6 +522,9 @@ public class WpOrderService {
                 }
             });
             wpOrderEntity.setCustomShippingTotal(tPrice.get());
+        }
+        if(isPayed) {
+            wpOrderEntity.setCustomShippingTotal(0.0);
         }
 
         NekorektenResponseDto nekorektenResponseDto = nekorektenService.checkPhone(rawPhone);
@@ -620,6 +638,8 @@ public class WpOrderService {
 
 
     @Transactional
+//    @Cacheable(value = "ordersList",
+//            key = "{#pageable.pageNumber, #pageable.pageSize, #status, #phone, #customer}")
     public Page<WpOrderDto> getAll(Pageable pageable, @RequestParam(required = false) String status,
                                    @RequestParam(required = false) String phone,
                                    @RequestParam(required = false) String customer) {
@@ -717,7 +737,35 @@ public class WpOrderService {
 
     }
 
+    public OrderStatusStatsDto statusStats() {
+        OrderStatusStatsDto dto = new OrderStatusStatsDto();
+        List<Object[]> objects = wpOrderRepository.countOrdersByStatus();
 
+        // 1. Вземаме инстанцията на мапата от DTO-то
+        Map<OrderStatus, Long> map = dto.getOrderStatusMap();
+
+        // 2. Инициализираме всички статуси с 0 (за да имаме пълна статистика)
+        for (OrderStatus status : OrderStatus.values()) {
+            map.put(status, 0L);
+        }
+
+        // 3. Обхождаме резултатите от базата и презаписваме бройките
+        if (objects != null) {
+            for (Object[] object : objects) {
+                // object[0] е OrderStatus, object[1] е Long (бройката)
+                if (object[0] instanceof OrderStatus status) {
+                    Long count = (Long) object[1];
+                    map.put(status, count);
+//                    System.out.println("Status found: " + status + " | Count: " + count);
+                }
+            }
+        }
+
+        return dto;
+    }
+
+
+//    @CacheEvict(value = "ordersList", allEntries = true)
     public WpOrderDto patchOrder(WpOrderDto wpOrderDto) {
         Optional<WpOrderEntity> byId = wpOrderRepository.findById(wpOrderDto.getId());
         if(byId.isPresent()) {

@@ -245,9 +245,8 @@ public class SpeedyService implements ShippingProvider {
             double checkSum = 0.0;
             for (OrderLineItem item : order.getOrderLine()) {
 
-                double unitPrice = (item.getPrice() != null) ? Double.parseDouble(item.getPrice().toString()) : 0.0;
+                double unitPrice = (item.getTotalPrice() != null) ? Double.parseDouble(item.getTotalPrice().toString()) / item.getQuantity() : 0.0;
                 if(unitPrice <= 0) continue;
-                System.out.println(unitPrice);
 
                 int quantity = item.getQuantity();
 

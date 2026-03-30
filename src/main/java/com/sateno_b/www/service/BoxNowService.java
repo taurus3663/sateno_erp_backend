@@ -458,11 +458,9 @@ public class BoxNowService implements ShippingProvider {
 
     @Scheduled(fixedRate = 10 * 60 * 1000)
     private void checkShipments() {
-        System.out.println("Checking Shipments");
         List<WpOrderEntity> allByCourierTypeAndStatusSent = wpOrderRepository.findAllByCourierTypeAndStatus(CourierType.BOX_NOW, OrderStatus.SENT);
         Map<Long, List<WpOrderEntity>> ordersBySite = allByCourierTypeAndStatusSent.stream()
                 .collect(Collectors.groupingBy(order -> order.getSite().getId()));
-        System.out.println(allByCourierTypeAndStatusSent.size());
         for (Map.Entry<Long, List<WpOrderEntity>> entry : ordersBySite.entrySet()) {
             Long siteId = entry.getKey();
             List<WpOrderEntity> siteOrders = entry.getValue();
@@ -510,8 +508,6 @@ public class BoxNowService implements ShippingProvider {
     }
 
     private void processBoxNowBulkResponse(Map<String, Object> resMap, List<WpOrderEntity> siteOrders) {
-        System.out.println("Processing BoxNow Response. Orders to match: " + siteOrders.size());
-
         List<Map<String, Object>> parcels = (List<Map<String, Object>>) resMap.get("data");
         if (parcels == null) return;
 
@@ -536,7 +532,6 @@ public class BoxNowService implements ShippingProvider {
 
             // 3. Вече сме сигурни, че имаме поръчка
             WpOrderEntity order = targetOrder.get();
-            System.out.println("Found match for Order ID: " + order.getId() + " with API Voucher: " + apiVoucherId);
 
             List<Map<String, Object>> events = (List<Map<String, Object>>) parcel.get("events");
             if (events == null) continue;

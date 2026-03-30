@@ -49,4 +49,7 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
     Optional<WpOrderEntity> findByWpOrderId(Long wpOrderId);
 
     List<WpOrderEntity> findAllByCourierTypeAndStatus(CourierType courierType, OrderStatus status);
+
+    @Query("SELECT o.status, COUNT(o) FROM WpOrderEntity o GROUP BY o.status")
+    List<Object[]> countOrdersByStatus();
 }

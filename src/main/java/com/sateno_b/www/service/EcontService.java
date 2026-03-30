@@ -281,9 +281,10 @@ public class EcontService implements ShippingProvider {
             item.put("weight", itemWeight);
 
 
-
+            double total = Double.parseDouble(orderLineItem.getTotalPrice().toString());
+            double unitPrice = total / orderLineItem.getQuantity();
             // Цена на единична бройка
-            item.put("price", Double.parseDouble(orderLineItem.getPrice().toString()));
+            item.put("price", unitPrice);
 
             // Количество
             item.put("count", orderLineItem.getQuantity());
@@ -585,7 +586,6 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
         double itemWeight = (orderLineItem.getWeight() != null)
                 ? orderLineItem.getWeight() : 0.5;
         item.put("weight", itemWeight);
-
 
 
         // Цена на единична бройка
