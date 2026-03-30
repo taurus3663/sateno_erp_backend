@@ -779,6 +779,10 @@ public class WpOrderService {
                 wpOrderEntity.setSavedCourierBilling(wpOrderDto.getSavedCourierBilling());
             }
 
+            if(wpOrderDto.getStatus() != null) {
+                wpOrderEntity.setStatus(wpOrderDto.getStatus());
+            }
+
             wpOrderRepository.save(wpOrderEntity);
             return modelMapper.map(wpOrderEntity, WpOrderDto.class);
         }
