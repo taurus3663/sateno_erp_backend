@@ -15,7 +15,8 @@ import com.sateno_b.www.shared.ImageToWordPress;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.*;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -721,7 +722,8 @@ public class WpProductService {
         throw new RuntimeException("Product not found");
     }
 
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
+//    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void restoreQuantity(WpOrderEntity wpOrderEntity) {
 
         for (OrderLineItem orderLineItem : wpOrderEntity.getOrderLine()) {

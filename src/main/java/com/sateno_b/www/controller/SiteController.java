@@ -6,7 +6,7 @@ import com.sateno_b.www.model.entity.CourierSettingsEntity;
 import com.sateno_b.www.model.entity.EmailEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.repository.*;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;

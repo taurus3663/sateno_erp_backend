@@ -6,7 +6,7 @@ import com.sateno_b.www.model.entity.WpAddonValueTranslationEntity;
 import com.sateno_b.www.model.repository.LanguageRepository;
 import com.sateno_b.www.model.repository.WpAddonValueRepository;
 import com.sateno_b.www.model.repository.WpAddonValueTranslationRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

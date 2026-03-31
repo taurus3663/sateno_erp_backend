@@ -8,7 +8,7 @@ import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.WpBrandRepository;
 import com.sateno_b.www.model.repository.WpBrandWpIdRepository;
 import com.sateno_b.www.shared.SlugTool;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;

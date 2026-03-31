@@ -5,7 +5,7 @@ import com.sateno_b.www.model.enums.ProductSaleType;
 import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.WpProductRepository;
 import com.sateno_b.www.shared.ImageToWordPress;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;

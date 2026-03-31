@@ -9,7 +9,7 @@ import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.service.*;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -45,6 +45,7 @@ public class WpOrderController {
     private final UserSignalRepository userSignalRepository;
     private final EmailLogRepository emailLogRepository;
     private final SiteRepository siteRepository;
+    private final WpOrderAsyncService wpOrderAsyncService;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status,
@@ -158,7 +159,10 @@ public class WpOrderController {
                 order.setSite(site);
             }
 
-            wpOrderRepository.save(byId.get());
+            WpOrderEntity save = wpOrderRepository.save(byId.get());
+            if(save.getWpOrderId() != null){
+                wpOrderAsyncService.updateOrderOnSites(save, null);
+            }
 //            notificationService.sendUpdate("orders", WsAction.UPDATED);
             return ResponseEntity.ok(wpOrderDto);
         }

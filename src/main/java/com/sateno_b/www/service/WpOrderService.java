@@ -13,7 +13,6 @@ import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.CourierParser;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.modelmapper.ModelMapper;
@@ -33,8 +32,13 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -63,9 +67,11 @@ public class WpOrderService {
     private final SpeedyService speedyService;
     private final BoxNowService boxnowService;
     private final CourierSettingsRepository courierSettingsRepository;
+    private final WpOrderAsyncService wpOrderAsyncService;
 
 
-    public void syncOrderToDB(Long siteId){
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void syncOrderToDB(Long siteId) {
         SiteEntity site = siteRepository.findById(siteId).orElse(null);
         if(site == null) {return;}
 
@@ -73,112 +79,114 @@ public class WpOrderService {
 
 
         List<WoOrderDto> all = fetchAllOrders(site);
-
         saveAllToDb(all, siteId);
-
     }
 
-    @Transactional
+//    @Transactional
     protected void saveAllToDb(List<WoOrderDto> orders, Long siteId) {
         int count = 0;
         List<Long> nulls = new ArrayList<>();
+        ExecutorService executor = Executors.newFixedThreadPool(10);
+
+
         for (WoOrderDto dto : orders) {
 
             if(wpOrderRepository.existsByWpOrderId(dto.getId())) {
                 continue;
             }
 
-            String rawPhone = dto.getBilling().getPhone().replaceAll("[^0-9]", "");
-            String phoneSuffix = rawPhone.length() >= 9
-                    ? rawPhone.substring(rawPhone.length() - 9)
-                    : rawPhone;
+            executor.submit(() -> {
+                String rawPhone = dto.getBilling().getPhone().replaceAll("[^0-9]", "");
+                String phoneSuffix = rawPhone.length() >= 9
+                        ? rawPhone.substring(rawPhone.length() - 9)
+                        : rawPhone;
 
-            CustomerEntity customer = customerRepository.findByPhoneSuffix(phoneSuffix)
-                    .stream()
-                    .findFirst()
-                    .orElseGet(() -> {
-                        CustomerEntity customerEntity = new CustomerEntity();
-                        customerEntity.setPhone(dto.getBilling().getPhone());
-                        customerEntity.setFirstName(dto.getBilling().getFirstName());
-                        customerEntity.setLastName(dto.getBilling().getLastName());
-                        customerEntity.setEmail(dto.getBilling().getEmail());
-                        customerEntity.setAddress(dto.getBilling().getAddress1().isEmpty()
-                                ? dto.getBilling().getAddress2()
-                                : dto.getBilling().getAddress1());
-                        customerEntity.setEik(dto.getBilling().getCompanyName());
-                        return customerRepository.save(customerEntity);
-                    });
+                CustomerEntity customer = customerRepository.findByPhoneSuffix(phoneSuffix)
+                        .stream()
+                        .findFirst()
+                        .orElseGet(() -> {
+                            CustomerEntity customerEntity = new CustomerEntity();
+                            customerEntity.setPhone(dto.getBilling().getPhone());
+                            customerEntity.setFirstName(dto.getBilling().getFirstName());
+                            customerEntity.setLastName(dto.getBilling().getLastName());
+                            customerEntity.setEmail(dto.getBilling().getEmail());
+                            customerEntity.setAddress(dto.getBilling().getAddress1().isEmpty()
+                                    ? dto.getBilling().getAddress2()
+                                    : dto.getBilling().getAddress1());
+                            customerEntity.setEik(dto.getBilling().getCompanyName());
+                            return customerRepository.save(customerEntity);
+                        });
 
-            SiteEntity siteEntity = siteRepository.getReferenceById(siteId);
+                SiteEntity siteEntity = siteRepository.getReferenceById(siteId);
 
 
-            AtomicReference<Double> totalPriceRs = new AtomicReference<>(0.0);
-            WpOrderEntity wpOrderEntity = new WpOrderEntity();
-            wpOrderEntity.setCustomer(customer);
-            wpOrderEntity.setSite(siteEntity);
-            wpOrderEntity.setWpOrderId(dto.getId());
-            wpOrderEntity.setOrderLine(dto.getLineItems()
-                    .stream()
-                    .map(woOrderLineItemDto -> {
-                        totalPriceRs.updateAndGet(v -> v + Double.parseDouble(woOrderLineItemDto.getTotal().toString()));
-                        OrderLineItem orderLineItem = new OrderLineItem();
-                        orderLineItem.setSku(woOrderLineItemDto.getSku());
-                        orderLineItem.setQuantity(woOrderLineItemDto.getQuantity());
-                        orderLineItem.setPrice(woOrderLineItemDto.getPrice());
-                        orderLineItem.setProductId(woOrderLineItemDto.getProductId());
-                        orderLineItem.setProductName(woOrderLineItemDto.getProductName());
-                        orderLineItem.setTotalPrice(woOrderLineItemDto.getTotal());
-                        orderLineItem.setImage(woOrderLineItemDto.getImage());
-                        orderLineItem.setPaoIdValue(woOrderLineItemDto.getPaoIdValue()
-                                .stream()
-                                .filter(node -> "_pao_ids".equals(node.getKey()))
-                                .map(woPaoIdValueDto -> {
-                                    PaoIdValue paoIdValue = new PaoIdValue();
-                                    paoIdValue.setId(woPaoIdValueDto.getId());
-                                    paoIdValue.setKey(woPaoIdValueDto.getKey());
+                AtomicReference<Double> totalPriceRs = new AtomicReference<>(0.0);
+                WpOrderEntity wpOrderEntity = new WpOrderEntity();
+                wpOrderEntity.setCustomer(customer);
+                wpOrderEntity.setSite(siteEntity);
+                wpOrderEntity.setWpOrderId(dto.getId());
+                wpOrderEntity.setOrderLine(dto.getLineItems()
+                        .stream()
+                        .map(woOrderLineItemDto -> {
+                            totalPriceRs.updateAndGet(v -> v + Double.parseDouble(woOrderLineItemDto.getTotal().toString()));
+                            OrderLineItem orderLineItem = new OrderLineItem();
+                            orderLineItem.setSku(woOrderLineItemDto.getSku());
+                            orderLineItem.setQuantity(woOrderLineItemDto.getQuantity());
+                            orderLineItem.setPrice(woOrderLineItemDto.getPrice());
+                            orderLineItem.setProductId(woOrderLineItemDto.getProductId());
+                            orderLineItem.setProductName(woOrderLineItemDto.getProductName());
+                            orderLineItem.setTotalPrice(woOrderLineItemDto.getTotal());
+                            orderLineItem.setImage(woOrderLineItemDto.getImage());
+                            orderLineItem.setPaoIdValue(woOrderLineItemDto.getPaoIdValue()
+                                    .stream()
+                                    .filter(node -> "_pao_ids".equals(node.getKey()))
+                                    .map(woPaoIdValueDto -> {
+                                        PaoIdValue paoIdValue = new PaoIdValue();
+                                        paoIdValue.setId(woPaoIdValueDto.getId());
+                                        paoIdValue.setKey(woPaoIdValueDto.getKey());
 
-                                    List<WoPaoIdValueValueDto> valueDtos = objectMapper.convertValue(
-                                            woPaoIdValueDto.getValue(),
-                                            new TypeReference<List<WoPaoIdValueValueDto>>() {}
-                                    );
+                                        List<WoPaoIdValueValueDto> valueDtos = objectMapper.convertValue(
+                                                woPaoIdValueDto.getValue(),
+                                                new TypeReference<List<WoPaoIdValueValueDto>>() {}
+                                        );
 
-                                    paoIdValue.setValue(valueDtos.stream().map(vDto -> {
-                                        PaoIdValueValue val = new PaoIdValueValue();
-                                        val.setId(vDto.getId());
-                                        val.setKey(vDto.getKey());
-                                        val.setRawValue(vDto.getRawValue());
-                                        val.setRawPrice(vDto.getRawPrice());
-                                        val.setValue(vDto.getValue());
-                                        val.setPriceType(vDto.getPriceType());
-                                        return val;
+                                        paoIdValue.setValue(valueDtos.stream().map(vDto -> {
+                                            PaoIdValueValue val = new PaoIdValueValue();
+                                            val.setId(vDto.getId());
+                                            val.setKey(vDto.getKey());
+                                            val.setRawValue(vDto.getRawValue());
+                                            val.setRawPrice(vDto.getRawPrice());
+                                            val.setValue(vDto.getValue());
+                                            val.setPriceType(vDto.getPriceType());
+                                            return val;
+                                        }).toList());
+
+                                        return paoIdValue;
                                     }).toList());
+                            orderLineItem.setProductName(woOrderLineItemDto.getProductName());
+                            return orderLineItem;
+                        }).toList());
+                wpOrderEntity.setBilling(dto.getBilling());
+                wpOrderEntity.setShipping(dto.getShipping());
+                wpOrderEntity.setCurrency(dto.getCurrency());
+                wpOrderEntity.setCurrency_symbol(dto.getCurrencySymbol());
+                wpOrderEntity.setStatus(dto.getStatus());
+                wpOrderEntity.setCustomerIp(dto.getCustomerIpAddress());
+                wpOrderEntity.setCustomerAgent(dto.getCustomerUserAgent());
+                wpOrderEntity.setTotalPrice(new BigDecimal(totalPriceRs.get()));
+                wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
+                wpOrderEntity.setTransactionId(dto.getTransactionId());
+                wpOrderEntity.setShippingLines(dto.getShippingLines());
+                LocalDateTime ldt = LocalDateTime.parse(dto.getDateCreated());
+                Instant instant = ldt.atZone(ZoneId.of("Europe/Sofia")).toInstant();
+                wpOrderEntity.setWpOrderTime(instant);
 
-                                    return paoIdValue;
-                                }).toList());
-                        orderLineItem.setProductName(woOrderLineItemDto.getProductName());
-                        return orderLineItem;
-                    }).toList());
-            wpOrderEntity.setBilling(dto.getBilling());
-            wpOrderEntity.setShipping(dto.getShipping());
-            wpOrderEntity.setCurrency(dto.getCurrency());
-            wpOrderEntity.setCurrency_symbol(dto.getCurrencySymbol());
-            wpOrderEntity.setStatus(dto.getStatus());
-            wpOrderEntity.setCustomerIp(dto.getCustomerIpAddress());
-            wpOrderEntity.setCustomerAgent(dto.getCustomerUserAgent());
-            wpOrderEntity.setTotalPrice(new BigDecimal(totalPriceRs.get()));
-            wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
-            wpOrderEntity.setTransactionId(dto.getTransactionId());
-            wpOrderEntity.setShippingLines(dto.getShippingLines());
-            LocalDateTime ldt = LocalDateTime.parse(dto.getDateCreated());
-            Instant instant = ldt.atZone(ZoneId.of("Europe/Sofia")).toInstant();
-            wpOrderEntity.setWpOrderTime(instant);
-
-            AtomicReference<BigDecimal> totalPrice = new AtomicReference<>(BigDecimal.ZERO);
-            wpOrderEntity.getOrderLine().forEach(orderLineItem -> {
-                totalPrice.updateAndGet(v -> v.add(orderLineItem.getTotalPrice()));
-                // Използвай totalPrice на реда, за да хванеш Quantity * Price
-            });
-            wpOrderEntity.setTotalPriceFCoutier(totalPrice.get());
+                AtomicReference<BigDecimal> totalPrice = new AtomicReference<>(BigDecimal.ZERO);
+                wpOrderEntity.getOrderLine().forEach(orderLineItem -> {
+                    totalPrice.updateAndGet(v -> v.add(orderLineItem.getTotalPrice()));
+                    // Използвай totalPrice на реда, за да хванеш Quantity * Price
+                });
+                wpOrderEntity.setTotalPriceFCoutier(totalPrice.get());
 //            CourierParser.CourierMatch parse = CourierParser.parse(wpOrderEntity.getBilling().getAddress1());
 //            if(parse == null) continue;
 //            double totalWeight = 0;
@@ -216,62 +224,75 @@ public class WpOrderService {
 //                totalShipmentPrice = speedyService.calculatePrice(request);
 //            }
 
-            CourierParser.CourierMatch parse = CourierParser.parseWithFallback(wpOrderEntity);
-            if(parse != null) {
-                AtomicReference<Double> tPrice = new AtomicReference<>(0.0);
+                CourierParser.CourierMatch parse = CourierParser.parseWithFallback(wpOrderEntity);
+                if(parse != null) {
+                    AtomicReference<Double> tPrice = new AtomicReference<>(0.0);
 // Вземаме сумата на поръчката като double за сравнение
-                double orderAmount = wpOrderEntity.getTotalPrice().doubleValue();
+                    double orderAmount = wpOrderEntity.getTotalPrice().doubleValue();
 
 // Корекция на името на куриера за Enum-а
-                String courierKey = parse.getCourier().equals("BOXNOW") ? "BOX_NOW" : parse.getCourier();
+                    String courierKey = parse.getCourier().equals("BOXNOW") ? "BOX_NOW" : parse.getCourier();
 
-                Optional<CourierSettingsEntity> allBySiteAndActive = courierSettingsRepository
-                        .findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(siteEntity, CourierType.valueOf(courierKey));
+                    Optional<CourierSettingsEntity> allBySiteAndActive = courierSettingsRepository
+                            .findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(siteEntity, CourierType.valueOf(courierKey));
 
-                allBySiteAndActive.ifPresent(settings -> {
-                    CourierShipmentType target = CourierShipmentType.valueOf(parse.getTargetType());
+                    allBySiteAndActive.ifPresent(settings -> {
+                        CourierShipmentType target = CourierShipmentType.valueOf(parse.getTargetType());
 
-                    // --- 1. ДО ОФИС ---
-                    if (target == CourierShipmentType.OFFICE && settings.isOffice()) {
-                        if (settings.isOfficeFreeShippingPriceMaxBol() && settings.getOfficeFreeShippingPriceMax() != null && orderAmount >= settings.getOfficeFreeShippingPriceMax()) {
-                            tPrice.set(0.0);
-                        } else if (settings.isOfficeAutoShippingPrice()) {
-                            tPrice.set(calculateAutoPrice(wpOrderEntity, parse, siteEntity));
-                        } else {
-                            tPrice.set(settings.getOfficeFixedShippingPrice() != null ? settings.getOfficeFixedShippingPrice() : 0.0);
+                        // --- 1. ДО ОФИС ---
+                        if (target == CourierShipmentType.OFFICE && settings.isOffice()) {
+                            if (settings.isOfficeFreeShippingPriceMaxBol() && settings.getOfficeFreeShippingPriceMax() != null && orderAmount >= settings.getOfficeFreeShippingPriceMax()) {
+                                tPrice.set(0.0);
+                            } else if (settings.isOfficeAutoShippingPrice()) {
+                                tPrice.set(calculateAutoPrice(wpOrderEntity, parse, siteEntity));
+                            } else {
+                                tPrice.set(settings.getOfficeFixedShippingPrice() != null ? settings.getOfficeFixedShippingPrice() : 0.0);
+                            }
                         }
-                    }
-                    // --- 2. ДО АВТОМАТ / LOCKER ---
-                    else if (target == CourierShipmentType.LOCKER && settings.isLocker()) {
-                        if (settings.isLockerFreeShippingPriceMaxBol() && settings.getLockerFreeShippingPriceMax() != null && orderAmount >= settings.getLockerFreeShippingPriceMax()) {
-                            tPrice.set(0.0);
-                        } else if (settings.isLockerAutoShippingPrice()) {
-                            tPrice.set(calculateAutoPrice(wpOrderEntity, parse, siteEntity));
-                        } else {
-                            tPrice.set(settings.getLockerFixedShippingPrice() != null ? settings.getLockerFixedShippingPrice() : 0.0);
+                        // --- 2. ДО АВТОМАТ / LOCKER ---
+                        else if (target == CourierShipmentType.LOCKER && settings.isLocker()) {
+                            if (settings.isLockerFreeShippingPriceMaxBol() && settings.getLockerFreeShippingPriceMax() != null && orderAmount >= settings.getLockerFreeShippingPriceMax()) {
+                                tPrice.set(0.0);
+                            } else if (settings.isLockerAutoShippingPrice()) {
+                                tPrice.set(calculateAutoPrice(wpOrderEntity, parse, siteEntity));
+                            } else {
+                                tPrice.set(settings.getLockerFixedShippingPrice() != null ? settings.getLockerFixedShippingPrice() : 0.0);
+                            }
                         }
-                    }
-                    // --- 3. ДО АДРЕС ---
-                    else if (target == CourierShipmentType.ADDRESS && settings.isAddress()) {
-                        if (settings.isAddressFreeShippingPriceMaxBol() && settings.getAddressFreeShippingPriceMax() != null && orderAmount >= settings.getAddressFreeShippingPriceMax()) {
-                            tPrice.set(0.0);
-                        } else if (settings.isAddressAutoShippingPrice()) {
-                            tPrice.set(calculateAutoPrice(wpOrderEntity, parse, siteEntity));
-                        } else {
-                            tPrice.set(settings.getAddressFixedShippingPrice() != null ? settings.getAddressFixedShippingPrice() : 0.0);
+                        // --- 3. ДО АДРЕС ---
+                        else if (target == CourierShipmentType.ADDRESS && settings.isAddress()) {
+                            if (settings.isAddressFreeShippingPriceMaxBol() && settings.getAddressFreeShippingPriceMax() != null && orderAmount >= settings.getAddressFreeShippingPriceMax()) {
+                                tPrice.set(0.0);
+                            } else if (settings.isAddressAutoShippingPrice()) {
+                                tPrice.set(calculateAutoPrice(wpOrderEntity, parse, siteEntity));
+                            } else {
+                                tPrice.set(settings.getAddressFixedShippingPrice() != null ? settings.getAddressFixedShippingPrice() : 0.0);
+                            }
                         }
-                    }
-                });
-                wpOrderEntity.setCustomShippingTotal(tPrice.get());
-            }
+                    });
+                    wpOrderEntity.setCustomShippingTotal(tPrice.get());
+                }
 
 
-            wpOrderRepository.save(wpOrderEntity);
+                wpOrderRepository.save(wpOrderEntity);
+            });
+
             if (++count == 50) {
                 count = 0;
                 wpOrderRepository.flush();
                 entityManager.clear();
             }
+        }
+
+        executor.shutdown();
+        try {
+            // Чакаме нишките да приключат. Сложи достатъчно време (напр. 1 час)
+            if (!executor.awaitTermination(10, TimeUnit.HOURS)) {
+                executor.shutdownNow(); // Ако не приключат за 1 час, ги спри принудително
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
         System.out.println("NULLS " + nulls);
     }
@@ -783,7 +804,8 @@ public class WpOrderService {
                 wpOrderEntity.setStatus(wpOrderDto.getStatus());
             }
 
-            wpOrderRepository.save(wpOrderEntity);
+            WpOrderEntity save = wpOrderRepository.save(wpOrderEntity);
+            wpOrderAsyncService.updateOrderOnSites(save, null);
             return modelMapper.map(wpOrderEntity, WpOrderDto.class);
         }
         throw new RuntimeException("Order not found");

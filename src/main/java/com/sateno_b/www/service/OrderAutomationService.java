@@ -9,7 +9,7 @@ import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.TaskType;
 import com.sateno_b.www.model.repository.OrderAutomationTaskRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;

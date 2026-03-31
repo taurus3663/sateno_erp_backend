@@ -5,7 +5,7 @@ import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.repository.EmailLogRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
