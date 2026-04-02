@@ -526,87 +526,43 @@ public class WpProductService {
     }
 
     @Transactional()
-    @Cacheable(value = "productsList", key = "{#pageable, #sku, #brand, #category, #name, #quantity, #status, #saleType}")
+    @Cacheable(value = "productsList", key = "{#pageable, #brand, #category, #name_sku, #quantity, #status, #saleType}")
     public Page<WpProductDto> getAll(
             Pageable pageable,
-            @RequestParam(required = false) String sku,
             @RequestParam(required = false) String brand,
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String name,
             @RequestParam(required = false) Long quantity,
             @RequestParam(required = false) Long status,
-            @RequestParam(required = false) Long saleType
+            @RequestParam(required = false) Long saleType,
+            @RequestParam(required = false) String name_sku
     ) {
 
-//        Specification<WpProductEntity> spec = (root, query, cb) -> {
-//            query.distinct(true);
-//            List<Predicate> predicates = new ArrayList<>();
-//
-//            if (sku != null && !sku.isEmpty()) {
-//                Join<WpProductEntity, WpProductSiteConfigEntity> siteConfig = root.join("siteConfigs");
-//
-//                predicates.add(cb.like(cb.lower(siteConfig.get("sku")), "%" + sku.toLowerCase() + "%"));
-//            }
-//            if (category != null && !category.isEmpty()) {
-//                // 1. Използваме LIKE вместо EQUAL за частично търсене
-//                // 2. Използваме cb.lower(), за да сме сигурни, че търсенето не зависи от главни/малки букви
-//                Join<WpProductEntity, WpCategoryEntity> categoriesJoin = root.join("categories");
-//                Join<WpCategoryEntity, WpCategoryTranslationEntity> translationsJoin = categoriesJoin.join("translations");
-//
-//                predicates.add(cb.like(
-//                        cb.lower(translationsJoin.get("name")),
-//                        "%" + category.toLowerCase() + "%"
-//                ));
-//
-//                // Силно препоръчително: добави distinct, за да не се дублират продуктите
-//                query.distinct(true);
-//            }
-//            if (brand != null && !brand.isEmpty()) {
-//                // Ако brand е вложен обект: root.join("brand").get("name")
-//                predicates.add(cb.equal(root.get("brand"), brand));
-//            }
-//            if (name != null && !name.isEmpty()) {
-//                Join<Object, Object> translationsJoin = root.join("translations");
-//                predicates.add(cb.like(cb.lower(translationsJoin.get("name")), "%" + name.toLowerCase() + "%"));
-//            }
-//            if (quantity != null && quantity > 0) {
-//                predicates.add(cb.equal(root.get("stockQuantity"), quantity));
-//            }
-//            if (status != null && status >= 0) {
-//                predicates.add(cb.equal(root.get("status"), status));
-//            }
-//                query.orderBy(
-//                        cb.asc(
-//                                cb.selectCase()
-//                                        .when(cb.equal(root.get("status"), ProductStatus.PUBLISHED), 1)
-//                                        .otherwise(2)
-//                        ),
-//                        cb.desc(root.get("id"))
-//                );
-//
-//
-////            System.out.println(predicates.toString());
-//            return cb.and(predicates.toArray(new Predicate[0]));
-//        };
         Specification<WpProductEntity> spec = (root, query, cb) -> {
             // 1. МАХАМЕ distinct(true), за да работи orderBy
             query.distinct(false);
 
             List<Predicate> predicates = new ArrayList<>();
 
-            // Филтър по SKU (чрез Subquery, за да няма дубликати от siteConfigs)
-            if (sku != null && !sku.isEmpty()) {
-//                Subquery<Long> skuSubquery = query.subquery(Long.class);
-//                Root<WpProductEntity> subRoot = skuSubquery.from(WpProductEntity.class);
-////                Join<WpProductEntity, WpProductSiteConfigEntity> siteConfigJoin = subRoot.join("siteConfigs");
-//
-//                skuSubquery.select(subRoot.get("id"))
-//                        .where(cb.like(cb.lower(siteConfigJoin.get("sku")), "%" + sku.toLowerCase() + "%"));
+            if (name_sku != null && !name_sku.isEmpty()) {
 
-                predicates.add(cb.equal(root.get("sku"), sku));
-//                predicates.add(root.get("id").in(skuSubquery));
+                String pattern = "%" + name_sku.toLowerCase() + "%";
+
+                // 1. Създаваме Subquery за търсене по ИМЕ в преводите
+                Subquery<Long> nameSubquery = query.subquery(Long.class);
+                Root<WpProductEntity> subRootName = nameSubquery.from(WpProductEntity.class);
+                Join<WpProductEntity, WpProductTranslationEntity> transJoin = subRootName.join("translations");
+
+                nameSubquery.select(subRootName.get("id"))
+                        .where(cb.like(cb.lower(transJoin.get("name")), pattern));
+
+                // 2. Дефинираме предикатите за OR условието
+                // Проверяваме: (Основно SKU LIKE pattern) ИЛИ (ID-то е в резултатите от имената)
+                Predicate skuMatch = cb.like(cb.lower(root.get("sku")), pattern);
+                Predicate nameMatch = root.get("id").in(nameSubquery);
+
+                // Добавяме общия OR към списъка с филтри
+                predicates.add(cb.or(skuMatch, nameMatch));
             }
-
             // Филтър по Категория (чрез Subquery)
             if (category != null && !category.isEmpty()) {
                 Subquery<Long> catSubquery = query.subquery(Long.class);
@@ -618,18 +574,6 @@ public class WpProductService {
                         .where(cb.like(cb.lower(transJoin.get("name")), "%" + category.toLowerCase() + "%"));
 
                 predicates.add(root.get("id").in(catSubquery));
-            }
-
-            // Филтър по Име (чрез Subquery)
-            if (name != null && !name.isEmpty()) {
-                Subquery<Long> nameSubquery = query.subquery(Long.class);
-                Root<WpProductEntity> subRoot = nameSubquery.from(WpProductEntity.class);
-                Join<WpProductEntity, WpProductTranslationEntity> transJoin = subRoot.join("translations");
-
-                nameSubquery.select(subRoot.get("id"))
-                        .where(cb.like(cb.lower(transJoin.get("name")), "%" + name.toLowerCase() + "%"));
-
-                predicates.add(root.get("id").in(nameSubquery));
             }
 
             // Обикновени филтри (директни полета)
@@ -646,6 +590,10 @@ public class WpProductService {
             if(saleType != null && saleType >= 0) {
                 predicates.add(cb.equal(root.get("saleType"), saleType));
             }
+
+
+
+
 
             // 2. ВЕЧЕ МОЖЕШ ДА СОРТИРАШ БЕЗОПАСНО
             query.orderBy(

@@ -13,6 +13,8 @@ import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.CourierParser;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -684,15 +686,26 @@ public class WpOrderService {
                 predicates.add(cb.equal(root.get("status"), orderStatus));
             }
 
-            if (phone != null && !phone.isEmpty()) {
-                predicates.add(cb.like(cb.lower(root.get("billing").get("phone")), "%" + phone.toLowerCase() + "%"));
+            // 1. Дефинираме Join-а в началото, за да го ползваме навсякъде
+            Join<WpOrderEntity, CustomerEntity> customerJoin = null;
+
+            if ((customer != null && !customer.isEmpty()) || (phone != null && !phone.isEmpty())) {
+                customerJoin = root.join("customer", JoinType.LEFT); // Използваме LEFT JOIN за всеки случай
             }
 
-            if (customer != null && !customer.isEmpty()) {
+// Филтър по име/фамилия
+            if (customer != null && !customer.isEmpty() && customerJoin != null) {
                 String pattern = "%" + customer.toLowerCase() + "%";
-                Predicate firstName = cb.like(cb.lower(root.get("billing").get("firstName")), pattern);
-                Predicate lastName = cb.like(cb.lower(root.get("billing").get("lastName")), pattern);
-                predicates.add(cb.or(firstName, lastName));
+                predicates.add(cb.or(
+                        cb.like(cb.lower(customerJoin.get("firstName")), pattern),
+                        cb.like(cb.lower(customerJoin.get("lastName")), pattern),
+                        cb.like(customerJoin.get("phone"), pattern) // Можеш да търсиш тел. и в общото поле за клиент
+                ));
+            }
+
+// Филтър по телефон (специфичното поле за телефон)
+            if (phone != null && !phone.isEmpty() && customerJoin != null) {
+                predicates.add(cb.like(customerJoin.get("phone"), "%" + phone + "%"));
             }
 
             if(id != null){

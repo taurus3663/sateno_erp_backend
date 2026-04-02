@@ -73,17 +73,13 @@ public class WpProductController {
             Pageable pageable,
             @RequestParam(required = false) String sku,
             @RequestParam(required = false) String brand,
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String name_sku,
             @RequestParam(required = false) Long quantity,
             @RequestParam(required = false) Long status,
             @RequestParam(required = false) Long saleType
     ) {
 
-
-        Page<WpProductDto> dtoPage =  wpProductService.getAll(pageable, sku, brand, category, name, quantity, status, saleType);
-
-
+        Page<WpProductDto> dtoPage =  wpProductService.getAll(pageable, sku, brand, quantity, status, saleType, name_sku);
 
         return ResponseEntity.ok(dtoPage);
     }
