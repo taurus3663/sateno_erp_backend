@@ -11,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/customer")
 @RequiredArgsConstructor
@@ -30,6 +32,13 @@ public class CustomerController {
         Page<CustomerDto> dtoPage = list.map(entity -> modelMapper.map(entity, CustomerDto.class));
 
         return ResponseEntity.ok(dtoPage);
+    }
+
+    @GetMapping("/detail/{id}")
+    public ResponseEntity<CustomerDto> getCustomerById(@PathVariable Long id) {
+        Optional<CustomerEntity> customerEntity = customerRepository.findById(id);
+        CustomerDto customerDto = modelMapper.map(customerEntity, CustomerDto.class);
+        return ResponseEntity.ok(customerDto);
     }
 
     @PostMapping("/save")

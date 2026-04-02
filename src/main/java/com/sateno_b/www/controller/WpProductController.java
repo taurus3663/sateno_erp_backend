@@ -99,6 +99,7 @@ public class WpProductController {
         dto.setId(entity.getId());
         dto.setStockQuantity(entity.getStockQuantity());
         dto.setWeight(entity.getWeight());
+        dto.setSku(entity.getSku());
         if(entity.getBrand() != null) {
             dto.setBrand(modelMapper.map(entity.getBrand(), WpBrandDto.class));
         }

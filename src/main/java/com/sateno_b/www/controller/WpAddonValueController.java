@@ -54,6 +54,40 @@ public class WpAddonValueController {
         });
     }
 
+    @GetMapping("/detail/{id}")
+    @Transactional(readOnly = true)
+    public WpAddonValueDto getWpAddonValueById(@PathVariable Long id) {
+        // 1. Намираме обекта или хвърляме грешка
+        WpAddonValueEntity entity = wpAddonValueRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Addon Value not found with id: " + id));
+
+        // 2. Инициализираме DTO
+        WpAddonValueDto dto = new WpAddonValueDto();
+        dto.setId(entity.getId());
+        dto.setSlug(entity.getSlug());
+
+        // 3. Мапваме преводите: { "bg": "Червен", "en": "Red" }
+        // Използваме Collectors.toMap за трансформацията
+        Map<String, Object> transMap = entity.getTranslations().stream()
+                .filter(t -> t.getLanguage() != null)
+                .collect(Collectors.toMap(
+                        t -> t.getLanguage().getCode(), // Ключ: 'bg'
+                        t -> t.getLabel() != null ? t.getLabel() : "", // Стойност: 'Червен'
+                        (existing, replacement) -> existing
+                ));
+        dto.setTranslations(transMap);
+
+        // 4. Генерираме комбинираното име за визуализация в инпутите
+        String pipeNames = transMap.values().stream()
+                .map(Object::toString)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(" | "));
+
+        dto.setNames(pipeNames.isEmpty() ? "No Label" : pipeNames);
+
+        return dto;
+    }
+
     @PostMapping("/save")
     @Transactional
     public ResponseEntity<?> save(@RequestBody WpAddonValueDto dto) {

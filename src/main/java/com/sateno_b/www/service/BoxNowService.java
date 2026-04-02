@@ -38,6 +38,7 @@ public class BoxNowService implements ShippingProvider {
     private final CourierSettingsRepository courierSettingsRepository;
     private final WpOrderRepository wpOrderRepository;
     private final ObjectMapper objectMapper;
+    private final WpOrderAsyncService wpOrderAsyncService;
 
 
     public boolean createWayBill(CreateLabelDto createLabelDto) {
@@ -153,6 +154,7 @@ public class BoxNowService implements ShippingProvider {
             order.setCourierType(null);
 
             wpOrderRepository.save(order);
+            wpOrderAsyncService.updateOrderOnSites(order, null);
             return true;
 
         } catch (RuntimeException e) {
@@ -580,7 +582,8 @@ public class BoxNowService implements ShippingProvider {
 
             if (isUpdated) {
                 wpOrderRepository.save(order);
-                System.out.println("Order " + order.getId() + " successfully updated in DB.");
+                wpOrderAsyncService.updateOrderOnSites(order, null);
+//                System.out.println("Order " + order.getId() + " successfully updated in DB.");
             }
         }
     }

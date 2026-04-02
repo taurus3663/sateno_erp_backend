@@ -11,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/language")
 @RequiredArgsConstructor
@@ -28,6 +30,13 @@ public class LanguageController {
         Page<LanguageEntity> list = languageRepository.findAll(pageable);
         Page<LanguageDto> dtoPage = list.map(entity -> modelMapper.map(entity, LanguageDto.class));
         return ResponseEntity.ok(dtoPage);
+    }
+
+    @GetMapping("/detail/{id}")
+    public ResponseEntity<LanguageDto> getLanguage(@PathVariable Long id) {
+        Optional<LanguageEntity> languageEntity = languageRepository.findById(id);
+        LanguageDto dto = modelMapper.map(languageEntity, LanguageDto.class);
+        return ResponseEntity.ok(dto);
     }
 
     @PostMapping("/save")

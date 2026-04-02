@@ -142,7 +142,13 @@ public class CheckOutController {
     @PostMapping("/recalculate-price")
     public double recalculate(@RequestBody CheckCourierRequest request) {
         double v = 0;
-        System.out.println(request.toString());
+//        System.out.println(request.toString());
+//        CheckCourierRequest(site=sateno.bg, cart_total=76, cart_weight=1.0, items_count=null,
+//        items=[CheckOutCourierItemsDto(id=null, name=null, price=2.0, quantity=2, sku=a1890, weight=null)],
+//        currency=EUR, targetId=null, cityName=София, postcode=1000, courierType=SPEEDY, courierShipmentType=null,
+//        orderId=2093)
+
+
         if(request.getCourierType() == CourierType.SPEEDY) {
             v = speedyService.calculatePrice(request);
         } else if(request.getCourierType() == CourierType.ECONT) {
@@ -155,7 +161,11 @@ public class CheckOutController {
     @PostMapping("/recalculate-price-custom-field-shipping-price")
     public double recalculatePriceCustomFieldShippingPrice(@RequestBody CheckCourierRequest request) {
         double v = 0;
-
+//        System.out.println(request.toString());
+        //        CheckCourierRequest(site=sateno.bg, cart_total=76, cart_weight=1.0, items_count=null,
+//        items=[CheckOutCourierItemsDto(id=null, name=null, price=2.0, quantity=2, sku=a1890, weight=null)],
+//        currency=EUR, targetId=null, cityName=София, postcode=1000, courierType=SPEEDY, courierShipmentType=null,
+//        orderId=2093)
        v = wpOrderService.checkCustomShippingField(request);
 
 

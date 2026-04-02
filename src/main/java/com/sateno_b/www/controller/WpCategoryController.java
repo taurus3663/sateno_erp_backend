@@ -15,12 +15,10 @@ import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -69,6 +67,42 @@ public class WpCategoryController {
             node.setLeaf(!parentIds.contains(category.getId()));
             return node;
         });
+    }
+
+    @GetMapping("/detail/{id}")
+    public WpCategoryDetailDto getWpCategoryDetail(@PathVariable Long id) {
+        WpCategoryEntity category = wpCategoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        WpCategoryDetailDto dto = modelMapper.map(category, WpCategoryDetailDto.class);
+
+        // 1. Сетваме комбинираното име за самата категория (BG | EN)
+        String combinedNames = category.getTranslations().stream()
+                .map(WpCategoryTranslationEntity::getName)
+                .filter(Objects::nonNull)
+                .collect(Collectors.joining(" | "));
+        dto.setName(combinedNames.isEmpty() ? "No Name" : combinedNames);
+
+        // 2. Логика за Родителя
+        if (category.getParent() != null) {
+            WpCategoryEntity parent = category.getParent();
+
+            // Сетваме ID-то на родителя
+            dto.setParentId(parent.getId());
+
+            // Комбинираме имената на родителя (BG | EN), за да се виждат в инпута в Angular
+            String parentCombinedNames = parent.getTranslations().stream()
+                    .map(WpCategoryTranslationEntity::getName)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.joining(" | "));
+
+            dto.setParentName(parentCombinedNames.isEmpty() ? parent.getSlug() : parentCombinedNames);
+        } else {
+            dto.setParentId(null);
+            dto.setParentName("Основна категория");
+        }
+
+        return dto;
     }
 
     @GetMapping("/find/{parentId}")

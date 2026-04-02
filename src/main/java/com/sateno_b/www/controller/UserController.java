@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
@@ -32,6 +34,13 @@ public class UserController {
         Page<UserDto> dtoPage = list.map(userEntity -> modelMapper.map(userEntity, UserDto.class));
 
         return ResponseEntity.ok(dtoPage);
+    }
+
+    @GetMapping("/detail/{id}")
+    public ResponseEntity<UserDto> getUserDetails(@PathVariable long id) {
+        Optional<UserEntity> byId = userRepository.findById(id);
+        UserDto map = modelMapper.map(byId, UserDto.class);
+        return ResponseEntity.ok(map);
     }
 
     @PostMapping("/save")

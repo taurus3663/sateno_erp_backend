@@ -17,15 +17,30 @@ import java.util.Optional;
 
 @Repository
 public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
-    @Query("SELECT o FROM WpOrderEntity o WHERE " +
-            "(:status IS NULL OR o.status = :status) AND " +
-    "(:phone IS NULL OR o.customer.phone = :phone) AND" +
-            "(:customer IS NULL OR :customer = '' OR (" +
-            " LOWER(o.customer.firstName) LIKE LOWER(CONCAT('%', :customer, '%')) OR " +
-            " LOWER(o.customer.lastName) LIKE LOWER(CONCAT('%', :customer, '%')) OR " +
-            " o.customer.phone LIKE CONCAT('%', :customer, '%')))")
-    Page<WpOrderEntity> findWithFilters(@Param("status") OrderStatus status, @Param("phone") String phone,@Param("customer") String customerNameORPhone, Pageable pageable);
+//    @Query("SELECT o FROM WpOrderEntity o WHERE " +
+//            "(:status IS NULL OR o.status = :status) AND " +
+//    "(:phone IS NULL OR o.customer.phone = :phone) AND" +
+//            "(:customer IS NULL OR :customer = '' OR (" +
+//            " LOWER(o.customer.firstName) LIKE LOWER(CONCAT('%', :customer, '%')) OR " +
+//            " LOWER(o.customer.lastName) LIKE LOWER(CONCAT('%', :customer, '%')) OR " +
+//            " o.customer.phone LIKE CONCAT('%', :customer, '%')))")
+//    Page<WpOrderEntity> findWithFilters(@Param("status") OrderStatus status, @Param("phone") String phone,@Param("customer") String customerNameORPhone, Pageable pageable);
 
+    @Query("SELECT o FROM WpOrderEntity o " +
+            "JOIN FETCH o.customer " + // Изтегляме клиента веднага
+            "JOIN FETCH o.site " +     // Изтегляме сайта веднага
+            "WHERE (:status IS NULL OR o.status = :status) " +
+            "AND (:phone IS NULL OR o.customer.phone = :phone) " +
+            "AND (:customer IS NULL OR :customer = '' OR " +
+            "   (o.customer.firstName ILIKE %:customer% OR " + // ILIKE е Case-insensitive и по-бърз в Postgres
+            "    o.customer.lastName ILIKE %:customer% OR " +
+            "    o.customer.phone LIKE %:customer%))")
+    Page<WpOrderEntity> findWithFilters(
+            @Param("status") OrderStatus status,
+            @Param("phone") String phone,
+            @Param("customer") String customer,
+            Pageable pageable
+    );
 
     // WpOrderRepository.java
     @Query("SELECT DISTINCT o FROM WpOrderEntity o " +
@@ -52,4 +67,6 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long> {
 
     @Query("SELECT o.status, COUNT(o) FROM WpOrderEntity o GROUP BY o.status")
     List<Object[]> countOrdersByStatus();
+
+
 }

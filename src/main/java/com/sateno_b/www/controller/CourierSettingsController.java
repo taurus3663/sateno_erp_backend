@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor
@@ -125,6 +126,13 @@ public class CourierSettingsController {
                     CourierSettingsEntity u = courierSettingsRepository.save(en);
                     return ResponseEntity.ok(modelMapper.map(u, CourierSettingsDto.class));
                 }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/detail/{id}")
+    public ResponseEntity<CourierSettingsDto> getCourierSettingsById(@PathVariable Long id){
+        Optional<CourierSettingsEntity> courierSettingsEntity = courierSettingsRepository.findById(id);
+        CourierSettingsDto map = modelMapper.map(courierSettingsEntity, CourierSettingsDto.class);
+        return ResponseEntity.ok(map);
     }
 
     @GetMapping("/list")

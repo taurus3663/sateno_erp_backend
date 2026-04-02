@@ -14,6 +14,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/wp_brand")
@@ -29,6 +31,13 @@ public class WpBrandController {
         Page<WpBrandEntity> p =  wpBrandRepository.findAll(pageable);
         Page<WpBrandDto> dto =  p.map(entity -> modelMapper.map(entity, WpBrandDto.class));
         return ResponseEntity.ok(dto);
+    }
+
+    @GetMapping("/detail/{id}")
+    public ResponseEntity<WpBrandDto> getWpBrandDetail(@PathVariable Long id){
+        Optional<WpBrandEntity> byId = wpBrandRepository.findById(id);
+        WpBrandDto map = modelMapper.map(byId, WpBrandDto.class);
+        return ResponseEntity.ok(map);
     }
 
     @PostMapping("/save")

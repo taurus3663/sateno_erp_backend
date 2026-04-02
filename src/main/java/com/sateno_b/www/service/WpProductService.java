@@ -467,7 +467,9 @@ public class WpProductService {
             }
         }
 
-
+        if(entity.getSku() == null || entity.getSku().isEmpty()) {
+            entity.setSku("a9999");
+        }
         entity = wpProductRepository.save(entity);
 
 
@@ -505,7 +507,10 @@ public class WpProductService {
                 }
             }
         }
-        wpProductAsyncService.updateProductOnSites(entity, null);
+        try {
+            wpProductAsyncService.updateProductOnSites(entity, null);
+        } catch (Exception e) {}
+
         return modelMapper.map(entity, WpProductDto.class);
     }
 
@@ -716,7 +721,9 @@ public class WpProductService {
             }
 
             WpProductEntity saved = wpProductRepository.save(wpProductEntity);
-            wpProductAsyncService.updateProductOnSites(saved, null);
+          try{
+              wpProductAsyncService.updateProductOnSites(saved, null);
+          } catch (Exception e) {}
             return modelMapper.map(saved, WpProductDto.class);
         }
         throw new RuntimeException("Product not found");
@@ -738,7 +745,9 @@ public class WpProductService {
                     WpProductEntity wpProductEntity = byId.get();
                     wpProductEntity.setStockQuantity(wpProductEntity.getStockQuantity() + pHistory.getQuantity());
                     wpProductRepository.save(wpProductEntity);
-                    wpProductAsyncService.updateProductOnSites(wpProductEntity, null);
+                    try{
+                        wpProductAsyncService.updateProductOnSites(wpProductEntity, null);
+                    } catch (Exception e) {}
                 }
 
                 wpProductHistoryRepository.delete(pHistory);

@@ -36,7 +36,7 @@ public class WpOrderAsyncService {
         List<SiteEntity> siteList = siteRepository.findAll();
 
         for (SiteEntity site : siteList) {
-            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
+//            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
 
             try {
             String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());

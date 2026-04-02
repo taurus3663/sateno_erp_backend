@@ -95,7 +95,7 @@ public class EmailController implements BaseController<EmailDto, Long> {
     }
 
     @Override
-//    @GetMapping("/{id}")
+    @GetMapping("/detail/{id}")
     public EmailDto get(@PathVariable("id") Long id) {
         Optional<EmailEntity> byId = emailRepository.findById(id);
         return modelMapper.map(byId.get(), EmailDto.class);

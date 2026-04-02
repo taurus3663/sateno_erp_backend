@@ -11,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/currency")
 @RequiredArgsConstructor
@@ -28,6 +30,13 @@ public class CurrencyController {
         Page<CurrencyEntity> list =  currencyRepository.findAll(pageable);
         Page<CurrencyDto> dtoPage = list.map(entity -> modelMapper.map(entity, CurrencyDto.class));
         return ResponseEntity.ok(dtoPage);
+    }
+
+    @GetMapping("/detail/{id}")
+    public ResponseEntity<CurrencyDto> getCurrencyById(@PathVariable Long id) {
+        Optional<CurrencyEntity> currencyEntity = currencyRepository.findById(id);
+        CurrencyDto currencyDto = modelMapper.map(currencyEntity, CurrencyDto.class);
+        return ResponseEntity.ok(currencyDto);
     }
 
     @PostMapping("/save")

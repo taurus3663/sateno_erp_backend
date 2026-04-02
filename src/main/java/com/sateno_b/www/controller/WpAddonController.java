@@ -47,8 +47,36 @@ public class WpAddonController {
 
             return wpAddonResponseDto;
         });
+    }
 
+    @GetMapping("/detail/{id}")
+    public WpAddonResponseDto getWpAddon(@PathVariable Long id) {
+        // 1. Намираме обекта или хвърляме грешка, ако не съществува
+        WpAddonEntity entity = wpAddonRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Addon not found with id: " + id));
 
+        // 2. Ръчно мапване към DTO (по-бързо и сигурно от автоматичното)
+        WpAddonResponseDto dto = new WpAddonResponseDto();
+        dto.setId(entity.getId());
+        dto.setSlug(entity.getSlug());
+
+        // 3. Пълним мапа с преводи (Language Code -> Name)
+        // Използваме stream, за да превърнем списъка от обекти в лесен за ползване Map
+        Map<String, String> transMap = entity.getTranslations().stream()
+                .filter(t -> t.getLanguage() != null) // Защита от Null
+                .collect(Collectors.toMap(
+                        t -> t.getLanguage().getCode(), // Ключ: 'bg', 'en'
+                        WpAddonTranslationEntity::getName, // Стойност: 'Име на добавката'
+                        (existing, replacement) -> existing // При дублиране на езици, запазваме първия
+                ));
+
+        dto.setTranslations(transMap);
+
+        // 4. Генерираме комбинираното име за визуализация (Pipeline)
+        String namesPipeline = String.join(" | ", transMap.values());
+        dto.setNames(namesPipeline.isEmpty() ? "No Name" : namesPipeline);
+
+        return dto;
     }
 
     @PostMapping("/save")

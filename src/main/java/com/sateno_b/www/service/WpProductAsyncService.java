@@ -30,13 +30,13 @@ public class WpProductAsyncService {
 
     @Transactional
     @Async
-    public void updateProductOnSites(WpProductEntity product, Long sourceSiteId) {
-
+    public void updateProductOnSites(WpProductEntity product, Long sourceSiteId) throws InterruptedException {
+        Thread.sleep(2000);
         product = wpProductRepository.findById(product.getId()).orElse(null);
 
         List<SiteEntity> siteList = siteRepository.findAll();
         for (SiteEntity site : siteList) {
-            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
+//            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
 
             try {
                 String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
@@ -47,9 +47,10 @@ public class WpProductAsyncService {
                         .retrieve()
                         .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
 
+                boolean isNewProduct = false;
                 if (searchResponse == null || searchResponse.isEmpty()) {
                     log.warn("Продукт с SKU {} не е намерен в сайта {}", product.getSku(), site.getUrl());
-                    return;
+                    isNewProduct = true;
                 }
 
 
@@ -70,6 +71,7 @@ public class WpProductAsyncService {
 //                }
 
 //                PRICE
+
                 for (WpProductSiteConfigEntity siteConfig : product.getSiteConfigs()) {
                     if(siteConfig.getSite() == site) {
                         updateBody.put("price", siteConfig.getRegularPrice().toString());
@@ -147,32 +149,41 @@ public class WpProductAsyncService {
 
 
 
+                if(isNewProduct) {
+                    updateBody.put("sku", product.getSku());
 
+                    restClient.post()
+                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products")
+                            .header("Authorization", "Basic " + auth)
+                            .body(updateBody)
+                            .retrieve()
+                            .toBodilessEntity();
+                    log.info("Успешно създаден нов продукт с SKU {} в сайт {}", product.getSku(), site.getUrl());
+                }
+                else {
+                    // Взимаме WordPress ID-то от първия намерен резултат
+                    Integer wpId = (Integer) searchResponse.get(0).get("id");
 
-
-                // Взимаме WordPress ID-то от първия намерен резултат
-                Integer wpId = (Integer) searchResponse.get(0).get("id");
-
-                restClient.patch()
-                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
-                        .header("Authorization", "Basic " + auth)
-                        .body(updateBody)
-                        .retrieve()
-                        .toBodilessEntity();
+                    restClient.patch()
+                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
+                            .header("Authorization", "Basic " + auth)
+                            .body(updateBody)
+                            .retrieve()
+                            .toBodilessEntity();
 //                System.out.println(wpId);
 //                System.out.println(authorization.getBody());
-                log.info("Успешно обновен sale_price за SKU {}", product.getSku());
+                    log.info("Успешно обновен sale_price за SKU {}", product.getSku());
 
-
-                Map<String, Object> wpProduct = searchResponse.get(0);
-                List<Map<String, Object>> currentWpImages = (List<Map<String, Object>>) wpProduct.get("images");
-                imageToWordPress.deleteMediaOneByOne(
-                        site,
-                        currentWpImages.stream()
-                                .map(e -> Long.valueOf(e.get("id").toString())) // Безопасно конвертиране
-                                .collect(Collectors.toSet()),
-                        auth
-                );
+                    Map<String, Object> wpProduct = searchResponse.get(0);
+                    List<Map<String, Object>> currentWpImages = (List<Map<String, Object>>) wpProduct.get("images");
+                    imageToWordPress.deleteMediaOneByOne(
+                            site,
+                            currentWpImages.stream()
+                                    .map(e -> Long.valueOf(e.get("id").toString())) // Безопасно конвертиране
+                                    .collect(Collectors.toSet()),
+                            auth
+                    );
+                }
 //                if(currentWpImages != null && !currentWpImages.isEmpty()) {
 //                    for (Map<String, Object> image : currentWpImages) {
 //                        Integer mediaId = (Integer) image.get("id");
@@ -196,11 +207,6 @@ public class WpProductAsyncService {
 //
 //                    }
 //                }
-
-
-
-
-
             } catch (Exception e) {
                 log.error("Грешка при обновяване на сайт {}: {}", site.getUrl(), e.getMessage());
             }

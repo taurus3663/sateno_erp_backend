@@ -56,6 +56,14 @@ public class WpOrderController {
         return ResponseEntity.ok(all);
     }
 
+   @GetMapping("/detail/{id}")
+   public ResponseEntity<WpOrderDto> getOne(@PathVariable Long id) {
+       System.out.println();
+        WpOrderDto id1 = wpOrderService.getById(id);
+
+        return ResponseEntity.ok(id1);
+   }
+
     @GetMapping("/status/stats")
     public ResponseEntity<OrderStatusStatsDto> getStat() {
 
@@ -233,6 +241,7 @@ public class WpOrderController {
                 WpOrderEntity order = byId1.get();
                 order.setStatus(OrderStatus.SENT);
                 wpOrderRepository.saveAndFlush(order);
+                wpOrderAsyncService.updateOrderOnSites(order, null);
             }
 
         }
@@ -315,8 +324,6 @@ public class WpOrderController {
                 } else if (courier.getCourierType() == CourierType.ECONT) {
                     result = econtService.cancelShipment(order, courier);
                 }
-
-
             }
 
 

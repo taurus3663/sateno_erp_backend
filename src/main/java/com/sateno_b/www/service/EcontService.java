@@ -39,6 +39,7 @@ public class EcontService implements ShippingProvider {
     private final SiteRepository siteRepository;
     private final CourierSettingsRepository courierSettingsRepository;
     private final WpOrderRepository wpOrderRepository;
+    private final WpOrderAsyncService wpOrderAsyncService;
 
     //    @Override
 //    public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
@@ -388,6 +389,7 @@ public class EcontService implements ShippingProvider {
             order.setCourierId(null);
 
             wpOrderRepository.save(order);
+            wpOrderAsyncService.updateOrderOnSites(order, null);
             // WebSocket сигналът ще се изстреля автоматично от @PostUpdate в Entity-то
             return true;
 
@@ -489,13 +491,12 @@ public class EcontService implements ShippingProvider {
 
 
 public double calculatePrice(CheckCourierRequest createLabelDto) {
+    System.out.println(createLabelDto.toString());
+    System.out.println("");
   try {
     SiteEntity site = siteRepository.findSiteEntityByUrl(createLabelDto.getSite());
     CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(site, createLabelDto.getCourierType()).get();
     var contract = getContract(courierSettingsEntity.getUsername(), courierSettingsEntity.getPassword());
-//        System.out.println(contract.toString());
-//        System.out.println(createLabelDto.toString());
-//    WpOrderEntity order = wpOrderRepository.findById(createLabelDto.get()).get();
 
     Map<String, Object> body = new HashMap<>();
     Map<String, Object> label =  new HashMap<>();
@@ -503,12 +504,7 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
 //        SENDER
     Map<String, Object> senderClient = new HashMap<>();
     senderClient.put("name", contract.getClientName());
-//        senderClient.put("id", contract.getClientId());
-//        senderClient.put("authorizedPerson", contract.getClientName());
     senderClient.put("phones", List.of(courierSettingsEntity.getConfig().getPhoneNumber()));
-//        senderClient.put("phones", List.of("0877706656"));
-//        senderClient.put("phone", contract.getPhones().get(0).getNumber());
-//        senderClient.put("phone", "0877706656");
     label.put("senderClient",  senderClient);
 
     Map<String, Object> senderAgent = new HashMap<>();
@@ -521,7 +517,6 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
     city.put("country", Map.of("code3", "BGR"));
     city.put("name", courierSettingsEntity.getConfig().getCity());
     city.put("postCode", courierSettingsEntity.getConfig().getPostalCode());
-//        city.put("id", contract.getAddress().getSiteId());
     senderAddress.put("city", city);
     senderAddress.put("street", courierSettingsEntity.getConfig().getAddress());
     label.put("senderAddress",  senderAddress);
@@ -536,31 +531,22 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
 
     Map<String, Object> receiverAddress = new HashMap<>();
     Map<String, Object> receiverCity = new HashMap<>();
-//        System.out.println(createLabelDto.getCourierShipmentType());
     if (createLabelDto.getCourierShipmentType() == CourierShipmentType.OFFICE ||
             createLabelDto.getCourierShipmentType() == CourierShipmentType.LOCKER) {
-//            System.out.println("here");
         label.put("receiverOfficeCode", createLabelDto.getTargetId());
-//            receiverCity.put("id", createLabelDto.getCity().getId());
-//            receiverAddress.put("street", createLabelDto.getOffice().getAddress());
     }
     else {
         receiverCity.put("country", Map.of("code3", "BGR"));
         receiverCity.put("name", createLabelDto.getCityName());
         receiverCity.put("postCode", createLabelDto.getPostcode());
-//        receiverAddress.put("street", createLabelDto.getStreet());
-//            receiverAddress.put("num", "9");
-//            receiverAddress.put("other", "bl. 5");
         receiverAddress.put("city", receiverCity);
         label.put("receiverAddress", receiverAddress);
     }
-//        label.put("sendDate", toString());
     label.put("holidayDeliveryDay", "workday");
 
     label.put("packCount", createLabelDto.getItems().size());
     label.put("shipmentType", "PACK");
     label.put("weight", createLabelDto.getCart_weight());
-//        label.put("shipmentDescription", "Текстилни изделия");
     label.put("shipmentDescription", String.join(
             ", ",
             createLabelDto.getItems()
@@ -900,6 +886,7 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
 //                            updateOrderMainStatus(order, currentShortStatus, statusInfo.get("deliveryTime"));
 
                             wpOrderRepository.save(order);
+                            wpOrderAsyncService.updateOrderOnSites(order, null);
                         }
                     });
         }

@@ -41,6 +41,7 @@ public class SpeedyService implements ShippingProvider {
     private final CourierSettingsRepository courierSettingsRepository;
     private final SiteRepository siteRepository;
     private final WpOrderRepository wpOrderRepository;
+    private final WpOrderAsyncService wpOrderAsyncService;
 
     public double calculatePrice(CheckCourierRequest request) {
 
@@ -389,6 +390,7 @@ public class SpeedyService implements ShippingProvider {
             order.setStatus(OrderStatus.PROCESSING);
         order.setCourierType(null);
             wpOrderRepository.save(order);
+            wpOrderAsyncService.updateOrderOnSites(order, null);
             return true;
     }
 
@@ -844,6 +846,7 @@ public class SpeedyService implements ShippingProvider {
 
                         if (isUpdated) {
                             wpOrderRepository.save(order);
+                            wpOrderAsyncService.updateOrderOnSites(order, null);
                         }
                     });
         }

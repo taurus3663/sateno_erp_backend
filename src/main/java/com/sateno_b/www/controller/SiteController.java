@@ -50,6 +50,13 @@ public class SiteController {
         return ResponseEntity.ok(list);
     }
 
+    @GetMapping("/detail/{id}")
+    public ResponseEntity<SiteDto> getSiteById(@PathVariable Long id) {
+        Optional<SiteEntity> siteEntity = siteRepository.findById(id);
+        SiteDto siteDto = modelMapper.map(siteEntity, SiteDto.class);
+        return ResponseEntity.ok(siteDto);
+    }
+
     @Transactional
     @PostMapping("/save")
     public ResponseEntity<SiteDto> saveSite(@RequestBody SiteDto siteDto) {

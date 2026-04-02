@@ -34,6 +34,7 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -70,32 +71,35 @@ public class WpOrderService {
     private final WpOrderAsyncService wpOrderAsyncService;
 
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+
     public void syncOrderToDB(Long siteId) {
         SiteEntity site = siteRepository.findById(siteId).orElse(null);
         if(site == null) {return;}
 
-
-
-
         List<WoOrderDto> all = fetchAllOrders(site);
-        saveAllToDb(all, siteId);
+
+        for (WoOrderDto dto : all) {
+
+
+                try {
+                    saveAllToDb(dto, siteId);
+                } catch (Exception e) {
+                    log.error("ERROR saving order id: {}", dto.getId(), e);
+                }
+        }
     }
 
-//    @Transactional
-    protected void saveAllToDb(List<WoOrderDto> orders, Long siteId) {
-        int count = 0;
-        List<Long> nulls = new ArrayList<>();
-        ExecutorService executor = Executors.newFixedThreadPool(10);
 
+    public void saveAllToDb(WoOrderDto dto, Long siteId) {
+//        int count = 0;
+//        List<Long> nulls = new ArrayList<>();
 
-        for (WoOrderDto dto : orders) {
 
             if(wpOrderRepository.existsByWpOrderId(dto.getId())) {
-                continue;
+                return;
             }
 
-            executor.submit(() -> {
+
                 String rawPhone = dto.getBilling().getPhone().replaceAll("[^0-9]", "");
                 String phoneSuffix = rawPhone.length() >= 9
                         ? rawPhone.substring(rawPhone.length() - 9)
@@ -271,37 +275,25 @@ public class WpOrderService {
                         }
                     });
                     wpOrderEntity.setCustomShippingTotal(tPrice.get());
-                }
+
 
 
                 wpOrderRepository.save(wpOrderEntity);
-            });
 
-            if (++count == 50) {
-                count = 0;
-                wpOrderRepository.flush();
-                entityManager.clear();
-            }
-        }
 
-        executor.shutdown();
-        try {
-            // Чакаме нишките да приключат. Сложи достатъчно време (напр. 1 час)
-            if (!executor.awaitTermination(10, TimeUnit.HOURS)) {
-                executor.shutdownNow(); // Ако не приключат за 1 час, ги спри принудително
-            }
-        } catch (InterruptedException e) {
-            executor.shutdownNow();
-            Thread.currentThread().interrupt();
+//            if (++count == 50) {
+//                count = 0;
+//                wpOrderRepository.flush();
+//                entityManager.clear();
+//            }
         }
-        System.out.println("NULLS " + nulls);
+//        System.out.println("NULLS " + nulls);
     }
 
     private Double calculateAutoPrice(WpOrderEntity entity, CourierParser.CourierMatch parse, SiteEntity site) {
         CheckCourierRequest request = new CheckCourierRequest();
-
         // 1. Използваме totalPriceFCoutier, за да сме сигурни, че сумата е за ВСИЧКИ бройки
-        request.setCart_total(entity.getTotalPrice().toString());
+        request.setCart_total(entity.getTotalPriceFCoutier().toString());
         request.setCurrency(entity.getCurrency());
         request.setTargetId(parse.getCode());
         request.setCourierType(CourierType.valueOf(parse.getCourier().equals("BOXNOW") ? "BOX_NOW" : parse.getCourier()));
@@ -339,7 +331,6 @@ public class WpOrderService {
         request.setItems(items);
 
         // ИЗТРИЙ СТАРИЯ STREAM ОТ ТУК (който презаписваше теглото)
-
         try {
             return switch (request.getCourierType()) {
                 case ECONT -> econtService.calculatePrice(request);
@@ -617,7 +608,10 @@ public class WpOrderService {
                         wpProductHistoryRepository.save(wpProductHistoryEntity);
                     }
                 wpProductRepository.save(product);
-                    wpProductAsyncService.updateProductOnSites(product, wpOrderEntity.getSite().getId());
+                    try {
+                        wpProductAsyncService.updateProductOnSites(product, wpOrderEntity.getSite().getId());
+                    } catch (Exception e) {}
+
                 }
             }
         }
@@ -696,6 +690,9 @@ public class WpOrderService {
         Page<WpOrderDto> wpOrderDtos =wpOrderEntities.map(entity -> {
             WpOrderDto dto = modelMapper.map(entity, WpOrderDto.class);
 
+
+
+
             if(entity.getStatus() == OrderStatus.PROCESSING && entity.getCustomer() != null) {
 
                 String phone1 = entity.getCustomer().getPhone();
@@ -739,15 +736,15 @@ public class WpOrderService {
 //            dto.setCustomerOrderCount(count);
 //            System.out.println(count);
 
-            List<EmailLogEntity> email = entity.getEmails();
+//            List<EmailLogEntity> email = entity.getEmails();
 //                    .stream().min(Comparator.comparing(EmailLogEntity::getCreateTime))
 //                    .orElse(null);
-            for (EmailLogEntity log : email) {
-                if(log.isConfirmed()){
-                    dto.setConfirmed(true);
-                    break;
-                }
-            }
+//            for (EmailLogEntity log : email) {
+//                if(log.isConfirmed()){
+//                    dto.setConfirmed(true);
+//                    break;
+//                }
+//            }
             dto.setSavedCourierBilling(entity.getSavedCourierBilling());
             dto.setCourierHistory(entity.getCourierHistory());
 
@@ -756,6 +753,49 @@ public class WpOrderService {
 
         return wpOrderDtos;
 
+    }
+
+    public WpOrderDto getById(Long id) {
+
+        Optional<WpOrderEntity> orderEntity = wpOrderRepository.findById(id);
+        if(orderEntity.isPresent()) {
+            WpOrderEntity entity = orderEntity.get();
+            WpOrderDto dto = modelMapper.map(orderEntity.get(), WpOrderDto.class);
+            if(entity.getStatus() == OrderStatus.PROCESSING && entity.getCustomer() != null) {
+
+                String phone1 = entity.getCustomer().getPhone();
+                if(phone1 != null && !phone1.isEmpty()) {
+                    List<WpOrderEntity> duplicates = wpOrderRepository.findDuplicatesWithLines(
+                            phone1, OrderStatus.PROCESSING, entity.getId()
+                    );
+
+                    List<OrderLineItemDto> allDuplicateLines = duplicates.stream()
+                            .flatMap(dup -> dup.getOrderLine().stream().map(line -> {
+                                // Мапваме продукта
+                                OrderLineItemDto lineDto = modelMapper.map(line, OrderLineItemDto.class);
+                                // Заковаваме ID-то на поръчката, от която идва
+                                lineDto.setOrderId(dup.getId());
+                                lineDto.setWpOrderId(dup.getWpOrderId());
+                                return lineDto;
+                            }))
+                            .collect(Collectors.toList());
+                    if(!allDuplicateLines.isEmpty()) {
+//                        System.out.printf("Duplicates found: %s\n", allDuplicateLines.size());
+//                        System.out.println(dto.getWpOrderId());
+                        dto.setShowDuplicateWarning(true);
+                    }
+
+                    dto.setOrderLineOtherOrders(allDuplicateLines);
+                }
+
+            }
+
+
+            dto.setSavedCourierBilling(entity.getSavedCourierBilling());
+            dto.setCourierHistory(entity.getCourierHistory());
+            return dto;
+        }
+        return null;
     }
 
     public OrderStatusStatsDto statusStats() {
@@ -815,11 +855,11 @@ public class WpOrderService {
     public double checkCustomShippingField(CheckCourierRequest request) {
 
         Optional<WpOrderEntity> orderEntity = wpOrderRepository.findById(request.getOrderId());
-
         AtomicReference<Double> totalPrice = new AtomicReference<>(0D);
         request.getItems().forEach(item -> {
             totalPrice.updateAndGet(v -> v + (item.getPrice() * item.getQuantity()));
         });
+
 
         SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
         Optional<CourierSettingsEntity> bySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue = courierSettingsRepository.findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(site, request.getCourierType());
@@ -831,6 +871,11 @@ public class WpOrderService {
 
 //            CourierParser.CourierMatch parse = new CourierParser.CourierMatch(request.getCourierType().name(), request.getCourierShipmentType().name(), request.getTargetId(), "", request.getCityName(), request.getPostcode());
             CourierParser.CourierMatch parse = CourierParser.parseWithFallback(orderEntity.get());
+//            System.out.println(request.toString());
+            System.out.println(parse.toString());
+            System.out.println("");
+
+
             if(target == CourierShipmentType.OFFICE && courierSettings.isOffice()) {
                 if(courierSettings.isOfficeFreeShippingPriceMaxBol() && courierSettings.getOfficeFreeShippingPriceMax() != null && totalPrice.get() >= courierSettings.getOfficeFreeShippingPriceMax()) {
                     tPrice.set(0.0);
@@ -862,7 +907,6 @@ public class WpOrderService {
 
 
         });
-
 
         return tPrice.get();
     }
