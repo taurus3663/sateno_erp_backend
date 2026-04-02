@@ -50,9 +50,10 @@ public class WpOrderController {
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status,
                                                    @RequestParam(required = false) String phone,
-                                                   @RequestParam(required = false) String customer) {
+                                                   @RequestParam(required = false) String customer,
+                                                   @RequestParam(required = false) Long id) {
 
-        Page<WpOrderDto> all = wpOrderService.getAll(pageable, status, phone, customer);
+        Page<WpOrderDto> all = wpOrderService.getAll(pageable, status, phone, customer, id);
         return ResponseEntity.ok(all);
     }
 

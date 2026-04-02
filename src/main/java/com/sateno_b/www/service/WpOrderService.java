@@ -13,6 +13,7 @@ import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.CourierParser;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.modelmapper.ModelMapper;
@@ -23,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestClient;
@@ -657,19 +659,57 @@ public class WpOrderService {
 //            key = "{#pageable.pageNumber, #pageable.pageSize, #status, #phone, #customer}")
     public Page<WpOrderDto> getAll(Pageable pageable, @RequestParam(required = false) String status,
                                    @RequestParam(required = false) String phone,
-                                   @RequestParam(required = false) String customer) {
+                                   @RequestParam(required = false) String customer,
+                                   @RequestParam(required = false) Long id) {
 
-        Pageable sortedByIdDesc = PageRequest.of(
-                pageable.getPageNumber(),
-                pageable.getPageSize(),
-                Sort.by("wpOrderTime").descending() // Първо по най-нова дата
-                        .and(Sort.by("id").descending()) // После по ID, ако датите са еднакви
-        );
+//        Pageable sortedByIdDesc = PageRequest.of(
+//                pageable.getPageNumber(),
+//                pageable.getPageSize(),
+//                Sort.by("wpOrderTime").descending() // Първо по най-нова дата
+//                        .and(Sort.by("id").descending()) // После по ID, ако датите са еднакви
+//        );
+//
+//
+//        OrderStatus orderStatus = (status != null) ? OrderStatus.fromValue(status) : null;
+//
+//        Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findWithFilters(orderStatus, phone, customer, sortedByIdDesc);
 
 
-        OrderStatus orderStatus = (status != null) ? OrderStatus.fromValue(status) : null;
+        Specification<WpOrderEntity> spec = (root, query, cb) -> {
 
-        Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findWithFilters(orderStatus, phone, customer, sortedByIdDesc);
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (status != null && !status.isEmpty()) {
+                OrderStatus orderStatus = OrderStatus.fromValue(status);
+                predicates.add(cb.equal(root.get("status"), orderStatus));
+            }
+
+            if (phone != null && !phone.isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("billing").get("phone")), "%" + phone.toLowerCase() + "%"));
+            }
+
+            if (customer != null && !customer.isEmpty()) {
+                String pattern = "%" + customer.toLowerCase() + "%";
+                Predicate firstName = cb.like(cb.lower(root.get("billing").get("firstName")), pattern);
+                Predicate lastName = cb.like(cb.lower(root.get("billing").get("lastName")), pattern);
+                predicates.add(cb.or(firstName, lastName));
+            }
+
+            if(id != null){
+                Predicate idInternal = cb.equal(root.get("id"), id);
+                Predicate wpId = cb.equal(root.get("wpOrderId"), id);
+                predicates.add(cb.or(idInternal, wpId));
+            }
+
+            query.orderBy(
+                    cb.desc(root.get("wpOrderTime")),
+                    cb.desc(root.get("id"))
+            );
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findAll(spec, pageable);
 
         List<CustomerEntity> customers = wpOrderEntities.getContent().stream()
                 .map(WpOrderEntity::getCustomer)
