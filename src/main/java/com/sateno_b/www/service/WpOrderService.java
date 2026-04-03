@@ -476,8 +476,8 @@ public class WpOrderService {
         wpOrderEntity.setStatus(dto.getStatus());
         wpOrderEntity.setCustomerIp(dto.getCustomerIpAddress());
         wpOrderEntity.setCustomerAgent(dto.getCustomerUserAgent());
-        wpOrderEntity.setTotalPrice(new BigDecimal(totalPriceRs.get()));
-        wpOrderEntity.setTotalPriceFCoutier(new BigDecimal(totalPriceRs.get()));
+        wpOrderEntity.setTotalPrice(isPayed? new BigDecimal(0): new BigDecimal(totalPriceRs.get()));
+        wpOrderEntity.setTotalPriceFCoutier(isPayed? new BigDecimal(0): new BigDecimal(totalPriceRs.get()));
         wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
         wpOrderEntity.setTransactionId(dto.getTransactionId());
         wpOrderEntity.setShippingLines(dto.getShippingLines());

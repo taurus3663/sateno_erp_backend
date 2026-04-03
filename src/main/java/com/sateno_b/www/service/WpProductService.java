@@ -602,8 +602,8 @@ public class WpProductService {
                                     .when(cb.equal(root.get("status"), ProductStatus.PUBLISHED), 1)
                                     .otherwise(2)
                     ),
-                    cb.asc(root.get("stockQuantity")),
-                    cb.desc(root.get("id"))
+//                    cb.asc(root.get("stockQuantity")),
+                    cb.desc(root.get("sku"))
             );
 
             return cb.and(predicates.toArray(new Predicate[0]));

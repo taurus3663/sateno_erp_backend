@@ -292,11 +292,10 @@ public class SpeedyService implements ShippingProvider {
 
         additionalServices.put("cod", cod);
 
-        Map<String, Object> declaredValue = new HashMap<>();
-        declaredValue.put("amount", (Double.parseDouble(order.getTotalPriceFCoutier().toString()) + order.getCustomShippingTotal()));
-        declaredValue.put("currency", order.getCurrency());
-
-        additionalServices.put("declaredValue", declaredValue);
+//        Map<String, Object> declaredValue = new HashMap<>();
+//        declaredValue.put("amount", (Double.parseDouble(order.getTotalPriceFCoutier().toString()) + order.getCustomShippingTotal()));
+//        declaredValue.put("currency", order.getCurrency());
+//        additionalServices.put("declaredValue", declaredValue);
 
         Map<String, Object> obpd = new HashMap<>();
         obpd.put("option", "OPEN");   // само преглед (отваряне)
@@ -803,6 +802,7 @@ public class SpeedyService implements ShippingProvider {
         if (parcels == null) return;
 
         for (Map<String, Object> parcel : parcels) {
+            if (parcel.get("parcelId") == null) continue;
             String shipmentNum = parcel.get("parcelId").toString();
             List<Map<String, Object>> operations = (List<Map<String, Object>>) parcel.get("operations");
 
@@ -820,17 +820,17 @@ public class SpeedyService implements ShippingProvider {
                         boolean isUpdated = false;
 
                         for (Map<String, Object> op : operations) {
-                            // Спиди описанието обикновено е в "description"
                             String desc = (String) op.get("description");
-                            // Времето е в ISO формат стринг: "2023-10-24T14:30:00+03:00"
                             String dateTimeStr = (String) op.get("dateTime");
+
+                            if (desc == null || dateTimeStr == null) continue;
+
+                            // Парсване на времето от Спиди формат
                             DateTimeFormatter speedyFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
                             ZonedDateTime zdt = ZonedDateTime.parse(dateTimeStr, speedyFormatter);
-//                            OffsetDateTime odt = OffsetDateTime.parse(dateTimeStr, formatter);
                             Instant eventTime = zdt.toInstant();
 
-
-
+                            // 1. Проверка дали ивентът вече съществува в историята
                             boolean alreadyExists = order.getCourierHistory().stream()
                                     .anyMatch(h -> h.getEventTime().equals(eventTime) &&
                                             h.getStatusDescription().equals(desc));
@@ -842,10 +842,19 @@ public class SpeedyService implements ShippingProvider {
                                 order.getCourierHistory().add(newEntry);
                                 isUpdated = true;
                             }
+
+                            // 2. АВТОМАТИЧНО МАРКИРАНЕ КАТО ПРИКЛЮЧЕНА
+                            // Проверяваме дали описанието съдържа фразата за доставка
+                            if (desc.contains("Доставка на клиент") && order.getStatus() != OrderStatus.COMPLETED) {
+                                order.setStatus(OrderStatus.COMPLETED);
+                                isUpdated = true;
+                                log.info("Order #{} marked as COMPLETED based on Speedy status: {}", order.getId(), desc);
+                            }
                         }
 
                         if (isUpdated) {
                             wpOrderRepository.save(order);
+                            // Обновяваме статуса и в самия сайт (WooCommerce)
                             wpOrderAsyncService.updateOrderOnSites(order, null);
                         }
                     });
