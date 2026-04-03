@@ -353,7 +353,7 @@ public class SpeedyService implements ShippingProvider {
 
         Map<String, Object> response = postToSpeedy("shipment", body);
 //        Map<String, Object> response = postToSpeedy("calculate", body);
-        System.out.println(response);
+//        System.out.println(response);
 //        System.out.println(response);
         SpeedyCreateLabelResponse labelResponse = getLabelResponse(response);
 //        System.out.println(labelResponse.toString());

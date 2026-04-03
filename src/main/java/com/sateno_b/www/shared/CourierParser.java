@@ -88,7 +88,7 @@ public class CourierParser {
                 Map<String, Object> cityMap = (Map<String, Object>) saved.getCity();
                 cityName = (String) cityMap.get("name");
                 // Вземаме postCode от JSON-а, който прати по-рано
-                if (cityMap.containsKey("postCode")) {
+                if (cityMap.containsKey("postCode") && cityMap.get("postCode") != null) {
                     postcode = cityMap.get("postCode").toString();
                 }
             }
@@ -99,7 +99,7 @@ public class CourierParser {
                 if (saved.getOffice() != null && saved.getOffice() instanceof Map) {
                     Map<String, Object> officeMap = (Map<String, Object>) saved.getOffice();
                     // Проверяваме за 'code' (Еконт/Спиди) или 'id'
-                    if (officeMap.containsKey("code")) {
+                    if (officeMap.containsKey("code") && officeMap.get("code") != null) {
                         targetId = officeMap.get("code").toString();
                     } else if (officeMap.containsKey("id")) {
                         targetId = officeMap.get("id").toString();

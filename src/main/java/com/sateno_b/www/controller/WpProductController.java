@@ -71,15 +71,15 @@ public class WpProductController {
     @GetMapping("/list")
     public ResponseEntity<Page<WpProductDto>> getWpProducts(
             Pageable pageable,
-            @RequestParam(required = false) String sku,
             @RequestParam(required = false) String brand,
-            @RequestParam(required = false) String name_sku,
+            @RequestParam(required = false) String category,
             @RequestParam(required = false) Long quantity,
             @RequestParam(required = false) Long status,
-            @RequestParam(required = false) Long saleType
+            @RequestParam(required = false) Long saleType,
+            @RequestParam(required = false) String name_sku
     ) {
 
-        Page<WpProductDto> dtoPage =  wpProductService.getAll(pageable, sku, brand, quantity, status, saleType, name_sku);
+        Page<WpProductDto> dtoPage =  wpProductService.getAll(pageable, brand, category, quantity, status, saleType, name_sku);
 
         return ResponseEntity.ok(dtoPage);
     }

@@ -906,7 +906,6 @@ public class WpOrderService {
 
 
     public double checkCustomShippingField(CheckCourierRequest request) {
-
         Optional<WpOrderEntity> orderEntity = wpOrderRepository.findById(request.getOrderId());
         AtomicReference<Double> totalPrice = new AtomicReference<>(0D);
         request.getItems().forEach(item -> {
@@ -921,14 +920,13 @@ public class WpOrderService {
 
         bySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue.ifPresent(courierSettings -> {
             CourierShipmentType target = request.getCourierShipmentType();
-
+//            System.out.println("11111114");
+//            System.out.println(orderEntity.isPresent());
 //            CourierParser.CourierMatch parse = new CourierParser.CourierMatch(request.getCourierType().name(), request.getCourierShipmentType().name(), request.getTargetId(), "", request.getCityName(), request.getPostcode());
             CourierParser.CourierMatch parse = CourierParser.parseWithFallback(orderEntity.get());
 //            System.out.println(request.toString());
-            System.out.println(parse.toString());
-            System.out.println("");
 
-
+//            System.out.println("11111113");
             if(target == CourierShipmentType.OFFICE && courierSettings.isOffice()) {
                 if(courierSettings.isOfficeFreeShippingPriceMaxBol() && courierSettings.getOfficeFreeShippingPriceMax() != null && totalPrice.get() >= courierSettings.getOfficeFreeShippingPriceMax()) {
                     tPrice.set(0.0);
@@ -939,6 +937,7 @@ public class WpOrderService {
                 }
             }
             else if(target == CourierShipmentType.LOCKER && courierSettings.isLocker()) {
+                System.out.println("1111111");
                 if(courierSettings.isLockerFreeShippingPriceMaxBol() && totalPrice.get() >= courierSettings.getLockerFreeShippingPriceMax()) {
                     tPrice.set(0.0);
                 } else if(courierSettings.isLockerAutoShippingPrice()) {
@@ -946,6 +945,7 @@ public class WpOrderService {
                 } else {
                     tPrice.set(courierSettings.getLockerFixedShippingPrice() != null?  courierSettings.getLockerFixedShippingPrice() : 0.0);
                 }
+                System.out.println("111111122");
             }
             else if(target == CourierShipmentType.ADDRESS && courierSettings.isAddress()) {
                 if(courierSettings.isAddressFreeShippingPriceMaxBol() && totalPrice.get() >= courierSettings.getAddressFreeShippingPriceMax()) {
