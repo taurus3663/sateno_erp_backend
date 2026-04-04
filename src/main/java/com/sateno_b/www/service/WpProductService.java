@@ -350,6 +350,31 @@ public class WpProductService {
         }
     }
 
+    private String genSky() {
+        WpProductEntity lastProduct = wpProductRepository.findFirstByOrderByIdDesc();//        return wpProductRepository.findFirstByOrderByIdDesc().map;
+            String lastSku = lastProduct.getSku();
+
+        try {
+            // 2. Използваме Regex, за да разделим буквите от цифрите
+            // Намираме само цифрите в края на низа
+            String digits = lastSku.replaceAll("\\D+", "");
+            String prefix = lastSku.replaceAll("\\d+", "");
+
+            if (digits.isEmpty()) {
+                return lastSku + "1"; // Ако няма цифри, просто добавяме 1
+            }
+
+            // 3. Парсваме числото и добавяме 1
+            long nextNumber = Long.parseLong(digits) + 1;
+
+            // 4. Сглобяваме обратно (напр. "A" + "1891")
+            return prefix + nextNumber;
+
+        } catch (Exception e) {
+            // Fallback в случай на странен формат
+            return "a" + (lastProduct.getId() + 1000);
+        }
+    }
     @Transactional
     @CacheEvict(value = "productsList", allEntries = true)
     public WpProductDto saveProduct(WpProductDto dto) {
@@ -358,6 +383,8 @@ public class WpProductService {
             entity = wpProductRepository.findById(dto.getId()).orElseThrow();
         } else {
             entity = new WpProductEntity();
+
+            entity.setSku(genSky());
         }
 
 //        entity.setUnit(dto.getUnit());
@@ -597,11 +624,11 @@ public class WpProductService {
 
             // 2. ВЕЧЕ МОЖЕШ ДА СОРТИРАШ БЕЗОПАСНО
             query.orderBy(
-                    cb.asc(
-                            cb.selectCase()
-                                    .when(cb.equal(root.get("status"), ProductStatus.PUBLISHED), 1)
-                                    .otherwise(2)
-                    ),
+//                    cb.asc(
+//                            cb.selectCase()
+//                                    .when(cb.equal(root.get("status"), ProductStatus.PUBLISHED), 1)
+//                                    .otherwise(2)
+//                    ),
 //                    cb.asc(root.get("stockQuantity")),
                     cb.desc(root.get("sku"))
             );

@@ -38,6 +38,9 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
     @Query("SELECT DISTINCT p FROM WpProductEntity p JOIN p.addonConfig a")
     List<WpProductEntity> findAllWithAddons();
 
+
+    WpProductEntity findFirstByOrderByIdDesc();
+
 //    @Override
 //    @EntityGraph(attributePaths = {
 //            "brand",
