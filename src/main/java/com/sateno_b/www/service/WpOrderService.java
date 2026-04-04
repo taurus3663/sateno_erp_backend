@@ -556,7 +556,7 @@ public class WpOrderService {
                 userSignalRepository.save(userSignalEntity);
             }
         }
-        if(siteEntity.getEmail() != null) {
+        if(siteEntity.getEmail() != null && siteEntity.getEmail().isActive()) {
             String subject = "Нова поръчка";
 
             EmailSendRequest emailSendRequest = new EmailSendRequest();
