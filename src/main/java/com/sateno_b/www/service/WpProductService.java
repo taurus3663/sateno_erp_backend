@@ -607,7 +607,7 @@ public class WpProductService {
             if (brand != null && !brand.isEmpty()) {
                 predicates.add(cb.equal(root.get("brand").get("name"), brand));
             }
-            if (quantity != null && quantity > 0) {
+            if (quantity != null) {
                 predicates.add(cb.equal(root.get("stockQuantity"), quantity));
             }
             if (status != null && status >= 0) {
