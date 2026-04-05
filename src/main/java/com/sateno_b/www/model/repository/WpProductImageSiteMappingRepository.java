@@ -15,4 +15,6 @@ public interface WpProductImageSiteMappingRepository extends JpaRepository<WpPro
 
     // Опционално: Намиране на самия мапинг, ако ви потрябва
     Optional<WpProductImageSiteMappingEntity> findByWpMediaIdAndSite(Long wpMediaId, SiteEntity site);
+
+    Optional<WpProductImageSiteMappingEntity> findByProductImageIdAndSite(Long wpProductImageId, SiteEntity site);
 }

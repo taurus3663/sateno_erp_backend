@@ -3,6 +3,7 @@ package com.sateno_b.www.service;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.enums.ProductSaleType;
 import com.sateno_b.www.model.repository.SiteRepository;
+import com.sateno_b.www.model.repository.WpProductImageSiteMappingRepository;
 import com.sateno_b.www.model.repository.WpProductRepository;
 import com.sateno_b.www.shared.ImageToWordPress;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ public class WpProductAsyncService {
     private final RestClient restClient;
     private final ImageToWordPress imageToWordPress;
     private final WpProductRepository wpProductRepository;
+    private final WpProductImageSiteMappingRepository wpProductImageSiteMappingRepository;
 
 
     @Transactional
@@ -63,15 +65,18 @@ public class WpProductAsyncService {
                 updateBody.put("status", product.getStatus().getValue());
 
 //                DESCRIPTION
-//                for (WpProductTranslationEntity translation : product.getTranslations()) {
-//                    if(translation.getLanguage() == site.getLanguage()) {
-//                        updateBody.put("short_description", translation.getShortDescription());
-//                        updateBody.put("description", translation.getDescription());
-//                    }
-//                }
+                for (WpProductTranslationEntity translation : product.getTranslations()) {
+                    if(translation.getLanguage() == site.getLanguage()) {
+                        updateBody.put("short_description", translation.getShortDescription());
+                        updateBody.put("description", translation.getDescription());
+                        updateBody.put("name", translation.getName());
+                        break;
+                    }
+                }
+
+
 
 //                PRICE
-
                 for (WpProductSiteConfigEntity siteConfig : product.getSiteConfigs()) {
                     if(siteConfig.getSite() == site) {
                         updateBody.put("price", siteConfig.getRegularPrice().toString());
@@ -134,11 +139,29 @@ public class WpProductAsyncService {
                 List<Map<String, Object>> imageList = new ArrayList<>();
                 if (product.getImages() != null) {
                     for (WpProductImageEntity imgEntity : product.getImages()) {
-                        // Викаме твоя метод за качване
-                        Long wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
+
+                        Optional<WpProductImageSiteMappingEntity> mappingOpt = wpProductImageSiteMappingRepository
+                                .findByProductImageIdAndSite(imgEntity.getId(), site);
+
+                        Long wpMediaId = null;
+                        if (mappingOpt.isPresent()) {
+                            wpMediaId = mappingOpt.get().getWpMediaId();
+                        }
+                        else {
+                            wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
+                            if (wpMediaId != null) {
+                                WpProductImageSiteMappingEntity wpProductImageSiteMappingEntity = new WpProductImageSiteMappingEntity();
+                                wpProductImageSiteMappingEntity.setWpMediaId(wpMediaId);
+                                wpProductImageSiteMappingEntity.setSite(site);
+                                wpProductImageSiteMappingEntity.setProductImage(imgEntity);
+//                                wpProductImageSiteMappingEntity.setWpUrl();
+                                wpProductImageSiteMappingRepository.save(wpProductImageSiteMappingEntity);
+                            }
+
+                        }
                         if (wpMediaId != null) {
                             Map<String, Object> imgMap = new HashMap<>();
-                            imgMap.put("id", wpMediaId); // Свързваме чрез ID в Media Library
+                            imgMap.put("id", wpMediaId);
                             imageList.add(imgMap);
                         }
                     }
@@ -161,28 +184,58 @@ public class WpProductAsyncService {
                     log.info("Успешно създаден нов продукт с SKU {} в сайт {}", product.getSku(), site.getUrl());
                 }
                 else {
-                    // Взимаме WordPress ID-то от първия намерен резултат
                     Integer wpId = (Integer) searchResponse.get(0).get("id");
-
-                    restClient.patch()
+                                        restClient.patch()
                             .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
                             .header("Authorization", "Basic " + auth)
                             .body(updateBody)
                             .retrieve()
                             .toBodilessEntity();
-//                System.out.println(wpId);
-//                System.out.println(authorization.getBody());
-                    log.info("Успешно обновен sale_price за SKU {}", product.getSku());
 
-                    Map<String, Object> wpProduct = searchResponse.get(0);
-                    List<Map<String, Object>> currentWpImages = (List<Map<String, Object>>) wpProduct.get("images");
-                    imageToWordPress.deleteMediaOneByOne(
-                            site,
-                            currentWpImages.stream()
-                                    .map(e -> Long.valueOf(e.get("id").toString())) // Безопасно конвертиране
-                                    .collect(Collectors.toSet()),
-                            auth
-                    );
+
+                    Set<Long> erpWpMediaIds = imageList.stream()
+                            .map(img -> Long.valueOf(img.get("id").toString()))
+                            .collect(Collectors.toSet());
+
+                    List<Map<String, Object>> wpImagesFromSearch = (List<Map<String, Object>>) searchResponse.get(0).get("images");
+
+                    if (wpImagesFromSearch != null) {
+                        // Намираме кои ID-та съществуват в WP, но ги няма в нашия нов списък от ERP
+                        Set<Long> idsToDeleteFromMediaLibrary = wpImagesFromSearch.stream()
+                                .map(img -> Long.valueOf(img.get("id").toString()))
+                                .filter(id -> !erpWpMediaIds.contains(id)) // Ако го няма в ERP списъка -> за триене
+                                .collect(Collectors.toSet());
+
+                        // 3. Физическо триене от Media Library
+                        if (!idsToDeleteFromMediaLibrary.isEmpty()) {
+                            imageToWordPress.deleteMediaOneByOne(site, idsToDeleteFromMediaLibrary, auth);
+                            log.info("Изтрити са {} излишни медийни файла от сайт {}", idsToDeleteFromMediaLibrary.size(), site.getUrl());
+                        }
+                    }
+
+
+//                    // Взимаме WordPress ID-то от първия намерен резултат
+//                    Integer wpId = (Integer) searchResponse.get(0).get("id");
+//
+//                    restClient.patch()
+//                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
+//                            .header("Authorization", "Basic " + auth)
+//                            .body(updateBody)
+//                            .retrieve()
+//                            .toBodilessEntity();
+////                System.out.println(wpId);
+////                System.out.println(authorization.getBody());
+//                    log.info("Успешно обновен sale_price за SKU {}", product.getSku());
+//
+//                    Map<String, Object> wpProduct = searchResponse.get(0);
+//                    List<Map<String, Object>> currentWpImages = (List<Map<String, Object>>) wpProduct.get("images");
+//                    imageToWordPress.deleteMediaOneByOne(
+//                            site,
+//                            currentWpImages.stream()
+//                                    .map(e -> Long.valueOf(e.get("id").toString())) // Безопасно конвертиране
+//                                    .collect(Collectors.toSet()),
+//                            auth
+//                    );
                 }
 //                if(currentWpImages != null && !currentWpImages.isEmpty()) {
 //                    for (Map<String, Object> image : currentWpImages) {

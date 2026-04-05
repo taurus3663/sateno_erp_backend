@@ -2,10 +2,8 @@ package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
-import com.sateno_b.www.model.repository.WpAddonRepository;
-import com.sateno_b.www.model.repository.WpProductAddonConfigRepository;
-import com.sateno_b.www.model.repository.WpProductRepository;
-import com.sateno_b.www.model.repository.WpProductTranslationRepository;
+import com.sateno_b.www.model.repository.*;
+import com.sateno_b.www.service.ChatGptService;
 import com.sateno_b.www.service.WpProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,9 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -40,6 +37,8 @@ public class WpProductController {
     private final WpProductTranslationRepository wpProductTranslationRepository;
     private final WpProductAddonConfigRepository wpProductAddonConfigRepository;
     private final WpAddonRepository wpAddonRepository;
+    private final ChatGptService chatGptService;
+    private final LanguageRepository languageRepository;
 
     @PatchMapping("/patch")
     public ResponseEntity<?> patchProduct(@RequestBody WpProductDto wpProductDto) {
@@ -58,13 +57,13 @@ public class WpProductController {
     }
 
     @PostMapping("/save")
-    public ResponseEntity<WpProductDto> saveProduct(@RequestBody WpProductDto productDto) {
+    public ResponseEntity<?> saveProduct(@RequestBody WpProductDto productDto) {
 
         try {
             WpProductDto savedDto = wpProductService.saveProduct(productDto);
             return ResponseEntity.ok(savedDto);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
     }
 
@@ -142,6 +141,57 @@ public class WpProductController {
         }
 
         return ResponseEntity.ok(dto);
+    }
+
+    private String translateInstructionContent(String from, String to) {
+
+        return String.format("Преведи от %s на %s , Запази всички HTML тагове, емотикони и форматиране.", from, to);
+    }
+
+    @PostMapping("/translate/content")
+    @Transactional
+    public ResponseEntity<?> translateContent(@RequestBody ProductTranslateContentDTO request) {
+        try {
+            WpProductEntity product = wpProductRepository.getReferenceById(request.getProductId());
+
+            List<LanguageEntity> languages = languageRepository.findAll();
+
+            for (LanguageEntity language : languages) {
+                if(Objects.equals(language.getId(), request.getItem().getLanguage().getId())) continue;
+
+                LanguageEntity referenceById1 = languageRepository.getReferenceById(language.getId());
+
+                WpProductTranslationEntity wpProductTranslationEntity = null;
+                Optional<WpProductTranslationEntity> byProductAndLanguage = wpProductTranslationRepository.findByProductAndLanguage(product, referenceById1);
+                if(byProductAndLanguage.isPresent()) {
+                    wpProductTranslationEntity = byProductAndLanguage.get();
+                }else {
+                    wpProductTranslationEntity = new WpProductTranslationEntity();
+                    wpProductTranslationEntity.setLanguage(language);
+                    wpProductTranslationEntity.setProduct(product);
+                }
+
+                if (request.getType() == 1L) {
+                    String translatedTitle = chatGptService.translateText(request.getItem().getName(), translateInstructionContent(request.getItem().getLanguage().getName(), language.getName()));
+//                System.out.println(translatedTitle);
+                    wpProductTranslationEntity.setName(translatedTitle);
+                } else if (request.getType() == 2L) {
+                    String translatedShortDescription = chatGptService.translateText(request.getItem().getShortDescription(), translateInstructionContent(request.getItem().getLanguage().getName(), language.getName()));
+//                System.out.println(translatedShortDescription);
+                    wpProductTranslationEntity.setShortDescription(translatedShortDescription);
+                } else if (request.getType() == 3L) {
+                    String translatedDescription = chatGptService.translateText(request.getItem().getDescription(), translateInstructionContent(request.getItem().getLanguage().getName(), language.getName()));
+//                System.out.println(translatedDescription);
+                    wpProductTranslationEntity.setDescription(translatedDescription);
+                }
+                wpProductTranslationRepository.save(wpProductTranslationEntity);
+            }
+            return ResponseEntity
+                    .ok(true);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        }
+
     }
 
 
