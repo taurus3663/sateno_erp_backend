@@ -111,18 +111,54 @@ public class WpProductController {
 
 
         //IMAGES
+        // IMAGES
         if (entity.getImages() != null) {
             dto.setImages(entity.getImages().stream().map(img -> {
                 WpProductImageDto imgDto = new WpProductImageDto();
                 imgDto.setId(img.getId());
-                // Добавяме базовия URL към локалния път
                 imgDto.setLocalSrc(img.getLocalSrc());
-                imgDto.setTemp(false); // Заредени от БД не са временни
+                imgDto.setTemp(false);
+
+                // КРИТИЧНО: Мапваме и siteMappings
+                if (img.getSiteMappings() != null) {
+                    imgDto.setSiteMappings(img.getSiteMappings().stream().map(mapping -> {
+                        // Тук използваме модел мапъра или ръчно сетваме ID-то
+                        WpProductImageSiteMappingDto mappingDto = new WpProductImageSiteMappingDto();
+                        mappingDto.setId(mapping.getId());
+                        mappingDto.setWpMediaId(mapping.getWpMediaId());
+
+                        // ВАЖНО: Трябва ни siteId, за да работи филтърът в Angular
+                        if (mapping.getSite() != null) {
+                            mappingDto.setSiteId(mapping.getSite().getId());
+                        }
+
+                        return mappingDto;
+                    }).toList());
+                } else {
+                    imgDto.setSiteMappings(new ArrayList<>());
+                }
+
                 return imgDto;
             }).toList());
         }
 
         // ADDON CONFIG
+//        if (entity.getAddonConfig() != null) {
+//            dto.setAddonConfigs(entity.getAddonConfig().stream()
+//                    .map(config -> {
+//                        WpProductAddonConfigDto configDto = new WpProductAddonConfigDto();
+//                        configDto.setId(config.getId());
+//                        configDto.setPriceModifier(config.getPriceModifier());
+//
+//                        // Мапваме целия Сайт
+//                        configDto.setSite(modelMapper.map(config.getSite(), SiteDto.class));
+//
+//                        // Мапваме цялото AddonValue (за да имаш преводите в Angular)
+//                        configDto.setAddonValue(modelMapper.map(config.getAddonValue(), WpAddonValueDto2.class));
+//
+//                        return configDto;
+//                    }).toList()); // Не забравяй .toList() накрая
+//        }
         if (entity.getAddonConfig() != null) {
             dto.setAddonConfigs(entity.getAddonConfig().stream()
                     .map(config -> {
@@ -130,14 +166,13 @@ public class WpProductController {
                         configDto.setId(config.getId());
                         configDto.setPriceModifier(config.getPriceModifier());
 
-                        // Мапваме целия Сайт
-                        configDto.setSite(modelMapper.map(config.getSite(), SiteDto.class));
-
-                        // Мапваме цялото AddonValue (за да имаш преводите в Angular)
-                        configDto.setAddonValue(modelMapper.map(config.getAddonValue(), WpAddonValueDto2.class));
+                        // Мапваме стойността на адона (с нейните преводи за всички езици)
+                        if (config.getAddonValue() != null) {
+                            configDto.setAddonValue(modelMapper.map(config.getAddonValue(), WpAddonValueDto2.class));
+                        }
 
                         return configDto;
-                    }).toList()); // Не забравяй .toList() накрая
+                    }).toList());
         }
 
         return ResponseEntity.ok(dto);

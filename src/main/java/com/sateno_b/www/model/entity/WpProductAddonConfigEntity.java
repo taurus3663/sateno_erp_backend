@@ -23,9 +23,9 @@ public class WpProductAddonConfigEntity extends BaseEntity {
     @JoinColumn(name = "value_id")
     private WpAddonValueEntity addonValue;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "site_id")
-    private SiteEntity site;
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "site_id")
+//    private SiteEntity site; адоните стават еднакви за всички сайтове!
 
     @Column
     private BigDecimal priceModifier; //Допълнителна цена

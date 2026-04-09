@@ -32,14 +32,31 @@ public class WpProductAsyncService {
 
     @Transactional
     @Async
-    public void updateProductOnSites(WpProductEntity product, Long sourceSiteId) throws InterruptedException {
+    public void updateProductOnSites(WpProductEntity product, Long lastEditedSiteId) throws InterruptedException {
         Thread.sleep(2000);
         product = wpProductRepository.findById(product.getId()).orElse(null);
 
-        List<SiteEntity> siteList = siteRepository.findAll();
+//        List<SiteEntity> siteList = siteRepository.findAll();
+        List<SiteEntity> siteList;
+
+        // Ако lastEditedSiteId е null (т.е. нов продукт или глобална промяна), вземаме всички сайтове
+        if (lastEditedSiteId == null) {
+            siteList = siteRepository.findAll();
+//            log.info("Стартиране на глобална синхронизация за SKU: {}", product.getSku());
+        } else {
+            // Ако е подаден конкретен сайт, обновяваме само него
+            siteList = siteRepository.findById(lastEditedSiteId)
+                    .map(List::of) // Превръщаме в списък с един елемент
+                    .orElse(Collections.emptyList());
+//            log.info("Стартиране на локална синхронизация за SKU: {} само за сайт ID: {}", product.getSku(), lastEditedSiteId);
+        }
+
+
+        System.out.println(lastEditedSiteId);
+
         for (SiteEntity site : siteList) {
 //            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
-
+            System.out.println(site.toString());
             try {
                 String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
 
@@ -171,6 +188,88 @@ public class WpProductAsyncService {
                 }
 
 
+                // --- ADDONS LOGIC (Ordered / Quantity Based / Language Fallback) ---
+                List<Map<String, Object>> wooAddons = new ArrayList<>();
+
+// Сортираме адоните по ID (ред на добавяне), за да запазим подредбата от БД
+                List<WpProductAddonConfigEntity> sortedConfigs = product.getAddonConfig().stream()
+                        .sorted(Comparator.comparing(BaseEntity::getId))
+                        .collect(Collectors.toList());
+
+// Групираме в LinkedHashMap, за да запазим реда на групите
+                Map<String, List<WpProductAddonConfigEntity>> groupedAddons = new LinkedHashMap<>();
+
+                for (WpProductAddonConfigEntity conf : sortedConfigs) {
+                    WpAddonEntity group = conf.getAddonValue().getGroups().get(0);
+
+                    // FALLBACK ЛОГИКА ЗА ИМЕ НА ГРУПАТА
+                    String groupName = group.getTranslations().stream()
+                            .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
+                            .map(WpAddonTranslationEntity::getName)
+                            .findFirst()
+                            .orElseGet(() ->
+                                    group.getTranslations().stream()
+                                            .filter(t -> t.getLanguage().getCode().equals("bg"))
+                                            .map(WpAddonTranslationEntity::getName)
+                                            .findFirst()
+                                            .orElse(group.getSlug())
+                            );
+
+                    groupedAddons.computeIfAbsent(groupName, k -> new ArrayList<>()).add(conf);
+                }
+
+                int groupPosition = 0;
+                for (Map.Entry<String, List<WpProductAddonConfigEntity>> entry : groupedAddons.entrySet()) {
+                    Map<String, Object> addonGroupMap = new HashMap<>();
+
+                    addonGroupMap.put("name", entry.getKey());
+                    addonGroupMap.put("type", "multiple_choice");
+                    addonGroupMap.put("display", "radiobutton");
+                    addonGroupMap.put("position", groupPosition++);
+                    addonGroupMap.put("required", 1);
+                    addonGroupMap.put("title_format", "label");
+                    addonGroupMap.put("adjust_price", 1);
+
+                    List<Map<String, Object>> options = new ArrayList<>();
+                    int optionPosition = 0;
+
+                    for (WpProductAddonConfigEntity config : entry.getValue()) {
+
+                        // FALLBACK ЛОГИКА ЗА ЕТИКЕТ НА ОПЦИЯТА
+                        String label = config.getAddonValue().getTranslations().stream()
+                                .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
+                                .map(WpAddonValueTranslationEntity::getLabel)
+                                .findFirst()
+                                .orElseGet(() ->
+                                        config.getAddonValue().getTranslations().stream()
+                                                .filter(t -> t.getLanguage().getCode().equals("bg"))
+                                                .map(WpAddonValueTranslationEntity::getLabel)
+                                                .findFirst()
+                                                .orElse(config.getAddonValue().getSlug())
+                                );
+
+                        Map<String, Object> option = new HashMap<>();
+                        option.put("label", label);
+                        option.put("price", config.getPriceModifier().compareTo(BigDecimal.ZERO) > 0
+                                ? config.getPriceModifier().toString() : "");
+                        option.put("price_type", "quantity_based");
+                        option.put("position", optionPosition++);
+                        option.put("image", "");
+                        option.put("visibility", 1);
+
+                        options.add(option);
+                    }
+
+                    addonGroupMap.put("options", options);
+                    wooAddons.add(addonGroupMap);
+                }
+
+                if (!wooAddons.isEmpty()) {
+                    updateBody.put("addons", wooAddons);
+                }
+
+
+
 
                 if(isNewProduct) {
                     updateBody.put("sku", product.getSku());
@@ -270,5 +369,4 @@ public class WpProductAsyncService {
 
 
     }
-
 }

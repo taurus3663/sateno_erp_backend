@@ -14,12 +14,11 @@ import java.util.Optional;
 public interface WpProductAddonConfigRepository extends JpaRepository<WpProductAddonConfigEntity, Long> {
 
     // Търсим по обекти (Entities), което е най-чистият начин в JPA
-    Optional<WpProductAddonConfigEntity> findByProductAndAddonValueAndSite(
+    Optional<WpProductAddonConfigEntity> findByProductAndAddonValue(
             WpProductEntity product,
-            WpAddonValueEntity addonValue,
-            SiteEntity site
+            WpAddonValueEntity addonValue
     );
 
 
-     List<WpProductAddonConfigEntity> findAllByProductAndSite(WpProductEntity product, SiteEntity site);
+     List<WpProductAddonConfigEntity> findAllByProduct(WpProductEntity product);
 }

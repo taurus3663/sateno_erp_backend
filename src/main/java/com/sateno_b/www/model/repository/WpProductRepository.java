@@ -27,11 +27,16 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
         Optional<WpProductEntity> findBySkuAndSite(@Param("sku") String sku, @Param("siteId") Long siteId);
 
         // 3. Зареждане на пълния обект за Angular DTO-то (добавяме и siteConfigs)
-        @Query("SELECT p FROM WpProductEntity p " +
-                "LEFT JOIN FETCH p.addonConfig ac " +
-                "LEFT JOIN FETCH ac.site s " +
-                "WHERE p.id = :id")
-        Optional<WpProductEntity> findByIdWithDetails(@Param("id") Long id);
+//        @Query("SELECT p FROM WpProductEntity p " +
+//                "LEFT JOIN FETCH p.addonConfig ac " +
+//                "LEFT JOIN FETCH ac.addonValue av " +
+//                "LEFT JOIN FETCH av.translations " + // Зареждаме преводите на адоните за Angular
+//                "WHERE p.id = :id")
+//        Optional<WpProductEntity> findByIdWithDetails(@Param("id") Long id);
+
+    @Query("SELECT p FROM WpProductEntity p " +
+            "WHERE p.id = :id") // Махаме всички JOIN FETCH за колекции
+    Optional<WpProductEntity> findByIdWithDetails(@Param("id") Long id);
 
         Optional<WpProductEntity> findBySku(String sku);
 
@@ -39,7 +44,7 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
     List<WpProductEntity> findAllWithAddons();
 
 
-    WpProductEntity findFirstByOrderByIdDesc();
+    Optional<WpProductEntity> findFirstByOrderBySkuDesc();
 
 //    @Override
 //    @EntityGraph(attributePaths = {

@@ -3,6 +3,7 @@ package com.sateno_b.www.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
+import com.sateno_b.www.model.entity.CustomerEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.data.CourierContractDetails;
@@ -194,6 +195,8 @@ public class EcontService implements ShippingProvider {
         Map<String, Object> body = new HashMap<>();
         Map<String, Object> label =  new HashMap<>();
 
+        label.put("paySide", "receiver");
+
 //        SENDER
         Map<String, Object> senderClient = new HashMap<>();
         senderClient.put("name", contract.getClientName());
@@ -293,19 +296,20 @@ public class EcontService implements ShippingProvider {
             packingList.add(item);
 //            calculatedSum += (Long.parseLong(orderLineItem.getPrice().toString()) * orderLineItem.getQuantity());
         }
-        Map<String, Object> shippingPrice = new HashMap<>();
-        shippingPrice.put("inventoryNum", "SHIPPING-1");
-        shippingPrice.put("description", "Доставка");
-        shippingPrice.put("weight", 0.5);
-        shippingPrice.put("price", order.getCustomShippingTotal());
-        shippingPrice.put("count", 1);
-        packingList.add(shippingPrice);
+//        Map<String, Object> shippingPrice = new HashMap<>();
+//        shippingPrice.put("inventoryNum", "SHIPPING-1");
+//        shippingPrice.put("description", "Доставка");
+//        shippingPrice.put("weight", 0.5);
+//        shippingPrice.put("price", order.getCustomShippingTotal());
+//        shippingPrice.put("count", 1);
+//        packingList.add(shippingPrice);
         label.put("packingList", packingList);
 
 
         Map<String, Object> services = new HashMap<>();
 
-        services.put("cdAmount", Double.parseDouble(order.getTotalPriceFCoutier().toString()) + order.getCustomShippingTotal());
+//        services.put("cdAmount", Double.parseDouble(order.getTotalPriceFCoutier().toString()) + order.getCustomShippingTotal());
+        services.put("cdAmount", Double.parseDouble(order.getTotalPriceFCoutier().toString()));
         services.put("cdCurrency", order.getCurrency());
         services.put("cdType", "get"); // 'get' е стандартната стойност за събиране на сумата
         services.put("cdPayOptionsTemplate", "CD257894");
@@ -313,7 +317,7 @@ public class EcontService implements ShippingProvider {
         label.put("services", services);
 
 // 3. Други важни полета от спецификацията:
-        label.put("paymentReceiverMethod", "sender"); // cash Получателят плаща в брой
+        label.put("paymentReceiverMethod", "cash"); // cash Получателят плаща в брой / sender - магазин
         label.put("sendDate", LocalDate.now(ZoneId.of("Europe/Sofia")).toString());
         label.put("holidayDeliveryDay", "workday");
 
@@ -323,11 +327,20 @@ public class EcontService implements ShippingProvider {
 
         Map<String, Object> returnParams = new HashMap<>();
 //        returnParams.put("rejectAction", "return"); // Какво да се прави при отказ
-        returnParams.put("rejectOriginalParcelPaySide", "receiver"); // Кой плаща отиването
-        returnParams.put("rejectReturnParcelPaySide", "receiver");   // Кой плаща връщането
-        returnParams.put("rejectInstruction", "return");
+//        returnParams.put("rejectOriginalParcelPaySide", "receiver"); // Кой плаща отиването
+//        returnParams.put("rejectReturnParcelPaySide", "receiver");   // Кой плаща връщането
+//        returnParams.put("rejectInstruction", "return");
+//        returnParams.put("template", "test");
 // Можеш да добавиш и това от схемата, ако искаш автоматично връщане при непотърсена пратка
 //        returnParams.put("daysUntilReturn", 7);
+//                Map<String, Object> returnParams = new HashMap<>();
+//        returnParams.put("returnParcelDestination", "sender"); // къде да се върне
+        returnParams.put("returnParcelPaymentSide", "sender"); // кой плаща връщането
+////        returnParams.put("daysUntilReturn", 7); // след колко дни да се върне
+        returnParams.put("rejectAction", "return_to_sender"); // какво правим при отказ
+        returnParams.put("rejectOriginalParcelPaySide", "receiver");
+        returnParams.put("rejectReturnParcelPaySide", "receiver");
+        returnParams.put("template", "CD257894"); // ИМЕТО на шаблона, което си създал в e-Econt
 
 // 2. Опаковаме ги в обекта Instruction
         Map<String, Object> instruction = new HashMap<>();
@@ -336,7 +349,6 @@ public class EcontService implements ShippingProvider {
 
 // 3. Слагаме масива в лейбъла
         label.put("instructions", List.of(instruction));
-
 
         body.put("label", label);
         body.put("mode", "create");
@@ -882,7 +894,18 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
                         // Ако сме добавили нови записи в историята, записваме поръчката веднъж
                         if (isUpdated) {
                             // Можеш тук да обновиш и главния статус на поръчката спрямо shortDeliveryStatus
-//                            String currentShortStatus = (String) statusInfo.get("shortDeliveryStatus");
+                            String currentShortStatus = (String) statusInfo.get("shortDeliveryStatus");
+
+                            CustomerEntity customer = order.getCustomer();
+
+                            if ("Връщане на пратката".equalsIgnoreCase(currentShortStatus)) {
+                                order.setStatus(OrderStatus.CANCELLED);
+
+                            } else if ((customer.getFirstName()+" "+ customer.getLastName()).equalsIgnoreCase(currentShortStatus)) {
+                                order.setStatus(OrderStatus.COMPLETED);
+                            }
+
+
 //                            updateOrderMainStatus(order, currentShortStatus, statusInfo.get("deliveryTime"));
 
                             wpOrderRepository.save(order);

@@ -71,6 +71,7 @@ public class WpProductService {
 
 
     @Transactional
+    @CacheEvict(value = "productsList", allEntries = true)
     public void syncProductsToDB(Long siteId) {
         SiteEntity site = siteRepository.findById(siteId).orElseThrow();
 //        String auth = AuthTool.getAuth(site.getConsumerKey(), site.getConsumerSecret());
@@ -134,10 +135,16 @@ public class WpProductService {
     private void processSingleProduct(WooProductDto dto, SiteEntity site, LanguageEntity lang) {
 
 
-// 1. Намираме или създаваме Глобалния продукт по SKU
-        WpProductEntity product = wpProductRepository.findBySkuAndSite(dto.getSku(), site.getId())
-                .orElseGet(() -> wpProductRepository.save(new WpProductEntity()));
+    // 1. Намираме или създаваме Глобалния продукт по SKU
+//        WpProductEntity product = wpProductRepository.findBySkuAndSite(dto.getSku(), site.getId())
+//                .orElseGet(() -> wpProductRepository.save(new WpProductEntity()));
 
+        Optional<WpProductEntity> existingProduct = wpProductRepository.findBySkuAndSite(dto.getSku(), site.getId());
+        if (existingProduct.isPresent()) {
+            return;
+        }
+
+        WpProductEntity product = new WpProductEntity();
         // 2. Обновяваме Глобалните данни (технически)
         product.setStockQuantity(dto.getStock_quantity() == null? 0: dto.getStock_quantity());
         product.setWeight(dto.getWeight());
@@ -316,18 +323,30 @@ public class WpProductService {
 
                 // 3. СЪЩИНСКАТА ЧАСТ: Конфигурация за конкретния продукт и сайт
                 // Проверяваме дали вече имаме такава конфигурация в списъка на продукта
+//                WpProductAddonConfigEntity config = product.getAddonConfig().stream()
+//                        .filter(c -> c.getSite().getId().equals(site.getId()) &&
+//                                c.getAddonValue().getId().equals(valEntity.getId()))
+//                        .findFirst()
+//                        .orElseGet(() -> {
+//                            WpProductAddonConfigEntity newConfig = new WpProductAddonConfigEntity();
+//                            newConfig.setProduct(product);
+//                            newConfig.setAddonValue(valEntity);
+//                            newConfig.setSite(site);
+//                            product.getAddonConfig().add(newConfig); // Добавяме към списъка на продукта
+//                            return newConfig;
+//                        });
                 WpProductAddonConfigEntity config = product.getAddonConfig().stream()
-                        .filter(c -> c.getSite().getId().equals(site.getId()) &&
-                                c.getAddonValue().getId().equals(valEntity.getId()))
+                        .filter(c -> c.getAddonValue().getId().equals(valEntity.getId()))
                         .findFirst()
                         .orElseGet(() -> {
                             WpProductAddonConfigEntity newConfig = new WpProductAddonConfigEntity();
                             newConfig.setProduct(product);
                             newConfig.setAddonValue(valEntity);
-                            newConfig.setSite(site);
-                            product.getAddonConfig().add(newConfig); // Добавяме към списъка на продукта
+                            // Вече НЕ сетваме сайт тук!
+                            product.getAddonConfig().add(newConfig);
                             return newConfig;
                         });
+
 
                 config.setPriceModifier(parsePrice(optDto.getPrice()));
                 config.setActive(true);
@@ -351,28 +370,36 @@ public class WpProductService {
     }
 
     private String genSky() {
-        WpProductEntity lastProduct = wpProductRepository.findFirstByOrderByIdDesc();//        return wpProductRepository.findFirstByOrderByIdDesc().map;
-            String lastSku = lastProduct.getSku();
+        // 1. Вземаме продукта с най-високото SKU по азбучен ред
+        Optional<WpProductEntity> lastProductOpt = wpProductRepository.findFirstByOrderBySkuDesc();
+
+        if (lastProductOpt.isEmpty()) {
+            return "a1000"; // Начално SKU, ако базата е празна
+        }
+
+        WpProductEntity lastProduct = lastProductOpt.get();
+        String lastSku = lastProduct.getSku();
 
         try {
             // 2. Използваме Regex, за да разделим буквите от цифрите
-            // Намираме само цифрите в края на низа
+            // Намираме само цифрите
             String digits = lastSku.replaceAll("\\D+", "");
+            // Намираме префикса (буквите)
             String prefix = lastSku.replaceAll("\\d+", "");
 
             if (digits.isEmpty()) {
-                return lastSku + "1"; // Ако няма цифри, просто добавяме 1
+                return lastSku + "1";
             }
 
             // 3. Парсваме числото и добавяме 1
             long nextNumber = Long.parseLong(digits) + 1;
 
-            // 4. Сглобяваме обратно (напр. "A" + "1891")
+            // 4. Сглобяваме обратно
             return prefix + nextNumber;
 
         } catch (Exception e) {
-            // Fallback в случай на странен формат
-            return "a" + (lastProduct.getId() + 1000);
+            // Fallback: използваме ID-то само ако форматът на SKU е тотално счупен
+            return "a" + (lastProduct.getId() + 10000);
         }
     }
     @Transactional
@@ -394,8 +421,10 @@ public class WpProductService {
         entity.setSaleType(dto.getSaleType());
 
 //         BRAND -----
-        Optional<WpBrandEntity> brand = wpBrandRepository.findBySlug(dto.getBrand().getSlug());
-        if(brand.isPresent()) {entity.setBrand(brand.get());}
+        if(dto.getBrand() != null) {
+            Optional<WpBrandEntity> brand = wpBrandRepository.findBySlug(dto.getBrand().getSlug());
+            if(brand.isPresent()) {entity.setBrand(brand.get());}
+        }
 
 //        CATEGORY -----
         if(!dto.getCategories().isEmpty()) entity.getCategories().clear();
@@ -430,49 +459,49 @@ public class WpProductService {
             }
         }
 
-//      ADDONS
-// ADDONS - Синхронизация само по ID
         if (dto.getAddonConfigs() != null) {
             List<WpProductAddonConfigEntity> currentConfigs = entity.getAddonConfig();
 
-            // 1. Създаваме Set от ключове (SiteID + ValueID) от Angular
-            Set<String> incomingKeys = dto.getAddonConfigs().stream()
-                    .map(c -> c.getSite().getId() + "-" + c.getAddonValue().getId())
+            // Създаваме Set от ID-тата на адоните, които идват от Angular (за бърза проверка)
+            Set<Long> incomingValueIds = dto.getAddonConfigs().stream()
+                    .filter(a -> a.getAddonValue() != null)
+                    .map(a -> a.getAddonValue().getId())
                     .collect(Collectors.toSet());
 
-            // 2. ИЗТРИВАНЕ: Махаме всичко от базата, което липсва в новия списък
-            currentConfigs.removeIf(existing -> {
-                String key = existing.getSite().getId() + "-" + existing.getAddonValue().getId();
-                return !incomingKeys.contains(key);
-            });
+            // А) ИЗТРИВАНЕ: Махаме тези, които вече не присъстват в новия списък
+            // Използваме removeIf, за да изтрием обектите от списъка на entity-то
+            currentConfigs.removeIf(existing -> !incomingValueIds.contains(existing.getAddonValue().getId()));
 
-            // 3. ДОБАВЯНЕ / ОБНОВЯВАНЕ
+            // Б) ДОБАВЯНЕ / ОБНОВЯВАНЕ
             for (WpProductAddonConfigDto aDto : dto.getAddonConfigs()) {
-                String key = aDto.getSite().getId() + "-" + aDto.getAddonValue().getId();
+                if (aDto.getAddonValue() == null) continue;
 
-                // Проверяваме дали тази връзка вече съществува
+                Long valId = aDto.getAddonValue().getId();
+
+                // Проверяваме дали този адон вече съществува в текущия списък
                 Optional<WpProductAddonConfigEntity> existingOpt = currentConfigs.stream()
-                        .filter(e -> (e.getSite().getId() + "-" + e.getAddonValue().getId()).equals(key))
+                        .filter(e -> e.getAddonValue().getId().equals(valId))
                         .findFirst();
 
                 if (existingOpt.isPresent()) {
-                    // Вече съществува -> само обновяваме цената
+                    // Вече го има -> само обновяваме цената
                     existingOpt.get().setPriceModifier(aDto.getPriceModifier());
+                    // Ако имаш поле active, можеш и него: existingOpt.get().setActive(true);
                 } else {
-                    // НОВ ЗАПИС: Трябват ни само ID-тата
+                    // НОВ ЗАПИС: Трябва да го създадем и добавим към колекцията
                     WpProductAddonConfigEntity newConfig = new WpProductAddonConfigEntity();
-                    newConfig.setProduct(entity);
+                    newConfig.setProduct(entity); // Свързваме с текущия продукт
+                    newConfig.setAddonValue(wpAddonValueRepository.getReferenceById(valId)); // Само референция към стойността
                     newConfig.setPriceModifier(aDto.getPriceModifier());
                     newConfig.setActive(true);
 
-                    // Тук е важната част: ползваме само ID-тата за връзка
-                    newConfig.setSite(siteRepository.getReferenceById(aDto.getSite().getId()));
-                    newConfig.setAddonValue(wpAddonValueRepository.getReferenceById(aDto.getAddonValue().getId()));
-
+                    // Добавяме го в списъка
                     currentConfigs.add(newConfig);
                 }
             }
-        } else {
+        }
+        else {
+            // Ако от Angular дойде null/празно, чистим всичко
             entity.getAddonConfig().clear();
         }
 
@@ -494,9 +523,6 @@ public class WpProductService {
             }
         }
 
-        if(entity.getSku() == null || entity.getSku().isEmpty()) {
-            entity.setSku("a9999");
-        }
         entity = wpProductRepository.save(entity);
 
 
@@ -535,7 +561,7 @@ public class WpProductService {
             }
         }
         try {
-            wpProductAsyncService.updateProductOnSites(entity, null);
+            wpProductAsyncService.updateProductOnSites(entity, dto.getLastEditedSiteId());
         } catch (Exception e) {}
 
         return modelMapper.map(entity, WpProductDto.class);

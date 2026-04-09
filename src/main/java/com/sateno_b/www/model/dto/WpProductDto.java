@@ -33,4 +33,5 @@ public class WpProductDto {
     private ProductSaleType saleType;
     private String sku;
 //    private ProductUnit unit;
+    private Long lastEditedSiteId;
 }
