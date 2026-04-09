@@ -384,7 +384,7 @@ public class EcontService implements ShippingProvider {
 
             // Примерно извикване към Еконт API (обикновено /services/Shipments/LabelService.deleteLabels)
             Map<String, Object> response = postToEcont("/services/Shipments/LabelService.deleteLabels.json", requestBody, settings.getUsername(), settings.getPassword());
-            System.out.println(response);
+//            System.out.println(response);
             // Проверка за грешки в самия отговор (Еконт често връщат грешките вътре в JSON-а)
             if (response.containsKey("error") || response.containsKey("errors")) {
                 String errorMsg = response.get("error") != null ? response.get("error").toString() : "Грешка при анулиране в Еконт";

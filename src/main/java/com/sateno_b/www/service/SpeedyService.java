@@ -231,7 +231,7 @@ public class SpeedyService implements ShippingProvider {
 
 
         Map<String, Object> payment = new HashMap<>();
-        payment.put("courierServicePayer", "SENDER");  // RECIPIENT
+        payment.put("courierServicePayer", "RECIPIENT");  // RECIPIENT/SENDER
         payment.put("declaredValuePayer", "RECIPIENT");
         body.put("payment", payment);
 
@@ -243,40 +243,51 @@ public class SpeedyService implements ShippingProvider {
 
         if(createLabelDto.getFiscalReceipt() == true){
         List<Map<String, Object>> fiscalReceiptItems = new ArrayList<>();
-            double checkSum = 0.0;
+//            double checkSum = 0.0;
+            int count = 1;
+            boolean isLast = false;
             for (OrderLineItem item : order.getOrderLine()) {
+
+                if(order.getOrderLine().size() == count){
+                    isLast = true;
+                }
 
                 double unitPrice = (item.getTotalPrice() != null) ? Double.parseDouble(item.getTotalPrice().toString()) / item.getQuantity() : 0.0;
                 if(unitPrice <= 0) continue;
 
                 int quantity = item.getQuantity();
 
-                double lineTotal = unitPrice * quantity;
+//                double lineTotal = unitPrice * quantity;
 
                 Map<String, Object> fiscalItem = new HashMap<>();
                 String name = item.getProductName() != null ? item.getProductName() : "Продукт";
 
                 fiscalItem.put("description", name.length() > 50 ? name.substring(0, 47) + "..." : name);
                 fiscalItem.put("vatGroup", "А");
-                fiscalItem.put("amount", item.getTotalPrice());
-                fiscalItem.put("amountWithVat", item.getTotalPrice());
+                if(isLast){
+                    fiscalItem.put("amount", (Double.parseDouble(item.getTotalPrice().toString()) + order.getCustomShippingTotal()) - createLabelDto.getRealShipmentPrice());
+                    fiscalItem.put("amountWithVat", (Double.parseDouble(item.getTotalPrice().toString()) + order.getCustomShippingTotal()) - createLabelDto.getRealShipmentPrice());
+                } else {
+                    fiscalItem.put("amount", item.getTotalPrice());
+                    fiscalItem.put("amountWithVat", item.getTotalPrice());
+                }
                 fiscalItem.put("quantity", (double) quantity);
-
                 fiscalReceiptItems.add(fiscalItem);
-                checkSum += lineTotal;
+//                checkSum += lineTotal;
+                count ++;
             }
 
-            if(order.getCustomShippingTotal() > 0) {
-                Map<String, Object> shippingPrice = new HashMap<>();
-                String name = "Доставка";
-                shippingPrice.put("description", name);
-                shippingPrice.put("vatGroup", "А");
-                shippingPrice.put("amount", order.getCustomShippingTotal());
-                shippingPrice.put("amountWithVat", order.getCustomShippingTotal());
-                shippingPrice.put("quantity", 1.0);
-                fiscalReceiptItems.add(shippingPrice);
-                checkSum += order.getCustomShippingTotal();
-            }
+//            if(order.getCustomShippingTotal() > 0) {
+//                Map<String, Object> shippingPrice = new HashMap<>();
+//                String name = "Доставка";
+//                shippingPrice.put("description", name);
+//                shippingPrice.put("vatGroup", "А");
+//                shippingPrice.put("amount", order.getCustomShippingTotal());
+//                shippingPrice.put("amountWithVat", order.getCustomShippingTotal());
+//                shippingPrice.put("quantity", 1.0);
+//                fiscalReceiptItems.add(shippingPrice);
+//                checkSum += order.getCustomShippingTotal();
+//            }
 
 
 
@@ -286,7 +297,8 @@ public class SpeedyService implements ShippingProvider {
         // 3. НАЛОЖЕН ПЛАТЕЖ (Cash on Delivery)
         Map<String, Object> additionalServices = new HashMap<>();
 
-        cod.put("amount", (Double.parseDouble(order.getTotalPriceFCoutier().toString()) + order.getCustomShippingTotal())); // Сумата за събиране
+        cod.put("amount", (Double.parseDouble(order.getTotalPriceFCoutier().toString()) + order.getCustomShippingTotal()) - createLabelDto.getRealShipmentPrice()); // Сумата за събиране
+//        cod.put("amount", (Double.parseDouble(order.getTotalPriceFCoutier().toString()))); // Сумата за събиране
         cod.put("currency", order.getCurrency());
         cod.put("processingType", "CASH");
 

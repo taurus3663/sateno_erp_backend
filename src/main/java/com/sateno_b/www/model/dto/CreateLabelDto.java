@@ -23,6 +23,7 @@ public class CreateLabelDto {
     private String street;
     private BoxNowPacketSize boxNowPacketSize;
     private Boolean fiscalReceipt;
+    private Double realShipmentPrice;
 
     @Data
     public static class Office {

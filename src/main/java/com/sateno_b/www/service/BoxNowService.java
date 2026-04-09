@@ -114,7 +114,7 @@ public class BoxNowService implements ShippingProvider {
 
         Map<String, Object> response = postToBoxNow("/api/v1/delivery-requests", body,
                 courierSettingsEntity.getApiKey(), courierSettingsEntity.getApiSecret());
-        System.out.println(response);
+//        System.out.println(response);
         BoxNowDeliveryResponse boxNowDeliveryResponse = getBoxNowDeliveryResponse(response);
 
         order.setParcelIds(boxNowDeliveryResponse.getParcels().stream().map(BoxNowDeliveryResponse.Parcel::getId).toList());

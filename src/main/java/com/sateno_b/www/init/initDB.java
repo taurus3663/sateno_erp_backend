@@ -95,6 +95,6 @@ public class initDB implements CommandLineRunner {
     private void callAi() {
 //        System.out.println("TEST11");
         String tr = chatGptService.translateText("КАКВО ПРАВИШ?", "преведи го на английски");
-        System.out.println(tr);
+//        System.out.println(tr);
     }
 }

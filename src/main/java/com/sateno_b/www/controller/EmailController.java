@@ -42,7 +42,7 @@ public class EmailController implements BaseController<EmailDto, Long> {
             message = e.getMessage();
         }
 
-        System.out.println(message);
+//        System.out.println(message);
 
 
 
@@ -64,7 +64,7 @@ public class EmailController implements BaseController<EmailDto, Long> {
             message = e.getMessage();
         }
 
-        System.out.println(message);
+//        System.out.println(message);
 
 
 
@@ -142,7 +142,7 @@ public class EmailController implements BaseController<EmailDto, Long> {
 
     @GetMapping("/seen/{key}")
     public byte[] seen(@PathVariable("key") String key) {
-        System.out.println("SEEN " + key);
+//        System.out.println("SEEN " + key);
         key = key.replaceAll("^\"|\"$", "");
         Optional<EmailLogEntity> byPrivateSeenKey = emailLogRepository.findByPrivateSeenKey(key);
         if(byPrivateSeenKey.isPresent()) {

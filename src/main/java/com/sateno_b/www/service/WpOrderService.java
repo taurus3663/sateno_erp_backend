@@ -937,7 +937,7 @@ public class WpOrderService {
                 }
             }
             else if(target == CourierShipmentType.LOCKER && courierSettings.isLocker()) {
-                System.out.println("1111111");
+//                System.out.println("1111111");
                 if(courierSettings.isLockerFreeShippingPriceMaxBol() && totalPrice.get() >= courierSettings.getLockerFreeShippingPriceMax()) {
                     tPrice.set(0.0);
                 } else if(courierSettings.isLockerAutoShippingPrice()) {
@@ -945,7 +945,7 @@ public class WpOrderService {
                 } else {
                     tPrice.set(courierSettings.getLockerFixedShippingPrice() != null?  courierSettings.getLockerFixedShippingPrice() : 0.0);
                 }
-                System.out.println("111111122");
+//                System.out.println("111111122");
             }
             else if(target == CourierShipmentType.ADDRESS && courierSettings.isAddress()) {
                 if(courierSettings.isAddressFreeShippingPriceMaxBol() && totalPrice.get() >= courierSettings.getAddressFreeShippingPriceMax()) {

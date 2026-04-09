@@ -59,7 +59,7 @@ public class WpOrderController {
 
    @GetMapping("/detail/{id}")
    public ResponseEntity<WpOrderDto> getOne(@PathVariable Long id) {
-       System.out.println();
+//       System.out.println();
         WpOrderDto id1 = wpOrderService.getById(id);
 
         return ResponseEntity.ok(id1);

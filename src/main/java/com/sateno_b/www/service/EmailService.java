@@ -344,7 +344,7 @@ public class EmailService {
 
         // Използвай SMTP флаговете!
         TransportStrategy strategy = (!cfg.isSslSmtp()) ? TransportStrategy.SMTP_TLS : TransportStrategy.SMTP;
-        System.out.println(cfg.getHostSmtp());
+//        System.out.println(cfg.getHostSmtp());
         try {
             Mailer mailer = MailerBuilder
                     .withSMTPServer(
@@ -443,7 +443,7 @@ public class EmailService {
 
     private void processIncomingEmail(MimeMessage msg, EmailEntity cfg) {
         try {
-            System.out.println(msg.toString());
+//            System.out.println(msg.toString());
             // 1. Извличане на данни от писмото
             String subject = msg.getSubject();
             String senderEmail = extractEmailAddress(msg.getFrom()[0].toString());
