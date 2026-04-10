@@ -3,6 +3,7 @@ package com.sateno_b.www.service;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.enums.ProductSaleType;
 import com.sateno_b.www.model.repository.SiteRepository;
+import com.sateno_b.www.model.repository.WpCategorySiteMappingRepository;
 import com.sateno_b.www.model.repository.WpProductImageSiteMappingRepository;
 import com.sateno_b.www.model.repository.WpProductRepository;
 import com.sateno_b.www.shared.ImageToWordPress;
@@ -28,6 +29,7 @@ public class WpProductAsyncService {
     private final ImageToWordPress imageToWordPress;
     private final WpProductRepository wpProductRepository;
     private final WpProductImageSiteMappingRepository wpProductImageSiteMappingRepository;
+    private final WpCategorySiteMappingRepository wpCategorySiteMappingRepository;
 
 
     @Transactional
@@ -129,30 +131,76 @@ public class WpProductAsyncService {
                 }
 
 //                CATEGORIES
-                List<Map<String, Object>> categoriesList = new ArrayList<>();
-                for (WpCategoryEntity category : product.getCategories()) {
-                    var searchResponseCategory = restClient.get()
-                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories?slug=" + category.getSlug())
-                            .header("Authorization", "Basic " + auth)
-                            .retrieve()
-                            .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
-
-                    if (searchResponseCategory != null && !searchResponseCategory.isEmpty()) {
-                        Long wpCategoryId = Long.valueOf(searchResponseCategory.get(0).get("id").toString());
-
-                        // 2. За всяка категория създаваме НОВ обект Map
-                        Map<String, Object> categoryItem = new HashMap<>();
-                        categoryItem.put("id", wpCategoryId);
-
-                        // 3. Добавяме го в списъка
-                        categoriesList.add(categoryItem);
-                    }
-                }
-                if (!categoriesList.isEmpty()) {
-                    updateBody.put("categories", categoriesList);
-                }
+//                List<Map<String, Object>> categoriesList = new ArrayList<>();
+//                for (WpCategoryEntity category : product.getCategories()) {
+//                    var searchResponseCategory = restClient.get()
+//                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories?slug=" + category.getSlug())
+//                            .header("Authorization", "Basic " + auth)
+//                            .retrieve()
+//                            .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+//
+//                    if (searchResponseCategory != null && !searchResponseCategory.isEmpty()) {
+//                        Long wpCategoryId = Long.valueOf(searchResponseCategory.get(0).get("id").toString());
+//
+//                        // 2. За всяка категория създаваме НОВ обект Map
+//                        Map<String, Object> categoryItem = new HashMap<>();
+//                        categoryItem.put("id", wpCategoryId);
+//
+//                        // 3. Добавяме го в списъка
+//                        categoriesList.add(categoryItem);
+//                    }
+//                }
+//                if (!categoriesList.isEmpty()) {
+//                    updateBody.put("categories", categoriesList);
+//                }
 
 //                IMAGES
+
+                //                CATEGORIES
+                List<Map<String, Object>> categoriesList = new ArrayList<>();
+                if (product.getCategories() != null) {
+                    for (WpCategoryEntity category : product.getCategories()) {
+
+                        // 1. Търсим мапинга в нашата база данни за този конкретен сайт
+                        // Използваме репозиторито, което вече трябва да имаш инжектирано
+                        Optional<WpCategorySiteMappingEntity> mappingOpt =
+                                wpCategorySiteMappingRepository
+                                .findByWpCategoryAndSite(category, site);
+
+                        if (mappingOpt.isPresent()) {
+                            // Ако имаме запис, вземаме директно wpId
+                            Long wpCategoryId = mappingOpt.get().getWpId();
+
+                            Map<String, Object> categoryItem = new HashMap<>();
+                            categoryItem.put("id", wpCategoryId);
+                            categoriesList.add(categoryItem);
+                        } else {
+                            // 2. ФАЛБЕК: Ако по някаква причина нямаме мапинг, търсим по slug в API-то
+                            // (Това е твоята стара логика, но като резервен вариант)
+                            log.warn("Няма мапинг за категория {} в сайт {}. Търсене чрез API...", category.getSlug(), site.getUrl());
+
+                            var searchResponseCategory = restClient.get()
+                                    .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories?slug=" + category.getSlug())
+                                    .header("Authorization", "Basic " + auth)
+                                    .retrieve()
+                                    .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+
+                            if (searchResponseCategory != null && !searchResponseCategory.isEmpty()) {
+                                Long wpCategoryId = Long.valueOf(searchResponseCategory.get(0).get("id").toString());
+                                Map<String, Object> categoryItem = new HashMap<>();
+                                categoryItem.put("id", wpCategoryId);
+                                categoriesList.add(categoryItem);
+
+                                // Опционално: Създай мапинг тук, за да не търсиш следващия път
+                            }
+                        }
+                    }
+                }
+
+                // Винаги подаваме списъка (дори и празен, ако искаме да изчистим категориите в WP)
+                updateBody.put("categories", categoriesList);
+
+
                 List<Map<String, Object>> imageList = new ArrayList<>();
                 if (product.getImages() != null) {
                     for (WpProductImageEntity imgEntity : product.getImages()) {

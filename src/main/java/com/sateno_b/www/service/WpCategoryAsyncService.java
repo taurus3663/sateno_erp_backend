@@ -44,7 +44,7 @@ public class WpCategoryAsyncService {
         for (SiteEntity site : siteList) {
             try{
                 LanguageEntity siteLanguage = site.getLanguage();
-                String targetLanguageName = siteLanguage.getName();
+//                String targetLanguageName = siteLanguage.getName();
 
                 String translatedName = null;
                 if(siteLanguage.equals(baseLanguage)){
@@ -59,8 +59,9 @@ public class WpCategoryAsyncService {
 
                     if(translatedName == null){
                         String Instruction = String.format("Превод от %s към %s", baseLanguage.getName(), siteLanguage.getName());
-                        translatedName = chatGptService.translateText(baseLanguage.getName(), Instruction);
-
+                        System.out.println(Instruction);
+                        translatedName = chatGptService.translateText(baseTranslation.getName(), Instruction);
+                        System.out.println(translatedName);
                         WpCategoryTranslationEntity newTranslation = new WpCategoryTranslationEntity();
                         newTranslation.setName(translatedName);
                         newTranslation.setLanguage(siteLanguage);
@@ -70,11 +71,26 @@ public class WpCategoryAsyncService {
                     }
                 }
 
+                Long wpParentId = 0L; // 0 в WooCommerce означава "Главна категория"
+                if (wpCategoryEntity.getParent() != null) {
+                    // Търсим в мапинг таблицата какъв е ID-то на родителя В ТОЗИ КОНКРЕТЕН САЙТ
+                    wpParentId = wpCategorySiteMappingRepository
+                            .findByWpCategoryAndSite(wpCategoryEntity.getParent(), site)
+                            .map(WpCategorySiteMappingEntity::getWpId)
+                            .orElse(0L);
+
+                    // ВАЖНО: Ако родителят още не е синхронизиран към този сайт, wpParentId ще бъде 0.
+                    // Добре е родителските категории да се създават първи.
+                }
+
                 String auth = Base64.getEncoder().encodeToString(
                         (site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
 
                 Map<String, Object> body = new HashMap<>();
                 body.put("name", translatedName);
+                if (wpParentId > 0) {
+                    body.put("parent", wpParentId);
+                }
 
                 Map<String, Object> response = restClient.post()
                         .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories")
@@ -83,6 +99,7 @@ public class WpCategoryAsyncService {
                         .retrieve()
                         .body(new org.springframework.core.ParameterizedTypeReference<>() {});
 
+                System.out.println(response);
                 if (response != null && response.containsKey("id")) {
                     WpCategorySiteMappingEntity mapping = new WpCategorySiteMappingEntity();
                     mapping.setWpCategory(wpCategoryEntity);

@@ -122,7 +122,7 @@ public class WpCategoryController {
 
     @PostMapping("/update/translation")
     public ResponseEntity<Void> updateTranslation(@RequestBody WpCategoryTranslationRequest request) {
-        wpCategoryService.updateCategoryTranslation(request);
+        wpCategoryService.saveOrUpdateCategory(request);
         return ResponseEntity.ok().build();
     }
 
