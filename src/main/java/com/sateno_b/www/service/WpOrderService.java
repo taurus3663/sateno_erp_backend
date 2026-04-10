@@ -7,12 +7,14 @@ import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.data.PaoIdValue;
 import com.sateno_b.www.model.entity.data.PaoIdValueValue;
+import com.sateno_b.www.model.entity.data.WpOrderCourierHistory;
 import com.sateno_b.www.model.enums.*;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.CourierParser;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -714,10 +716,58 @@ public class WpOrderService {
                 predicates.add(cb.or(idInternal, wpId));
             }
 
-            query.orderBy(
-                    cb.desc(root.get("wpOrderTime")),
-                    cb.desc(root.get("id"))
-            );
+
+            if(status != null &&  OrderStatus.fromValue(status) == OrderStatus.SENT) {
+                // 1. Извличаме eventTime от първия елемент на JSON масива
+                Expression<String> firstEventTime = cb.function("jsonb_extract_path_text", String.class,
+                        root.get("courierHistory"),
+                        cb.literal("0"),
+                        cb.literal("eventTime")
+                );
+
+                // 2. Сортираме
+                query.orderBy(
+                        // ПЪРВИ ПРИОРИТЕТ: Наличие на товарителница (1 за има, 0 за няма)
+                        // Така null стойностите отиват най-отзад автоматично
+                        cb.desc(cb.selectCase()
+                                .when(cb.isNotNull(root.get("wayBillShipmentNumber")), 1)
+                                .otherwise(0)),
+
+                        // ВТОРИ ПРИОРИТЕТ: Времето от куриерската история (DESC)
+                        cb.desc(firstEventTime),
+
+                        // ТРЕТИ ПРИОРИТЕТ: ID за консистентност
+                        cb.desc(root.get("id"))
+                );
+            }
+            else if(status != null && OrderStatus.fromValue(status) == OrderStatus.COMPLETED) {
+                // 1. Извличаме eventTime от ПОСЛЕДНИЯ елемент на JSON масива (индекс -1)
+                Expression<String> lastEventTime = cb.function("jsonb_extract_path_text", String.class,
+                        root.get("courierHistory"),
+                        cb.literal("-1"), // В Postgres "-1" означава последния елемент
+                        cb.literal("eventTime")
+                );
+
+                // 2. Сортираме
+                query.orderBy(
+                        // ПЪРВИ ПРИОРИТЕТ: Наличие на товарителница
+                        cb.desc(cb.selectCase()
+                                .when(cb.isNotNull(root.get("wayBillShipmentNumber")), 1)
+                                .otherwise(0)),
+
+                        // ВТОРИ ПРИОРИТЕТ: Времето на последното събитие (дата на доставяне)
+                        cb.desc(lastEventTime),
+
+                        // ТРЕТИ ПРИОРИТЕТ: ID за консистентност
+                        cb.desc(root.get("id"))
+                );
+            }
+            else {
+                query.orderBy(
+                        cb.desc(root.get("wpOrderTime")),
+                        cb.desc(root.get("id"))
+                );
+            }
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };

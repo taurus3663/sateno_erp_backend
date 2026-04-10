@@ -818,7 +818,7 @@ public class WpProductService {
 //                syncSalePriceBySku(site, wpProductEntity);
                     translateProductInfos(wpProductEntity, site);
                     count.getAndIncrement();
-                    System.out.println(count.get());
+//                    System.out.println(count.get());
                 }
                 catch (Exception e) {
                     // Ако един продукт гръмне, записваме грешката и преминаваме на следващия
@@ -1050,7 +1050,7 @@ public class WpProductService {
 //            }
 
 
-            System.out.println(updateBody.toString());
+//            System.out.println(updateBody.toString());
             restClient.patch()
                     .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
                     .header("Authorization", "Basic " + auth)
