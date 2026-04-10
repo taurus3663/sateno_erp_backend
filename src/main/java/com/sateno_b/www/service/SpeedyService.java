@@ -862,12 +862,16 @@ public class SpeedyService implements ShippingProvider {
                                 isUpdated = true;
                                 log.info("Order #{} marked as COMPLETED based on Speedy status: {}", order.getId(), desc);
                             }
+                            else if(desc.contains("Връщане към подателя")) {
+                                order.setStatus(OrderStatus.CANCELLED);
+                                isUpdated = true;
+                            }
                         }
 
                         if (isUpdated) {
+                            SiteEntity site = order.getSite();
                             wpOrderRepository.save(order);
-                            // Обновяваме статуса и в самия сайт (WooCommerce)
-                            wpOrderAsyncService.updateOrderOnSites(order, null);
+                            wpOrderAsyncService.updateOrderOnSites(order, site.getId());
                         }
                     });
         }

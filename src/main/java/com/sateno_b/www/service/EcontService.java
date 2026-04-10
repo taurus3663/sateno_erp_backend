@@ -803,6 +803,7 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
     @Scheduled(fixedRate = 10 * 60 * 1000)
     @Transactional
     protected void sheckShipments() {
+//        System.out.println("STARTED TO SCAN EKONT");
         List<WpOrderEntity> allByCourierTypeAndStatusSent = wpOrderRepository.findAllByCourierTypeAndStatus(CourierType.ECONT, OrderStatus.SENT);
 
         Map<Long, List<WpOrderEntity>> ordersBySite = allByCourierTypeAndStatusSent.stream()
@@ -890,26 +891,28 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
                                 isUpdated = true;
                             }
                         }
+                        String currentShortStatus = (String) statusInfo.get("shortDeliveryStatus");
+                        CustomerEntity customer = order.getCustomer();
+
+                        if ("Връщане на пратката".equalsIgnoreCase(currentShortStatus)) {
+                            order.setStatus(OrderStatus.CANCELLED);
+                            isUpdated = true;
+
+                        } else {
+                            String firstNameLC = customer.getFirstName().toLowerCase().trim();
+                            String lastNameLC = customer.getLastName().toLowerCase().trim();
+                            String currentShortStatusLC = currentShortStatus.toLowerCase();
+                            if ((currentShortStatusLC.contains(firstNameLC) && currentShortStatusLC.contains(lastNameLC)) || currentShortStatusLC.contains("доставена")) {
+                                order.setStatus(OrderStatus.COMPLETED);
+                                isUpdated = true;
+                            }
+                        }
 
                         // Ако сме добавили нови записи в историята, записваме поръчката веднъж
                         if (isUpdated) {
-                            // Можеш тук да обновиш и главния статус на поръчката спрямо shortDeliveryStatus
-                            String currentShortStatus = (String) statusInfo.get("shortDeliveryStatus");
-
-                            CustomerEntity customer = order.getCustomer();
-
-                            if ("Връщане на пратката".equalsIgnoreCase(currentShortStatus)) {
-                                order.setStatus(OrderStatus.CANCELLED);
-
-                            } else if ((customer.getFirstName()+" "+ customer.getLastName()).equalsIgnoreCase(currentShortStatus)) {
-                                order.setStatus(OrderStatus.COMPLETED);
-                            }
-
-
-//                            updateOrderMainStatus(order, currentShortStatus, statusInfo.get("deliveryTime"));
-
+                            SiteEntity site = order.getSite();
                             wpOrderRepository.save(order);
-                            wpOrderAsyncService.updateOrderOnSites(order, null);
+                            wpOrderAsyncService.updateOrderOnSites(order, site.getId());
                         }
                     });
         }

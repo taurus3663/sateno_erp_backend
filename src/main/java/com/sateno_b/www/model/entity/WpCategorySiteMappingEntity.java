@@ -23,4 +23,7 @@ public class WpCategorySiteMappingEntity extends BaseEntity {
 
     @Column
     private Long wpId;
+
+    @Column
+    private String slug;
 }

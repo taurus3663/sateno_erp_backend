@@ -14,10 +14,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Component
 @RequiredArgsConstructor
@@ -33,7 +30,13 @@ public class WpOrderAsyncService {
     public void updateOrderOnSites(WpOrderEntity order, Long sourceSiteId) {
 
 //        order = wpOrderRepository.findById(order.getId()).orElse(null);
-        List<SiteEntity> siteList = siteRepository.findAll();
+        List<SiteEntity> siteList = new ArrayList<>();
+        if(sourceSiteId != null){
+            Optional<SiteEntity> byId = siteRepository.findById(sourceSiteId);
+            byId.ifPresent(siteList::add);
+        } else {
+            siteList.addAll(siteRepository.findAll());
+        }
 
         for (SiteEntity site : siteList) {
 //            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;

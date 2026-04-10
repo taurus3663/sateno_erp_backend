@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.entity;
 
+import com.sateno_b.www.model.listeners.WpCategoryEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.BatchSize;
@@ -7,6 +8,7 @@ import org.hibernate.annotations.BatchSize;
 import java.util.ArrayList;
 import java.util.List;
 
+@EntityListeners(WpCategoryEntityListener.class)
 @EqualsAndHashCode(callSuper = true)
 @Data
 @AllArgsConstructor
@@ -32,7 +34,13 @@ public class WpCategoryEntity extends BaseEntity {
     @JoinColumn(name = "wp_category_id")
     private List<WpCategoryTranslationEntity> translations = new ArrayList<>();
 
-
-
-
+//    @Transient WpCategoryEntity snapshot;
+//
+//    @PostLoad
+//    public void postLoad() {
+//        if (snapshot == null) {
+//            snapshot = new WpCategoryEntity();
+//        }
+//        snapshot
+//    }
 }
