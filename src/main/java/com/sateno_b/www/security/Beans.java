@@ -6,6 +6,7 @@ import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -16,6 +17,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
+import java.util.concurrent.Executor;
 
 @Configuration
 @RequiredArgsConstructor
@@ -90,5 +92,19 @@ public class Beans {
         return RestClient.builder()
                 .baseUrl("") // Може да остане празно, понеже взимаме URL от базата
                 .build();
+    }
+
+    @Bean(name = "taskExecutor")
+    public Executor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        // Колко нишки да работят постоянно (напр. 5 продукта едновременно)
+        executor.setCorePoolSize(10);
+        // Максимален брой нишки (напр. 10)
+        executor.setMaxPoolSize(11);
+        // Колко задачи да чакат на опашка, преди да почнат да се отхвърлят
+        executor.setQueueCapacity(10000);
+        executor.setThreadNamePrefix("WooSync-");
+        executor.initialize();
+        return executor;
     }
 }

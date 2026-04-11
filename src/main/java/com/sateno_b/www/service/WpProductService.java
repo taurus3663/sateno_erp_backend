@@ -7,7 +7,6 @@ import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.enums.ProductSaleType;
-import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.SlugTool;
@@ -34,7 +33,6 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -112,13 +110,97 @@ public class WpProductService {
 
         List<WpProductEntity> productList = wpProductRepository.findAll();
         ExecutorService executor = Executors.newFixedThreadPool(10);
-
+        AtomicInteger count = new AtomicInteger();
         for (WpProductEntity product : productList) {
-            
+//            executor.submit(() -> {
+                count.getAndIncrement();
+               try {
+//                    clearAllProductsFromSite(site);
+                   wpProductAsyncService.updateProductOnSites(product, siteId);
+                   System.out.println(count.get());
+                   log.info("Успешно създаден нов продукт с SKU {} в сайт {}", product.getSku(), site.getUrl());
+               } catch (Exception e) {
+                   log.error("Критична грешка при масова синхронизация на SKU {}: {}", product.getSku(), e.getMessage());
+               }
+//            });
+        }
+//        executor.shutdown();
+    }
+
+
+    private List<Map<String, Object>> generateWooAddons(WpProductEntity product, SiteEntity site) {
+        List<Map<String, Object>> wooAddons = new ArrayList<>();
+
+        if (product.getAddonConfig() == null || product.getAddonConfig().isEmpty()) {
+            return wooAddons;
         }
 
+        // 1. Сортиране и Групиране
+        List<WpProductAddonConfigEntity> sortedConfigs = product.getAddonConfig().stream()
+                .sorted(Comparator.comparing(BaseEntity::getId))
+                .collect(Collectors.toList());
 
+        Map<String, List<WpProductAddonConfigEntity>> groupedAddons = new LinkedHashMap<>();
 
+        for (WpProductAddonConfigEntity conf : sortedConfigs) {
+            WpAddonEntity group = conf.getAddonValue().getGroups().get(0);
+
+            // Превод на името на групата (напр. "Размер")
+            String groupName = group.getTranslations().stream()
+                    .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
+                    .map(WpAddonTranslationEntity::getName)
+                    .findFirst()
+                    .orElseGet(() -> group.getTranslations().stream()
+                            .filter(t -> t.getLanguage().getCode().equals("bg"))
+                            .map(WpAddonTranslationEntity::getName)
+                            .findFirst()
+                            .orElse(group.getSlug()));
+
+            groupedAddons.computeIfAbsent(groupName, k -> new ArrayList<>()).add(conf);
+        }
+
+        // 2. Генериране на JSON структурата
+        int groupPosition = 0;
+        for (Map.Entry<String, List<WpProductAddonConfigEntity>> entry : groupedAddons.entrySet()) {
+            Map<String, Object> addonGroupMap = new HashMap<>();
+            addonGroupMap.put("name", entry.getKey());
+            addonGroupMap.put("type", "multiple_choice");
+            addonGroupMap.put("display", "radiobutton");
+            addonGroupMap.put("position", groupPosition++);
+            addonGroupMap.put("required", 1);
+            addonGroupMap.put("title_format", "label");
+            addonGroupMap.put("adjust_price", 1);
+
+            List<Map<String, Object>> options = new ArrayList<>();
+            int optionPosition = 0;
+
+            for (WpProductAddonConfigEntity config : entry.getValue()) {
+                // Превод на етикета (напр. "XL")
+                String label = config.getAddonValue().getTranslations().stream()
+                        .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
+                        .map(WpAddonValueTranslationEntity::getLabel)
+                        .findFirst()
+                        .orElseGet(() -> config.getAddonValue().getTranslations().stream()
+                                .filter(t -> t.getLanguage().getCode().equals("bg"))
+                                .map(WpAddonValueTranslationEntity::getLabel)
+                                .findFirst()
+                                .orElse(config.getAddonValue().getSlug()));
+
+                Map<String, Object> option = new HashMap<>();
+                option.put("label", label);
+                option.put("price", config.getPriceModifier().compareTo(BigDecimal.ZERO) > 0
+                        ? config.getPriceModifier().toString() : "");
+                option.put("price_type", "quantity_based");
+                option.put("position", optionPosition++);
+                option.put("image", "");
+                option.put("visibility", 1);
+                options.add(option);
+            }
+
+            addonGroupMap.put("options", options);
+            wooAddons.add(addonGroupMap);
+        }
+        return wooAddons;
     }
 
     private List<WooProductDto> fetchAllProducts(SiteEntity site, String auth) {
@@ -579,8 +661,11 @@ public class WpProductService {
             }
         }
         try {
+            System.out.println(dto.getLastEditedSiteId());
             wpProductAsyncService.updateProductOnSites(entity, dto.getLastEditedSiteId());
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            log.error(e.getMessage());
+        }
 
         return modelMapper.map(entity, WpProductDto.class);
     }
@@ -1083,88 +1168,88 @@ public class WpProductService {
         }
     }
 
-    private void massSyncAllToSite(WpProductEntity product, SiteEntity site) {
-
-
-
-        WpProductSiteConfigEntity siteConfig = wpProductSiteConfigRepository
-                .findByProductAndSite(product, site)
-                .orElse(new WpProductSiteConfigEntity());
-
-        WpProductSiteConfigEntity satenoConfig = wpProductSiteConfigRepository
-                .findBySiteUrlAndProduct("sateno.bg", product);
-
-        WpProductTranslationEntity translation = wpProductTranslationRepository
-                .findByProductAndLanguage(product, site.getLanguage())
-                .orElseThrow(() -> new RuntimeException("Липсва превод за този сайт"));
-
-        // --- ЛОГИКА ЗА СНИМКИ ---
-        List<Map<String, Object>> imageList = new ArrayList<>();
-        if (product.getImages() != null) {
-            for (WpProductImageEntity imgEntity : product.getImages()) {
-                // Викаме твоя метод за качване
-                Long wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
-                if (wpMediaId != null) {
-                    Map<String, Object> imgMap = new HashMap<>();
-                    imgMap.put("id", wpMediaId); // Свързваме чрез ID в Media Library
-                    imageList.add(imgMap);
-                }
-            }
-        }
-
-        // Подготвяме тялото на заявката
-        Map<String, Object> body = new HashMap<>();
-        body.put("sku", product.getSku());
-        body.put("name", translation.getName());
-        body.put("type", product.getType());
-        body.put("status", product.getStatus().getValue());
-        body.put("description", translation.getDescription());
-        body.put("short_description", translation.getShortDescription());
-//        body.put("regular_price", siteConfig.getRegularPrice() != null ? siteConfig.getRegularPrice().toString() : "0");
-        body.put("regular_price", satenoConfig.getRegularPrice() != null ? satenoConfig.getRegularPrice().toString() : "0");
-        body.put("price", satenoConfig.getRegularPrice() != null ? satenoConfig.getRegularPrice().toString() : "0");
-        body.put("manage_stock", product.isManage_stock());
-        body.put("catalog_visibility", product.getCatalog_visibility());
-        body.put("stock_quantity", product.isManage_stock()? product.getStockQuantity(): null);
-        body.put("featured", product.isFeatured());
-        body.put("images", imageList); // ДОБАВЯМЕ СНИМКИТЕ ТУК
-        body.put("sale_price", satenoConfig.getSalePrice() != null? satenoConfig.getSalePrice().toString() : "0");
-//        if(product.getSaleType() == ProductSaleType.UNLIMITED){
-            body.put("stock_status",product.getStock_status());
+//    private void massSyncAllToSite(WpProductEntity product, SiteEntity site) {
+//
+//
+//
+//        WpProductSiteConfigEntity siteConfig = wpProductSiteConfigRepository
+//                .findByProductAndSite(product, site)
+//                .orElse(new WpProductSiteConfigEntity());
+//
+//        WpProductSiteConfigEntity satenoConfig = wpProductSiteConfigRepository
+//                .findBySiteUrlAndProduct("sateno.bg", product);
+//
+//        WpProductTranslationEntity translation = wpProductTranslationRepository
+//                .findByProductAndLanguage(product, site.getLanguage())
+//                .orElseThrow(() -> new RuntimeException("Липсва превод за този сайт"));
+//
+//        // --- ЛОГИКА ЗА СНИМКИ ---
+//        List<Map<String, Object>> imageList = new ArrayList<>();
+//        if (product.getImages() != null) {
+//            for (WpProductImageEntity imgEntity : product.getImages()) {
+//                // Викаме твоя метод за качване
+//                Long wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
+//                if (wpMediaId != null) {
+//                    Map<String, Object> imgMap = new HashMap<>();
+//                    imgMap.put("id", wpMediaId); // Свързваме чрез ID в Media Library
+//                    imageList.add(imgMap);
+//                }
+//            }
 //        }
-
-
-
-        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
-
-
-        List<Map<String, Object>> categoryList = uploadCategoriesToWordpress(site, product, auth);
-        body.put("categories", categoryList);
-
-        List<Map<String, Object>> brandList = uploadBrandsToWordpress(site, product, auth);
-        body.put("brands", brandList);
-
-        try {
-            var response = restClient.post()
-                    .uri(site.getUrlWithHttps() + PRODUCTS_URL)
-                    .header("Authorization", "Basic " + auth)
-                    .body(body)
-                    .retrieve()
-                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
-
-            if (response != null && response.containsKey("id")) {
-                Integer wpId = (Integer) response.get("id");
-                siteConfig.setProduct(product);
-                siteConfig.setSite(site);
-                siteConfig.setWpProductId(Long.valueOf(wpId));
-                wpProductSiteConfigRepository.save(siteConfig);
-                log.info("Успешно създаден продукт в WP с ID: {} и прикачени {} снимки", wpId, imageList.size());
-            }
-
-        } catch (Exception e) {
-            log.error("Грешка при POST към WooCommerce: {}", e.getMessage());
-        }
-    }
+//
+//        // Подготвяме тялото на заявката
+//        Map<String, Object> body = new HashMap<>();
+//        body.put("sku", product.getSku());
+//        body.put("name", translation.getName());
+//        body.put("type", product.getType());
+//        body.put("status", product.getStatus().getValue());
+//        body.put("description", translation.getDescription());
+//        body.put("short_description", translation.getShortDescription());
+////        body.put("regular_price", siteConfig.getRegularPrice() != null ? siteConfig.getRegularPrice().toString() : "0");
+//        body.put("regular_price", satenoConfig.getRegularPrice() != null ? satenoConfig.getRegularPrice().toString() : "0");
+//        body.put("price", satenoConfig.getRegularPrice() != null ? satenoConfig.getRegularPrice().toString() : "0");
+//        body.put("manage_stock", product.isManage_stock());
+//        body.put("catalog_visibility", product.getCatalog_visibility());
+//        body.put("stock_quantity", product.isManage_stock()? product.getStockQuantity(): null);
+//        body.put("featured", product.isFeatured());
+//        body.put("images", imageList); // ДОБАВЯМЕ СНИМКИТЕ ТУК
+//        body.put("sale_price", satenoConfig.getSalePrice() != null? satenoConfig.getSalePrice().toString() : "0");
+////        if(product.getSaleType() == ProductSaleType.UNLIMITED){
+//            body.put("stock_status",product.getStock_status());
+////        }
+//
+//
+//
+//        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+//
+//
+//        List<Map<String, Object>> categoryList = uploadCategoriesToWordpress(site, product, auth);
+//        body.put("categories", categoryList);
+//
+//        List<Map<String, Object>> brandList = uploadBrandsToWordpress(site, product, auth);
+//        body.put("brands", brandList);
+//
+//        try {
+//            var response = restClient.post()
+//                    .uri(site.getUrlWithHttps() + PRODUCTS_URL)
+//                    .header("Authorization", "Basic " + auth)
+//                    .body(body)
+//                    .retrieve()
+//                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+//
+//            if (response != null && response.containsKey("id")) {
+//                Integer wpId = (Integer) response.get("id");
+//                siteConfig.setProduct(product);
+//                siteConfig.setSite(site);
+//                siteConfig.setWpProductId(Long.valueOf(wpId));
+//                wpProductSiteConfigRepository.save(siteConfig);
+//                log.info("Успешно създаден продукт в WP с ID: {} и прикачени {} снимки", wpId, imageList.size());
+//            }
+//
+//        } catch (Exception e) {
+//            log.error("Грешка при POST към WooCommerce: {}", e.getMessage());
+//        }
+//    }
 
 //    public Long uploadImageToWordPress(SiteEntity site, String localPath) {
 //        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());

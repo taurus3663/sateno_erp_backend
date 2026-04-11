@@ -2,10 +2,7 @@ package com.sateno_b.www.service;
 
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.enums.ProductSaleType;
-import com.sateno_b.www.model.repository.SiteRepository;
-import com.sateno_b.www.model.repository.WpCategorySiteMappingRepository;
-import com.sateno_b.www.model.repository.WpProductImageSiteMappingRepository;
-import com.sateno_b.www.model.repository.WpProductRepository;
+import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.ImageToWordPress;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +27,8 @@ public class WpProductAsyncService {
     private final WpProductRepository wpProductRepository;
     private final WpProductImageSiteMappingRepository wpProductImageSiteMappingRepository;
     private final WpCategorySiteMappingRepository wpCategorySiteMappingRepository;
+    private final WpProductTranslationRepository wpProductTranslationRepository;
+    private final ChatGptService chatGptService;
 
 
     @Transactional
@@ -37,6 +36,30 @@ public class WpProductAsyncService {
     public void updateProductOnSites(WpProductEntity product, Long lastEditedSiteId) throws InterruptedException {
         Thread.sleep(2000);
         product = wpProductRepository.findById(product.getId()).orElse(null);
+        if(product == null) return;
+
+
+        // --- КРИТИЧНА ЧАСТ: FORCE INITIALIZATION ---
+        // Форсираме зареждането на адоните и ВСИЧКИ техни преводи за ВСИЧКИ езици
+        if (product.getAddonConfig() != null) {
+            product.getAddonConfig().forEach(config -> {
+                // Инициализираме стойността на адона
+                WpAddonValueEntity val = config.getAddonValue();
+                val.getTranslations().size(); // Зарежда преводите на стойността (напр. "Червен")
+
+                // Инициализираме групата и нейните преводи (напр. "Цвят")
+                if (val.getGroups() != null && !val.getGroups().isEmpty()) {
+                    val.getGroups().forEach(group -> group.getTranslations().size());
+                }
+            });
+        }
+        // Форсираме зареждането на преводите на самия продукт и ценовите конфигурации
+        product.getTranslations().size();
+        product.getSiteConfigs().size();
+        // --- КРАЙ НА ИНИЦИАЛИЗАЦИЯТА ---
+
+
+
 
 //        List<SiteEntity> siteList = siteRepository.findAll();
         List<SiteEntity> siteList;
@@ -84,14 +107,71 @@ public class WpProductAsyncService {
                 updateBody.put("status", product.getStatus().getValue());
 
 //                DESCRIPTION
-                for (WpProductTranslationEntity translation : product.getTranslations()) {
-                    if(translation.getLanguage() == site.getLanguage()) {
-                        updateBody.put("short_description", translation.getShortDescription());
-                        updateBody.put("description", translation.getDescription());
-                        updateBody.put("name", translation.getName());
-                        break;
+//                for (WpProductTranslationEntity translation : product.getTranslations()) {
+//                    if(translation.getLanguage() == site.getLanguage()) {
+//                        updateBody.put("short_description", translation.getShortDescription());
+//                        updateBody.put("description", translation.getDescription());
+//                        updateBody.put("name", translation.getName());
+//                        break;
+//                    }
+//                }
+
+                // 1. Опит за намиране на съществуващ превод за езика на сайта
+                WpProductTranslationEntity translation = product.getTranslations().stream()
+                        .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (translation == null) {
+                    log.info("Преводът липсва за SKU {} на език {}. Стартиране на ChatGPT превод...",
+                            product.getSku(), site.getLanguage().getName());
+
+                    // Вземаме изходния текст (обикновено първия наличен превод, напр. Български)
+                    WpProductTranslationEntity base = product.getTranslations().get(0);
+                    String targetLang = site.getLanguage().getName();
+                    String sourceLang = base.getLanguage().getName();
+
+                    // Превод на Името
+                    String namePrompt = String.format("Translate this e-commerce product name from %s to %s: '%s'",
+                            sourceLang, targetLang, base.getName());
+                    String translatedName = chatGptService.translateText(base.getName(), namePrompt);
+
+                    // Превод на Краткото описание
+                    String translatedShort = "";
+                    if (base.getShortDescription() != null && !base.getShortDescription().isEmpty()) {
+                        String shortPrompt = String.format("Translate this product short description from %s to %s. Keep it concise: '%s'",
+                                sourceLang, targetLang, base.getShortDescription());
+                        translatedShort = chatGptService.translateText(base.getShortDescription(), shortPrompt);
                     }
+
+                    // Превод на Дългото описание (с внимание към HTML)
+                    String translatedDesc = "";
+                    if (base.getDescription() != null && !base.getDescription().isEmpty()) {
+                        String descPrompt = String.format("Translate this product description from %s to %s. IMPORTANT: Preserve all HTML tags and structure exactly as they are.",
+                                sourceLang, targetLang);
+                        translatedDesc = chatGptService.translateText(base.getDescription(), descPrompt);
+                    }
+
+                    // 2. Запис в базата данни, за да не се превежда отново при следващ синк
+                    translation = new WpProductTranslationEntity();
+                    translation.setProduct(product);
+                    translation.setLanguage(site.getLanguage());
+                    translation.setName(translatedName);
+                    translation.setShortDescription(translatedShort);
+                    translation.setDescription(translatedDesc);
+
+                    wpProductTranslationRepository.save(translation);
+
+                    // Добавяме го в списъка на обекта в паметта, за да го ползваме веднага
+                    product.getTranslations().add(translation);
+
+                    log.info("Успешен превод за SKU {} на език {}", product.getSku(), targetLang);
                 }
+
+// 3. Попълваме тялото на заявката към WooCommerce
+                updateBody.put("name", translation.getName());
+                updateBody.put("short_description", translation.getShortDescription());
+                updateBody.put("description", translation.getDescription());
 
 
 
@@ -236,90 +316,8 @@ public class WpProductAsyncService {
                 }
 
 
-                // --- ADDONS LOGIC (Генериране на структури за WooCommerce Product Add-ons) ---
-                List<Map<String, Object>> wooAddons = new ArrayList<>();
-
-// Проверяваме дали в ERP има налични конфигурации за адони
-                if (product.getAddonConfig() != null && !product.getAddonConfig().isEmpty()) {
-
-                    // 1. Сортираме адоните по ID (ред на добавяне), за да запазим подредбата от БД
-                    List<WpProductAddonConfigEntity> sortedConfigs = product.getAddonConfig().stream()
-                            .sorted(Comparator.comparing(BaseEntity::getId))
-                            .collect(Collectors.toList());
-
-                    // 2. Групираме ги по име на групата (напр. "Размер", "Цвят")
-                    Map<String, List<WpProductAddonConfigEntity>> groupedAddons = new LinkedHashMap<>();
-
-                    for (WpProductAddonConfigEntity conf : sortedConfigs) {
-                        // Вземаме първата група, към която принадлежи стойността
-                        WpAddonEntity group = conf.getAddonValue().getGroups().get(0);
-
-                        // Вземаме превода на името на групата спрямо езика на сайта
-                        String groupName = group.getTranslations().stream()
-                                .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
-                                .map(WpAddonTranslationEntity::getName)
-                                .findFirst()
-                                .orElseGet(() ->
-                                        group.getTranslations().stream()
-                                                .filter(t -> t.getLanguage().getCode().equals("bg"))
-                                                .map(WpAddonTranslationEntity::getName)
-                                                .findFirst()
-                                                .orElse(group.getSlug())
-                                );
-
-                        groupedAddons.computeIfAbsent(groupName, k -> new ArrayList<>()).add(conf);
-                    }
-
-                    // 3. Превръщаме групираните данни във формат, който WooCommerce разбира
-                    int groupPosition = 0;
-                    for (Map.Entry<String, List<WpProductAddonConfigEntity>> entry : groupedAddons.entrySet()) {
-                        Map<String, Object> addonGroupMap = new HashMap<>();
-
-                        addonGroupMap.put("name", entry.getKey());
-                        addonGroupMap.put("type", "multiple_choice");
-                        addonGroupMap.put("display", "radiobutton");
-                        addonGroupMap.put("position", groupPosition++);
-                        addonGroupMap.put("required", 1);
-                        addonGroupMap.put("title_format", "label");
-                        addonGroupMap.put("adjust_price", 1);
-
-                        List<Map<String, Object>> options = new ArrayList<>();
-                        int optionPosition = 0;
-
-                        for (WpProductAddonConfigEntity config : entry.getValue()) {
-                            // Вземаме превода на етикета на самата стойност (напр. "XL", "Червен")
-                            String label = config.getAddonValue().getTranslations().stream()
-                                    .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
-                                    .map(WpAddonValueTranslationEntity::getLabel)
-                                    .findFirst()
-                                    .orElseGet(() ->
-                                            config.getAddonValue().getTranslations().stream()
-                                                    .filter(t -> t.getLanguage().getCode().equals("bg"))
-                                                    .map(WpAddonValueTranslationEntity::getLabel)
-                                                    .findFirst()
-                                                    .orElse(config.getAddonValue().getSlug())
-                                    );
-
-                            Map<String, Object> option = new HashMap<>();
-                            option.put("label", label);
-                            // Ако цената е 0, пращаме празен стринг, за да не се показва "+0.00" в сайта
-                            option.put("price", config.getPriceModifier().compareTo(BigDecimal.ZERO) > 0
-                                    ? config.getPriceModifier().toString() : "");
-                            option.put("price_type", "quantity_based");
-                            option.put("position", optionPosition++);
-                            option.put("image", "");
-                            option.put("visibility", 1);
-
-                            options.add(option);
-                        }
-
-                        addonGroupMap.put("options", options);
-                        wooAddons.add(addonGroupMap);
-                    }
-                }
-
-// ВАЖНО: Винаги добавяме ключа в обекта за ъпдейт.
-// Ако wooAddons е празен списък [], WooCommerce ще изтрие всички стари адони от продукта.
+                // 7. ADDONS (FORCE GENERATION)
+                List<Map<String, Object>> wooAddons = generateWooAddons(product, site);
                 updateBody.put("addons", wooAddons);
 
 
@@ -422,5 +420,90 @@ public class WpProductAsyncService {
         }
 
 
+    }
+
+    private List<Map<String, Object>> generateWooAddons(WpProductEntity product, SiteEntity site) {
+        List<Map<String, Object>> wooAddons = new ArrayList<>();
+        if (product.getAddonConfig() == null || product.getAddonConfig().isEmpty()) return wooAddons;
+
+        if (product.getAddonConfig() != null && !product.getAddonConfig().isEmpty()) {
+
+            // 1. Сортираме адоните по ID (ред на добавяне), за да запазим подредбата от БД
+            List<WpProductAddonConfigEntity> sortedConfigs = product.getAddonConfig().stream()
+                    .sorted(Comparator.comparing(BaseEntity::getId))
+                    .toList();
+
+            // 2. Групираме ги по име на групата (напр. "Размер", "Цвят")
+            Map<String, List<WpProductAddonConfigEntity>> groupedAddons = new LinkedHashMap<>();
+
+            for (WpProductAddonConfigEntity conf : sortedConfigs) {
+                // Вземаме първата група, към която принадлежи стойността
+                WpAddonEntity group = conf.getAddonValue().getGroups().get(0);
+
+                // Вземаме превода на името на групата спрямо езика на сайта
+                String groupName = group.getTranslations().stream()
+                        .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
+                        .map(WpAddonTranslationEntity::getName)
+                        .findFirst()
+                        .orElseGet(() ->
+                                group.getTranslations().stream()
+                                        .filter(t -> t.getLanguage().getCode().equals("bg"))
+                                        .map(WpAddonTranslationEntity::getName)
+                                        .findFirst()
+                                        .orElse(group.getSlug())
+                        );
+
+                groupedAddons.computeIfAbsent(groupName, k -> new ArrayList<>()).add(conf);
+            }
+
+            // 3. Превръщаме групираните данни във формат, който WooCommerce разбира
+            int groupPosition = 0;
+            for (Map.Entry<String, List<WpProductAddonConfigEntity>> entry : groupedAddons.entrySet()) {
+                Map<String, Object> addonGroupMap = new HashMap<>();
+
+                addonGroupMap.put("name", entry.getKey());
+                addonGroupMap.put("type", "multiple_choice");
+                addonGroupMap.put("display", "radiobutton");
+                addonGroupMap.put("position", groupPosition++);
+                addonGroupMap.put("required", 1);
+                addonGroupMap.put("title_format", "label");
+                addonGroupMap.put("adjust_price", 1);
+
+                List<Map<String, Object>> options = new ArrayList<>();
+                int optionPosition = 0;
+
+                for (WpProductAddonConfigEntity config : entry.getValue()) {
+                    // Вземаме превода на етикета на самата стойност (напр. "XL", "Червен")
+                    String label = config.getAddonValue().getTranslations().stream()
+                            .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
+                            .map(WpAddonValueTranslationEntity::getLabel)
+                            .findFirst()
+                            .orElseGet(() ->
+                                    config.getAddonValue().getTranslations().stream()
+                                            .filter(t -> t.getLanguage().getCode().equals("bg"))
+                                            .map(WpAddonValueTranslationEntity::getLabel)
+                                            .findFirst()
+                                            .orElse(config.getAddonValue().getSlug())
+                            );
+
+                    Map<String, Object> option = new HashMap<>();
+                    option.put("label", label);
+                    // Ако цената е 0, пращаме празен стринг, за да не се показва "+0.00" в сайта
+                    option.put("price", config.getPriceModifier().compareTo(BigDecimal.ZERO) > 0
+                            ? config.getPriceModifier().toString() : "");
+                    option.put("price_type", "quantity_based");
+                    option.put("position", optionPosition++);
+                    option.put("image", "");
+                    option.put("visibility", 1);
+
+                    options.add(option);
+                }
+
+                addonGroupMap.put("options", options);
+                wooAddons.add(addonGroupMap);
+            }
+        }
+
+        return wooAddons;
     }
 }
