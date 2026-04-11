@@ -103,6 +103,24 @@ public class WpProductService {
 
     }
 
+    @Transactional
+    public void syncProductsToSite(Long siteId) {
+        SiteEntity site = siteRepository.findById(siteId).orElseThrow();
+        if(site.getUrl().contains("sateno.bg")) {
+         throw new RuntimeException("sateno.bg");
+        }
+
+        List<WpProductEntity> productList = wpProductRepository.findAll();
+        ExecutorService executor = Executors.newFixedThreadPool(10);
+
+        for (WpProductEntity product : productList) {
+            
+        }
+
+
+
+    }
+
     private List<WooProductDto> fetchAllProducts(SiteEntity site, String auth) {
 
         List<WooProductDto> products = new ArrayList<>();
@@ -794,55 +812,55 @@ public class WpProductService {
 
 
 //    @Transactional
-    public void syncProductsToSite(Long siteId) {
-        SiteEntity site = siteRepository.findById(siteId).orElseThrow();
-        if(site.getUrl().contains("sateno.bg")) {
-            throw new RuntimeException("sateno.bg");
-        }
-
-//        try { clearAllProductsFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на продукти: {}", e.getMessage()); }
-//        try { clearAllCategoriesFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на категории: {}", e.getMessage()); }
-//        try { clearAllBrandsFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на брандове: {}", e.getMessage()); }
-
-        // Взимаме тестовия продукт
-//        WpProductEntity product = wpProductRepository.findById(533L).orElseThrow();
-        AtomicInteger count = new AtomicInteger(1);
-        List<WpProductEntity> allWithAddons = wpProductRepository.findAll();
-        ExecutorService executor = Executors.newFixedThreadPool(10);
-
-
-        for (WpProductEntity wpProductEntity : allWithAddons) {
-            executor.submit(() -> {
-                try {
-//                massSyncAllToSite(wpProductEntity, site);
-//                syncSalePriceBySku(site, wpProductEntity);
-                    translateProductInfos(wpProductEntity, site);
-                    count.getAndIncrement();
-//                    System.out.println(count.get());
-                }
-                catch (Exception e) {
-                    // Ако един продукт гръмне, записваме грешката и преминаваме на следващия
-                    log.error("КРИТИЧНА ГРЕШКА за продукт SKU {}: {}", wpProductEntity.getSku(), e.getMessage());
-                }
-
-            });
-
-        }
-        executor.shutdown();
-
-        try {
-            // Чакаме нишките да приключат. Сложи достатъчно време (напр. 1 час)
-            if (!executor.awaitTermination(10, TimeUnit.HOURS)) {
-                executor.shutdownNow(); // Ако не приключат за 1 час, ги спри принудително
-            }
-        } catch (InterruptedException e) {
-            executor.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
-        log.info("Синхронизацията приключи. Успешно обработени: {} продукта.брой {}", count.get(), allWithAddons.size());
-
-
-    }
+//    public void syncProductsToSite(Long siteId) {
+//        SiteEntity site = siteRepository.findById(siteId).orElseThrow();
+//        if(site.getUrl().contains("sateno.bg")) {
+//            throw new RuntimeException("sateno.bg");
+//        }
+//
+////        try { clearAllProductsFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на продукти: {}", e.getMessage()); }
+////        try { clearAllCategoriesFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на категории: {}", e.getMessage()); }
+////        try { clearAllBrandsFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на брандове: {}", e.getMessage()); }
+//
+//        // Взимаме тестовия продукт
+////        WpProductEntity product = wpProductRepository.findById(533L).orElseThrow();
+//        AtomicInteger count = new AtomicInteger(1);
+//        List<WpProductEntity> allWithAddons = wpProductRepository.findAll();
+//        ExecutorService executor = Executors.newFixedThreadPool(10);
+//
+//
+//        for (WpProductEntity wpProductEntity : allWithAddons) {
+//            executor.submit(() -> {
+//                try {
+////                massSyncAllToSite(wpProductEntity, site);
+////                syncSalePriceBySku(site, wpProductEntity);
+//                    translateProductInfos(wpProductEntity, site);
+//                    count.getAndIncrement();
+////                    System.out.println(count.get());
+//                }
+//                catch (Exception e) {
+//                    // Ако един продукт гръмне, записваме грешката и преминаваме на следващия
+//                    log.error("КРИТИЧНА ГРЕШКА за продукт SKU {}: {}", wpProductEntity.getSku(), e.getMessage());
+//                }
+//
+//            });
+//
+//        }
+//        executor.shutdown();
+//
+//        try {
+//            // Чакаме нишките да приключат. Сложи достатъчно време (напр. 1 час)
+//            if (!executor.awaitTermination(10, TimeUnit.HOURS)) {
+//                executor.shutdownNow(); // Ако не приключат за 1 час, ги спри принудително
+//            }
+//        } catch (InterruptedException e) {
+//            executor.shutdownNow();
+//            Thread.currentThread().interrupt();
+//        }
+//        log.info("Синхронизацията приключи. Успешно обработени: {} продукта.брой {}", count.get(), allWithAddons.size());
+//
+//
+//    }
 
     private void translateProductInfos(WpProductEntity product, SiteEntity site) {
         String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());

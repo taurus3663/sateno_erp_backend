@@ -7,6 +7,7 @@ import com.sateno_b.www.model.dto.WpCategoryTranslationRequest;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class WpCategoryService {
 
     private final SiteRepository siteRepository;
@@ -28,6 +30,7 @@ public class WpCategoryService {
     private final WpCategoryTranslationRepository wpCategoryTranslationRepository;
     private final WpCategorySiteMappingRepository wpCategorySiteMappingRepository;
     private final LanguageRepository languageRepository;
+    private final WpCategoryAsyncService wpCategoryAsyncService;
 
     private static String CATEGORY_URL = "/wp-json/wc/v3/products/categories";
 
@@ -259,6 +262,13 @@ public class WpCategoryService {
         // 4. Обновяваме името и записваме превода
         translation.setName(request.getName());
         wpCategoryTranslationRepository.save(translation);
+        if(request.getCategoryId() != null) {
+            try {
+                wpCategoryAsyncService.asyncUpdate(category);
+            } catch (Exception e) {
+                log.error("Категория с ID {} има проблем за обновяване {}", category.getId(), e.getMessage());
+            }
+        }
     }
 
 
