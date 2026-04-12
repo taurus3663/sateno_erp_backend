@@ -354,7 +354,7 @@ public class WpOrderService {
 //    @CacheEvict(value = "ordersList", allEntries = true)
     public void newOrderFromSite(WoOrderDto dto, Long siteId) {
 
-        Optional<WpOrderEntity> byWpOrderId = wpOrderRepository.findByWpOrderId(dto.getId());
+        Optional<WpOrderEntity> byWpOrderId = wpOrderRepository.findByWpOrderIdAndSiteId(dto.getId(), siteId);
         if(byWpOrderId.isPresent()) {
             return;
         }
@@ -370,21 +370,6 @@ public class WpOrderService {
                 .findFirst()
                 .orElseGet(CustomerEntity::new);
 
-//        CustomerEntity customer = customerRepository.findByPhoneSuffix(phoneSuffix)
-//                .stream()
-//                .findFirst()
-//                .orElseGet(() -> {
-//                    CustomerEntity customerEntity = new CustomerEntity();
-//                    customerEntity.setPhone(dto.getBilling().getPhone());
-//                    customerEntity.setFirstName(dto.getBilling().getFirstName());
-//                    customerEntity.setLastName(dto.getBilling().getLastName());
-//                    customerEntity.setEmail(dto.getBilling().getEmail());
-//                    customerEntity.setAddress(dto.getBilling().getAddress1().isEmpty()
-//                            ? dto.getBilling().getAddress2()
-//                            : dto.getBilling().getAddress1());
-//                    customerEntity.setEik(dto.getBilling().getCompanyName());
-//                    return customerRepository.save(customerEntity);
-//                });
         customer.setPhone(dto.getBilling().getPhone());
         customer.setFirstName(dto.getBilling().getFirstName());
         customer.setLastName(dto.getBilling().getLastName());
@@ -409,7 +394,7 @@ public class WpOrderService {
         } else {
             isPayed = false;
         }
-
+        System.out.println("1");
         AtomicReference<Double> totalPriceRs = new AtomicReference<>(0.0);
         WpOrderEntity wpOrderEntity = new WpOrderEntity();
         wpOrderEntity.setCustomer(customer);
@@ -505,7 +490,7 @@ public class WpOrderService {
 
             Optional<CourierSettingsEntity> allBySiteAndActive = courierSettingsRepository
                     .findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(siteEntity, CourierType.valueOf(courierKey));
-
+            System.out.println("2");
             allBySiteAndActive.ifPresent(settings -> {
                 CourierShipmentType target = CourierShipmentType.valueOf(parse.getTargetType());
                 // --- 1. ДО ОФИС ---

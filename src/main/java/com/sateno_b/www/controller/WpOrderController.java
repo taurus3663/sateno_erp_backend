@@ -272,6 +272,7 @@ public class WpOrderController {
     @PostMapping("/create")
     public void createWpOrder(@RequestHeader("x-wc-webhook-signature") String signature,
                               @RequestBody String rawPayload){
+//        System.out.println(rawPayload);
 //    public void createWpOrder(
 //                              @RequestBody String rawPayload){
 //        System.out.println("d");

@@ -53,12 +53,7 @@ public class WpProductAsyncService {
                 }
             });
         }
-        // Форсираме зареждането на преводите на самия продукт и ценовите конфигурации
-        product.getTranslations().size();
-        product.getSiteConfigs().size();
         // --- КРАЙ НА ИНИЦИАЛИЗАЦИЯТА ---
-
-
 
 
 //        List<SiteEntity> siteList = siteRepository.findAll();
@@ -78,7 +73,6 @@ public class WpProductAsyncService {
 
 
 //        System.out.println(lastEditedSiteId);
-
         for (SiteEntity site : siteList) {
 //            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
 //            System.out.println(site.toString());
@@ -132,8 +126,11 @@ public class WpProductAsyncService {
                     String sourceLang = base.getLanguage().getName();
 
                     // Превод на Името
-                    String namePrompt = String.format("Translate this e-commerce product name from %s to %s: '%s'",
-                            sourceLang, targetLang, base.getName());
+                    String namePrompt = String.format(
+                            "Translate this e-commerce product name from %s to %s: '%s'. " +
+                                    "IMPORTANT: Return ONLY the translated string. Do not include any quotes, explanations, or introductory text.",
+                            sourceLang, targetLang, base.getName()
+                    );
                     String translatedName = chatGptService.translateText(base.getName(), namePrompt);
 
                     // Превод на Краткото описание
@@ -187,6 +184,53 @@ public class WpProductAsyncService {
                         updateBody.put("sale_price", salePriceStr);
                     }
                 }
+// --- ОБНОВЕНА ЛОГИКА ЗА ЦЕНИ ---
+
+// 1. Намираме базовата конфигурация от sateno.bg (за справка)
+//                WpProductSiteConfigEntity bgConfig = product.getSiteConfigs().stream()
+//                        .filter(c -> c.getSite().getUrl().contains("sateno.bg"))
+//                        .findFirst()
+//                        .orElse(null);
+//
+//                BigDecimal fallbackRegular = (bgConfig != null) ? bgConfig.getRegularPrice() : BigDecimal.ZERO;
+//                BigDecimal fallbackSale = (bgConfig != null) ? bgConfig.getPrice() : null;
+//
+//// 2. Намираме конфигурацията за текущия сайт в цикъла
+//                WpProductSiteConfigEntity currentSiteConfig = product.getSiteConfigs().stream()
+//                        .filter(sc -> sc.getSite().getId().equals(site.getId()))
+//                        .findFirst()
+//                        .orElse(null);
+//
+//// Ако за текущия сайт изобщо липсва конфигурация в базата, създаваме я
+//                if (currentSiteConfig == null) {
+//                    currentSiteConfig = new WpProductSiteConfigEntity();
+//                    currentSiteConfig.setProduct(product);
+//                    currentSiteConfig.setSite(site);
+//                    product.getSiteConfigs().add(currentSiteConfig);
+//                }
+//
+//// 3. ПРОВЕРКА И РЕМОНТ: Ако цената е 0 или null, взимаме тази от sateno.bg
+//                if (currentSiteConfig.getRegularPrice() == null || currentSiteConfig.getRegularPrice().compareTo(BigDecimal.ZERO) <= 0) {
+//                    log.info("SKU {}: Коригирам цена за {}, ползвам фалбек от sateno.bg: {}",
+//                            product.getSku(), site.getUrl(), fallbackRegular);
+//
+//                    currentSiteConfig.setRegularPrice(fallbackRegular);
+//                    currentSiteConfig.setPrice(fallbackSale);
+//                    // Благодарение на @Transactional, промяната ще се запише в БД автоматично в края
+//                }
+//
+//// 4. Попълваме updateBody за WooCommerce
+//                updateBody.put("regular_price", currentSiteConfig.getRegularPrice().toString());
+//
+//                String salePriceStr = (currentSiteConfig.getPrice() != null && currentSiteConfig.getPrice().compareTo(BigDecimal.ONE) >= 0)
+//                        ? currentSiteConfig.getPrice().toString()
+//                        : "";
+//                updateBody.put("sale_price", salePriceStr);
+//
+//// Основната цена в WP (price) трябва да е активната (промоционалната или редовната)
+//                updateBody.put("price", !salePriceStr.isEmpty() ? salePriceStr : currentSiteConfig.getRegularPrice().toString());
+
+
 
 //                BRAND
                 if(product.getBrand() != null) {
@@ -281,39 +325,89 @@ public class WpProductAsyncService {
                 updateBody.put("categories", categoriesList);
 
 
+//                List<Map<String, Object>> imageList = new ArrayList<>();
+//                if (product.getImages() != null) {
+//                    for (WpProductImageEntity imgEntity : product.getImages()) {
+//
+//                        Optional<WpProductImageSiteMappingEntity> mappingOpt = wpProductImageSiteMappingRepository
+//                                .findByProductImageIdAndSite(imgEntity.getId(), site);
+//
+//                        Long wpMediaId = null;
+//                        if (mappingOpt.isPresent()) {
+//                            wpMediaId = mappingOpt.get().getWpMediaId();
+//                        }
+//                        else {
+//                            wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
+//                            if (wpMediaId != null) {
+//                                WpProductImageSiteMappingEntity wpProductImageSiteMappingEntity = new WpProductImageSiteMappingEntity();
+//                                wpProductImageSiteMappingEntity.setWpMediaId(wpMediaId);
+//                                wpProductImageSiteMappingEntity.setSite(site);
+//                                wpProductImageSiteMappingEntity.setProductImage(imgEntity);
+////                                wpProductImageSiteMappingEntity.setWpUrl();
+//                                wpProductImageSiteMappingRepository.save(wpProductImageSiteMappingEntity);
+//                            }
+//
+//                        }
+//                        if (wpMediaId != null) {
+//                            Map<String, Object> imgMap = new HashMap<>();
+//                            imgMap.put("id", wpMediaId);
+//                            imageList.add(imgMap);
+//                        }
+//                    }
+//                }
+//                if(!imageList.isEmpty()) {
+//                    updateBody.put("images", imageList);
+//                }
+
+                // В WpProductAsyncService.java - промени цикъла за снимките:
+
                 List<Map<String, Object>> imageList = new ArrayList<>();
                 if (product.getImages() != null) {
                     for (WpProductImageEntity imgEntity : product.getImages()) {
 
+                        // 1. Търсим съществуващ мапинг за текущия сайт
                         Optional<WpProductImageSiteMappingEntity> mappingOpt = wpProductImageSiteMappingRepository
                                 .findByProductImageIdAndSite(imgEntity.getId(), site);
 
-                        Long wpMediaId = null;
                         if (mappingOpt.isPresent()) {
-                            wpMediaId = mappingOpt.get().getWpMediaId();
-                        }
-                        else {
-                            wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
-                            if (wpMediaId != null) {
-                                WpProductImageSiteMappingEntity wpProductImageSiteMappingEntity = new WpProductImageSiteMappingEntity();
-                                wpProductImageSiteMappingEntity.setWpMediaId(wpMediaId);
-                                wpProductImageSiteMappingEntity.setSite(site);
-                                wpProductImageSiteMappingEntity.setProductImage(imgEntity);
-//                                wpProductImageSiteMappingEntity.setWpUrl();
-                                wpProductImageSiteMappingRepository.save(wpProductImageSiteMappingEntity);
-                            }
-
-                        }
-                        if (wpMediaId != null) {
+                            // Снимката вече съществува в този сайт - добавяме я в списъка на продукта
                             Map<String, Object> imgMap = new HashMap<>();
-                            imgMap.put("id", wpMediaId);
+                            imgMap.put("id", mappingOpt.get().getWpMediaId());
                             imageList.add(imgMap);
+                        } else {
+                            // 2. КЛЮЧОВАТА ПРОВЕРКА: Качваме снимката САМО ако тя е "нова" за системата
+                            // Проверяваме дали снимката има мапинги изобщо.
+                            // Ако НЯМА никакви мапинги, значи е току-що качена от Angular и чака в temp.
+
+                            boolean isBrandNewImage = imgEntity.getSiteMappings() == null || imgEntity.getSiteMappings().isEmpty();
+
+                            if (isBrandNewImage) {
+                                log.info("Качване на НОВА снимка към сайт {}: {}", site.getUrl(), imgEntity.getLocalSrc());
+                                Long wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
+
+                                if (wpMediaId != null) {
+                                    WpProductImageSiteMappingEntity newMapping = new WpProductImageSiteMappingEntity();
+                                    newMapping.setWpMediaId(wpMediaId);
+                                    newMapping.setSite(site);
+                                    newMapping.setProductImage(imgEntity);
+                                    wpProductImageSiteMappingRepository.save(newMapping);
+
+                                    Map<String, Object> imgMap = new HashMap<>();
+                                    imgMap.put("id", wpMediaId);
+                                    imageList.add(imgMap);
+                                }
+                            } else {
+                                // Снимката има мапинги за други сайтове, но не и за този.
+                                // Тъй като не е "нова" (temp), ние НЕ я качваме тук автоматично.
+                                log.info("Снимка {} е локална за друг сайт. Пропускам качване в {}.",
+                                        imgEntity.getId(), site.getUrl());
+                            }
                         }
                     }
                 }
-                if(!imageList.isEmpty()) {
+//                                if(!imageList.isEmpty()) {
                     updateBody.put("images", imageList);
-                }
+//                }
 
 
                 // 7. ADDONS (FORCE GENERATION)
@@ -503,7 +597,6 @@ public class WpProductAsyncService {
                 wooAddons.add(addonGroupMap);
             }
         }
-
         return wooAddons;
     }
 }

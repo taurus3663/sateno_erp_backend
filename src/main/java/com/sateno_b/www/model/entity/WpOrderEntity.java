@@ -31,7 +31,7 @@ public class WpOrderEntity extends BaseEntity {
     @Column
     private Long parentId;
 
-    @Column(unique = true)
+    @Column()
     private Long wpOrderId;
 
     @OneToMany

@@ -17,4 +17,8 @@ public interface WpProductImageSiteMappingRepository extends JpaRepository<WpPro
     Optional<WpProductImageSiteMappingEntity> findByWpMediaIdAndSite(Long wpMediaId, SiteEntity site);
 
     Optional<WpProductImageSiteMappingEntity> findByProductImageIdAndSite(Long wpProductImageId, SiteEntity site);
+
+    void deleteByProductImageIdAndSite(Long productImageId, SiteEntity site);
+
+    long countByProductImageId(Long productImageId);
 }

@@ -510,111 +510,80 @@ public class WpProductService {
             entity = wpProductRepository.findById(dto.getId()).orElseThrow();
         } else {
             entity = new WpProductEntity();
-
             entity.setSku(genSky());
         }
 
-//        entity.setUnit(dto.getUnit());
         entity.setStockQuantity(dto.getStockQuantity());
         entity.setWeight(dto.getWeight());
         entity.setStatus(dto.getStatus());
         entity.setSaleType(dto.getSaleType());
 
-//         BRAND -----
-        if(dto.getBrand() != null) {
-            Optional<WpBrandEntity> brand = wpBrandRepository.findBySlug(dto.getBrand().getSlug());
-            if(brand.isPresent()) {entity.setBrand(brand.get());}
+        // BRAND
+        if (dto.getBrand() != null) {
+            wpBrandRepository.findBySlug(dto.getBrand().getSlug()).ifPresent(entity::setBrand);
         }
 
-//        CATEGORY -----
-        if(!dto.getCategories().isEmpty()) entity.getCategories().clear();
-        for (WpCategoryDetailDto category : dto.getCategories()) {
-            WpCategoryEntity catory = wpCategoryRepository.getReferenceById(category.getId());
-            entity.getCategories().add(catory);
+        // CATEGORY
+        if (dto.getCategories() != null && !dto.getCategories().isEmpty()) {
+            entity.getCategories().clear();
+            for (WpCategoryDetailDto category : dto.getCategories()) {
+                entity.getCategories().add(wpCategoryRepository.getReferenceById(category.getId()));
+            }
         }
 
-//        TRANSLATION
-        // Вътре в saveProductWithImages метода:
-
+        // TRANSLATION
         if (dto.getTranslations() != null) {
-            // 1. Изчистваме старите преводи (Hibernate ще ги изтрие заради orphanRemoval = true)
             entity.getTranslations().clear();
-
             for (WpProductTranslationDto tDto : dto.getTranslations()) {
                 WpProductTranslationEntity tEntity = new WpProductTranslationEntity();
                 tEntity.setName(tDto.getName());
                 tEntity.setDescription(tDto.getDescription());
                 tEntity.setShortDescription(tDto.getShortDescription());
-
-                // Важно: Свързваме с продукта
                 tEntity.setProduct(entity);
-
-                // Важно: Свързваме с езика
                 if (tDto.getLanguage() != null && tDto.getLanguage().getId() != null) {
-                    LanguageEntity lang = languageRepository.getReferenceById(tDto.getLanguage().getId());
-                    tEntity.setLanguage(lang);
+                    tEntity.setLanguage(languageRepository.getReferenceById(tDto.getLanguage().getId()));
                 }
-
                 entity.getTranslations().add(tEntity);
             }
         }
 
+        // ADDONS
         if (dto.getAddonConfigs() != null) {
             List<WpProductAddonConfigEntity> currentConfigs = entity.getAddonConfig();
-
-            // Създаваме Set от ID-тата на адоните, които идват от Angular (за бърза проверка)
             Set<Long> incomingValueIds = dto.getAddonConfigs().stream()
                     .filter(a -> a.getAddonValue() != null)
                     .map(a -> a.getAddonValue().getId())
                     .collect(Collectors.toSet());
 
-            // А) ИЗТРИВАНЕ: Махаме тези, които вече не присъстват в новия списък
-            // Използваме removeIf, за да изтрием обектите от списъка на entity-то
             currentConfigs.removeIf(existing -> !incomingValueIds.contains(existing.getAddonValue().getId()));
 
-            // Б) ДОБАВЯНЕ / ОБНОВЯВАНЕ
             for (WpProductAddonConfigDto aDto : dto.getAddonConfigs()) {
                 if (aDto.getAddonValue() == null) continue;
-
                 Long valId = aDto.getAddonValue().getId();
-
-                // Проверяваме дали този адон вече съществува в текущия списък
                 Optional<WpProductAddonConfigEntity> existingOpt = currentConfigs.stream()
-                        .filter(e -> e.getAddonValue().getId().equals(valId))
-                        .findFirst();
+                        .filter(e -> e.getAddonValue().getId().equals(valId)).findFirst();
 
                 if (existingOpt.isPresent()) {
-                    // Вече го има -> само обновяваме цената
                     existingOpt.get().setPriceModifier(aDto.getPriceModifier());
-                    // Ако имаш поле active, можеш и него: existingOpt.get().setActive(true);
                 } else {
-                    // НОВ ЗАПИС: Трябва да го създадем и добавим към колекцията
                     WpProductAddonConfigEntity newConfig = new WpProductAddonConfigEntity();
-                    newConfig.setProduct(entity); // Свързваме с текущия продукт
-                    newConfig.setAddonValue(wpAddonValueRepository.getReferenceById(valId)); // Само референция към стойността
+                    newConfig.setProduct(entity);
+                    newConfig.setAddonValue(wpAddonValueRepository.getReferenceById(valId));
                     newConfig.setPriceModifier(aDto.getPriceModifier());
                     newConfig.setActive(true);
-
-                    // Добавяме го в списъка
                     currentConfigs.add(newConfig);
                 }
             }
-        }
-        else {
-            // Ако от Angular дойде null/празно, чистим всичко
+        } else {
             entity.getAddonConfig().clear();
         }
 
-//        siteConfig
-        if(dto.getSiteConfig() != null && !dto.getSiteConfig().isEmpty()) {
+        // SITE CONFIG
+        if (dto.getSiteConfig() != null && !dto.getSiteConfig().isEmpty()) {
             for (WpProductSiteConfigDto wpProductSiteConfigDto : dto.getSiteConfig()) {
-                WpProductSiteConfigEntity siteConfig =
-                        wpProductSiteConfigRepository.findById(wpProductSiteConfigDto.getId())
+                WpProductSiteConfigEntity siteConfig = wpProductSiteConfigRepository.findById(wpProductSiteConfigDto.getId())
                         .orElse(new WpProductSiteConfigEntity());
                 SiteEntity site = siteRepository.getReferenceById(wpProductSiteConfigDto.getSite().getId());
-
-
-
                 siteConfig.setPrice(wpProductSiteConfigDto.getPrice());
                 siteConfig.setRegularPrice(wpProductSiteConfigDto.getRegularPrice());
                 siteConfig.setSite(site);
@@ -623,30 +592,45 @@ public class WpProductService {
             }
         }
 
-        entity = wpProductRepository.save(entity);
+        // --- КОРЕКЦИЯ В ЛОГИКАТА ЗА СНИМКИ ---
 
-
-        // 1. СИНХРОНИЗАЦИЯ НА СНИМКИТЕ (Изтриване на липсващите)
-        // Гледаме кои ID-та идват от Angular
-        List<Long> incomingIds = dto.getImages().stream()
+        // 1. Вземаме ID-тата от Angular
+        Set<Long> incomingIds = dto.getImages().stream()
                 .map(WpProductImageDto::getId)
                 .filter(id -> id != null && id > 0)
-                .toList();
+                .collect(Collectors.toSet());
 
-        // Намираме кои снимки от БД липсват в пратката от Angular
-        List<WpProductImageEntity> imagesToDelete = entity.getImages().stream()
-                .filter(img -> !incomingIds.contains(img.getId()))
-                .toList();
-
-        // 2. ФИЗИЧЕСКО ИЗТРИВАНЕ ОТ ПАПКАТА
-        for (WpProductImageEntity img : imagesToDelete) {
-            fileStorageService.deleteProductImage(img.getLocalSrc());
+        // 2. ЛОКАЛНО ИЗТРИВАНЕ (Мапинг): Ако има избран сайт, махаме връзката на липсващите снимки
+        if (dto.getLastEditedSiteId() != null) {
+            SiteEntity currentSite = siteRepository.getReferenceById(dto.getLastEditedSiteId());
+            for (WpProductImageEntity img : entity.getImages()) {
+                if (!incomingIds.contains(img.getId())) {
+                    wpProductImageSiteMappingRepository.deleteByProductImageIdAndSite(img.getId(), currentSite);
+                    log.info("Изтрит локален мапинг за снимка {} от сайт {}", img.getId(), currentSite.getName());
+                }
+            }
+            wpProductImageSiteMappingRepository.flush();
         }
 
-        // Премахваме от entity-то тези снимки, които не са в изпратения списък
-        // Благодарение на orphanRemoval = true, Hibernate ще изтрие тези редове от БД
-        entity.getImages().removeIf(img -> !incomingIds.contains(img.getId()));
+        // 3. ГЛОБАЛНО ИЗТРИВАНЕ: Трием снимката само ако не е в incomingIds И няма мапинги към ДРУГИ сайтове
+        List<WpProductImageEntity> imagesToRemoveGlobally = new ArrayList<>();
+        for (WpProductImageEntity img : entity.getImages()) {
+            if (!incomingIds.contains(img.getId())) {
+                // Проверяваме дали след локалното триене горе, са останали други мапинги
+                long mappingCount = wpProductImageSiteMappingRepository.countByProductImageId(img.getId());
+                if (mappingCount == 0) {
+                    imagesToRemoveGlobally.add(img);
+                }
+            }
+        }
 
+        // Физическо триене и премахване от списъка
+        for (WpProductImageEntity img : imagesToRemoveGlobally) {
+            fileStorageService.deleteProductImage(img.getLocalSrc());
+            entity.getImages().remove(img);
+        }
+
+        // 4. ДОБАВЯНЕ НА НОВИ (TEMP) СНИМКИ
         if (!dto.getImages().isEmpty()) {
             for (WpProductImageDto imgDto : dto.getImages()) {
                 if (imgDto.isTemp()) {
@@ -656,15 +640,20 @@ public class WpProductService {
                         imageEntity.setProduct(entity);
                         imageEntity.setLocalSrc(finalPath);
                         wpProductImageRepository.save(imageEntity);
+                        entity.getImages().add(imageEntity); // Добавяме към текущата сесия
                     }
                 }
             }
         }
+
+        // СЪХРАНЯВАМЕ ПРОДУКТА
+        entity = wpProductRepository.saveAndFlush(entity);
+
+        // Асинхронна синхронизация
         try {
-            System.out.println(dto.getLastEditedSiteId());
             wpProductAsyncService.updateProductOnSites(entity, dto.getLastEditedSiteId());
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Async sync error: {}", e.getMessage());
         }
 
         return modelMapper.map(entity, WpProductDto.class);
@@ -1573,7 +1562,47 @@ protected void clearAllProductsFromSite(SiteEntity site) {
     }
 
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveSingleTranslation(Long productId, Long langId, WpProductTranslationDto dto, Long type) {
+        WpProductEntity product = wpProductRepository.getReferenceById(productId);
+        LanguageEntity lang = languageRepository.getReferenceById(langId);
 
+        WpProductTranslationEntity translation = wpProductTranslationRepository
+                .findByProductAndLanguage(product, lang)
+                .orElseGet(() -> {
+                    WpProductTranslationEntity newEntity = new WpProductTranslationEntity();
+                    newEntity.setProduct(product);
+                    newEntity.setLanguage(lang);
+                    return newEntity;
+                });
+
+        if (type == 1L) translation.setName(dto.getName());
+        else if (type == 2L) translation.setShortDescription(dto.getShortDescription());
+        else if (type == 3L) translation.setDescription(dto.getDescription());
+
+        wpProductTranslationRepository.saveAndFlush(translation);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveTranslatedField(Long productId, Long langId, String text, Long type) {
+        WpProductEntity product = wpProductRepository.getReferenceById(productId);
+        LanguageEntity lang = languageRepository.getReferenceById(langId);
+
+        WpProductTranslationEntity translation = wpProductTranslationRepository
+                .findByProductAndLanguage(product, lang)
+                .orElseGet(() -> {
+                    WpProductTranslationEntity newEntity = new WpProductTranslationEntity();
+                    newEntity.setProduct(product);
+                    newEntity.setLanguage(lang);
+                    return newEntity;
+                });
+
+        if (type == 1L) translation.setName(text);
+        else if (type == 2L) translation.setShortDescription(text);
+        else if (type == 3L) translation.setDescription(text);
+
+        wpProductTranslationRepository.saveAndFlush(translation);
+    }
 
 
 }

@@ -4,6 +4,7 @@ import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.service.ChatGptService;
+import com.sateno_b.www.service.FileStorageService;
 import com.sateno_b.www.service.WpProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +40,7 @@ public class WpProductController {
     private final WpAddonRepository wpAddonRepository;
     private final ChatGptService chatGptService;
     private final LanguageRepository languageRepository;
+    private final FileStorageService fileStorageService;
 
     @PatchMapping("/patch")
     public ResponseEntity<?> patchProduct(@RequestBody WpProductDto wpProductDto) {
@@ -67,6 +69,30 @@ public class WpProductController {
         }
     }
 
+    @Transactional
+    public void deleteMultipleProducts(Long[] ids) {
+        for (Long id : ids) {
+            WpProductEntity product = wpProductRepository.findById(id).orElse(null);
+            if (product == null) continue;
+
+            // 1. Физическо изтриване на снимките от диска
+            if (product.getImages() != null) {
+                for (WpProductImageEntity img : product.getImages()) {
+                    fileStorageService.deleteProductImage(img.getLocalSrc());
+                }
+            }
+
+            // 2. Изтриване от базата
+            // Благодарение на CascadeType.ALL в Entity-то, това ще изтрие автоматично:
+            // - Translations
+            // - AddonConfigs
+            // - SiteConfigs
+            // - ImageSiteMappings (ако са настроени правилно)
+            wpProductRepository.delete(product);
+
+            log.info("Продукт с ID {} и всички негови връзки бяха изтрити.", id);
+        }
+    }
     @GetMapping("/list")
     public ResponseEntity<Page<WpProductDto>> getWpProducts(
             Pageable pageable,
@@ -184,49 +210,51 @@ public class WpProductController {
     }
 
     @PostMapping("/translate/content")
-    @Transactional
+// ПРЕМАХНИ @Transactional ТУК!
     public ResponseEntity<?> translateContent(@RequestBody ProductTranslateContentDTO request) {
         try {
-            WpProductEntity product = wpProductRepository.getReferenceById(request.getProductId());
+            WpProductEntity product = wpProductRepository.findById(request.getProductId())
+                    .orElseThrow(() -> new RuntimeException("Product not found"));
+
+            // 1. Записваме източника (използваме новия метод в сървиса)
+            wpProductService.saveSingleTranslation(
+                    request.getProductId(),
+                    request.getItem().getLanguage().getId(),
+                    request.getItem(),
+                    request.getType()
+            );
 
             List<LanguageEntity> languages = languageRepository.findAll();
+            String sourceLangName = request.getItem().getLanguage().getName();
+            String textToTranslate = "";
 
-            for (LanguageEntity language : languages) {
-                if(Objects.equals(language.getId(), request.getItem().getLanguage().getId())) continue;
+            // Определяме какво ще превеждаме веднъж
+            if (request.getType() == 1L) textToTranslate = request.getItem().getName();
+            else if (request.getType() == 2L) textToTranslate = request.getItem().getShortDescription();
+            else if (request.getType() == 3L) textToTranslate = request.getItem().getDescription();
 
-                LanguageEntity referenceById1 = languageRepository.getReferenceById(language.getId());
+            for (LanguageEntity targetLanguage : languages) {
+                if (Objects.equals(targetLanguage.getId(), request.getItem().getLanguage().getId())) continue;
 
-                WpProductTranslationEntity wpProductTranslationEntity = null;
-                Optional<WpProductTranslationEntity> byProductAndLanguage = wpProductTranslationRepository.findByProductAndLanguage(product, referenceById1);
-                if(byProductAndLanguage.isPresent()) {
-                    wpProductTranslationEntity = byProductAndLanguage.get();
-                }else {
-                    wpProductTranslationEntity = new WpProductTranslationEntity();
-                    wpProductTranslationEntity.setLanguage(language);
-                    wpProductTranslationEntity.setProduct(product);
-                }
+                String instruction = translateInstructionContent(sourceLangName, targetLanguage.getName());
 
-                if (request.getType() == 1L) {
-                    String translatedTitle = chatGptService.translateText(request.getItem().getName(), translateInstructionContent(request.getItem().getLanguage().getName(), language.getName()));
-//                System.out.println(translatedTitle);
-                    wpProductTranslationEntity.setName(translatedTitle);
-                } else if (request.getType() == 2L) {
-                    String translatedShortDescription = chatGptService.translateText(request.getItem().getShortDescription(), translateInstructionContent(request.getItem().getLanguage().getName(), language.getName()));
-//                System.out.println(translatedShortDescription);
-                    wpProductTranslationEntity.setShortDescription(translatedShortDescription);
-                } else if (request.getType() == 3L) {
-                    String translatedDescription = chatGptService.translateText(request.getItem().getDescription(), translateInstructionContent(request.getItem().getLanguage().getName(), language.getName()));
-//                System.out.println(translatedDescription);
-                    wpProductTranslationEntity.setDescription(translatedDescription);
-                }
-                wpProductTranslationRepository.save(wpProductTranslationEntity);
+                // ChatGPT повикването е ИЗВЪН трансакция (това е добре)
+                String translatedText = chatGptService.translateText(textToTranslate, instruction);
+
+                // 2. Записваме превода в собствена малка трансакция
+                wpProductService.saveTranslatedField(
+                        request.getProductId(),
+                        targetLanguage.getId(),
+                        translatedText,
+                        request.getType()
+                );
             }
-            return ResponseEntity
-                    .ok(true);
+
+            return ResponseEntity.ok(true);
         } catch (Exception e) {
+            log.error("Грешка при превод: ", e);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
-
     }
 
 

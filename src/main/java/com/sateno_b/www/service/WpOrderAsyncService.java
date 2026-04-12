@@ -35,8 +35,12 @@ public class WpOrderAsyncService {
             Optional<SiteEntity> byId = siteRepository.findById(sourceSiteId);
             byId.ifPresent(siteList::add);
         } else {
-            siteList.addAll(siteRepository.findAll());
+//            siteList.addAll(siteRepository.findAll());
+            Optional<SiteEntity> byId = siteRepository.findById(order.getSite().getId());
+            byId.ifPresent(siteList::add);
         }
+
+
 
         for (SiteEntity site : siteList) {
 //            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;

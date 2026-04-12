@@ -63,6 +63,7 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long>, J
     Optional<WpOrderEntity> findByEmailsContaining(EmailLogEntity emailLog);
 
     Optional<WpOrderEntity> findByWpOrderId(Long wpOrderId);
+    Optional<WpOrderEntity> findByWpOrderIdAndSiteId(Long orderId, Long siteId);
 
     List<WpOrderEntity> findAllByCourierTypeAndStatus(CourierType courierType, OrderStatus status);
 
