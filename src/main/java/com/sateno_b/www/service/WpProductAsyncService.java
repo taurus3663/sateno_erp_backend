@@ -116,12 +116,17 @@ public class WpProductAsyncService {
                         .findFirst()
                         .orElse(null);
 
-                if (translation == null) {
+                if (translation == null || translation.getName().isEmpty()) {
                     log.info("Преводът липсва за SKU {} на език {}. Стартиране на ChatGPT превод...",
                             product.getSku(), site.getLanguage().getName());
 
                     // Вземаме изходния текст (обикновено първия наличен превод, напр. Български)
-                    WpProductTranslationEntity base = product.getTranslations().get(0);
+                    // НАМИРАМЕ БЪЛГАРСКИЯ ПРЕВОД (id: 1) КАТО ИЗТОЧНИК
+                    WpProductTranslationEntity base = product.getTranslations().stream()
+                            .filter(t -> t.getLanguage().getId() == 1L) // Тук приемаме, че BG ID е 1
+                            .findFirst()
+                            .orElse(null);
+
                     String targetLang = site.getLanguage().getName();
                     String sourceLang = base.getLanguage().getName();
 
@@ -150,7 +155,9 @@ public class WpProductAsyncService {
                     }
 
                     // 2. Запис в базата данни, за да не се превежда отново при следващ синк
-                    translation = new WpProductTranslationEntity();
+                    if(translation == null) {
+                        translation = new WpProductTranslationEntity();
+                    }
                     translation.setProduct(product);
                     translation.setLanguage(site.getLanguage());
                     translation.setName(translatedName);
@@ -167,8 +174,8 @@ public class WpProductAsyncService {
 
 // 3. Попълваме тялото на заявката към WooCommerce
                 updateBody.put("name", translation.getName());
-                updateBody.put("short_description", translation.getShortDescription());
-                updateBody.put("description", translation.getDescription());
+                updateBody.put("short_description", cleanHtml(translation.getShortDescription()));
+                updateBody.put("description", cleanHtml(translation.getDescription()));
 
 
 
@@ -598,5 +605,18 @@ public class WpProductAsyncService {
             }
         }
         return wooAddons;
+    }
+
+    private String cleanHtml(String html) {
+        if (html == null) return "";
+
+        return html
+                .replaceAll("&nbsp;", " ")
+                .replaceAll(" style=\"[^\"]*\"", "") // премахва inline стилове
+                .replaceAll("<p[^>]*>\\s*</p>", "")  // премахва празни <p>
+                .replaceAll("</p>\\s*<p[^>]*>", "<br>") // слепва параграфите
+                .replaceAll("^<p[^>]*>", "")         // премахва първия <p>
+                .replaceAll("</p>\\s*$", "")         // премахва последния </p>
+                .trim();
     }
 }

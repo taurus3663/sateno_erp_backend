@@ -69,7 +69,7 @@ public class WpProductService {
 
 
     @Transactional
-    @CacheEvict(value = "productsList", allEntries = true)
+//    @CacheEvict(value = "productsList", allEntries = true)
     public void syncProductsToDB(Long siteId) {
         SiteEntity site = siteRepository.findById(siteId).orElseThrow();
 //        String auth = AuthTool.getAuth(site.getConsumerKey(), site.getConsumerSecret());
@@ -503,7 +503,7 @@ public class WpProductService {
         }
     }
     @Transactional
-    @CacheEvict(value = "productsList", allEntries = true)
+//    @CacheEvict(value = "productsList", allEntries = true)
     public WpProductDto saveProduct(WpProductDto dto) {
         WpProductEntity entity;
         if (dto.getId() != null && dto.getId() > 0) {
@@ -584,14 +584,56 @@ public class WpProductService {
 
         // SITE CONFIG
         if (dto.getSiteConfig() != null && !dto.getSiteConfig().isEmpty()) {
-            for (WpProductSiteConfigDto wpProductSiteConfigDto : dto.getSiteConfig()) {
-                WpProductSiteConfigEntity siteConfig = wpProductSiteConfigRepository.findById(wpProductSiteConfigDto.getId())
+
+            // 1. Първо намираме sateno.bg от DTO-то
+            WpProductSiteConfigDto satenoDto = dto.getSiteConfig().stream()
+                    .filter(sc -> sc.getSite() != null && sc.getSite().getUrl().contains("sateno.bg"))
+                    .findFirst().orElse(null);
+
+
+            // ДЕБЪГване
+            log.info("=== SITE CONFIG DEBUG ===");
+            for (WpProductSiteConfigDto sc : dto.getSiteConfig()) {
+                log.info("Site: {}, Price: {}, RegularPrice: {}, Id: {}",
+                        sc.getSite() != null ? sc.getSite().getUrl() : "NULL",
+                        sc.getPrice(),
+                        sc.getRegularPrice(),
+                        sc.getId()
+                );
+            }
+
+            BigDecimal satenoRegular = satenoDto != null ? satenoDto.getRegularPrice() : BigDecimal.ZERO;
+            BigDecimal satenoPrice = satenoDto != null ? satenoDto.getPrice() : BigDecimal.ZERO;
+
+            // 2. Сортираме — sateno.bg първо
+            List<WpProductSiteConfigDto> sorted = dto.getSiteConfig().stream()
+                    .sorted((a, b) -> {
+                        boolean aIsSateno = a.getSite() != null && a.getSite().getUrl().contains("sateno.bg");
+                        boolean bIsSateno = b.getSite() != null && b.getSite().getUrl().contains("sateno.bg");
+                        return Boolean.compare(!aIsSateno, !bIsSateno); // sateno.bg отива първо
+                    })
+                    .toList();
+
+            for (WpProductSiteConfigDto wpProductSiteConfigDto : sorted) {
+                WpProductSiteConfigEntity siteConfig = wpProductSiteConfigRepository
+                        .findById(wpProductSiteConfigDto.getId())
                         .orElse(new WpProductSiteConfigEntity());
+
                 SiteEntity site = siteRepository.getReferenceById(wpProductSiteConfigDto.getSite().getId());
                 siteConfig.setPrice(wpProductSiteConfigDto.getPrice());
                 siteConfig.setRegularPrice(wpProductSiteConfigDto.getRegularPrice());
                 siteConfig.setSite(site);
                 siteConfig.setProduct(entity);
+
+                if (!wpProductSiteConfigDto.getSite().getUrl().contains("sateno.bg")) {
+                    if (siteConfig.getPrice() == null || siteConfig.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+                        siteConfig.setPrice(satenoPrice);
+                    }
+                    if (siteConfig.getRegularPrice() == null || siteConfig.getRegularPrice().compareTo(BigDecimal.ZERO) <= 0) {
+                        siteConfig.setRegularPrice(satenoRegular);
+                    }
+                }
+
                 wpProductSiteConfigRepository.save(siteConfig);
             }
         }
@@ -685,7 +727,7 @@ public class WpProductService {
     }
 
     @Transactional()
-    @Cacheable(value = "productsList", key = "{#pageable, #brand, #category, #name_sku, #quantity, #status, #saleType}")
+//    @Cacheable(value = "productsList", key = "{#pageable, #brand, #category, #name_sku, #quantity, #status, #saleType}")
     public Page<WpProductDto> getAll(
             Pageable pageable,
             @RequestParam(required = false) String brand,
@@ -815,7 +857,7 @@ public class WpProductService {
 
     }
 
-    @CacheEvict(value = "productsList", allEntries = true)
+//    @CacheEvict(value = "productsList", allEntries = true)
     public WpProductDto patchProduct(WpProductDto wpProductDto) {
         Optional<WpProductEntity> byId = wpProductRepository.findById(wpProductDto.getId());
         if (byId.isPresent()) {
