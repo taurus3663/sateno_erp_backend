@@ -228,11 +228,19 @@ public class SpeedyService implements ShippingProvider {
 
 
 
-
+        boolean isFreeShipping = order.getTotalPriceFCoutier() == null ||
+                Double.parseDouble(order.getTotalPriceFCoutier().toString()) <= 0;
 
         Map<String, Object> payment = new HashMap<>();
-        payment.put("courierServicePayer", "RECIPIENT");  // RECIPIENT/SENDER
-        payment.put("declaredValuePayer", "RECIPIENT");
+        if (isFreeShipping) {
+            payment.put("courierServicePayer", "SENDER");    // Магазинът (Изпращач) плаща доставката
+            payment.put("declaredValuePayer", "RECIPIENT");     // Обявената стойност също се поема от магазина
+        } else {
+            payment.put("courierServicePayer", "RECIPIENT"); // Клиентът (Получател) плаща доставката
+            payment.put("declaredValuePayer", "RECIPIENT");
+        }
+//        payment.put("courierServicePayer", "RECIPIENT");  // RECIPIENT/SENDER
+//        payment.put("declaredValuePayer", "RECIPIENT");
         body.put("payment", payment);
 
         Map<String, Object> service = new HashMap<>();

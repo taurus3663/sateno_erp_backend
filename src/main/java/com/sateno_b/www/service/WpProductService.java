@@ -518,6 +518,10 @@ public class WpProductService {
         entity.setStatus(dto.getStatus());
         entity.setSaleType(dto.getSaleType());
 
+        if (entity.getId() == null) {
+            entity = wpProductRepository.saveAndFlush(entity);
+        }
+
         // BRAND
         if (dto.getBrand() != null) {
             wpBrandRepository.findBySlug(dto.getBrand().getSlug()).ifPresent(entity::setBrand);
@@ -600,8 +604,9 @@ public class WpProductService {
                 .filter(id -> id != null && id > 0)
                 .collect(Collectors.toSet());
 
-        // 2. ЛОКАЛНО ИЗТРИВАНЕ (Мапинг): Ако има избран сайт, махаме връзката на липсващите снимки
+        // 2. ИЗТРИВАНЕ НА МАПИНГИ
         if (dto.getLastEditedSiteId() != null) {
+            // Локално - само за избрания сайт
             SiteEntity currentSite = siteRepository.getReferenceById(dto.getLastEditedSiteId());
             for (WpProductImageEntity img : entity.getImages()) {
                 if (!incomingIds.contains(img.getId())) {
@@ -609,8 +614,17 @@ public class WpProductService {
                     log.info("Изтрит локален мапинг за снимка {} от сайт {}", img.getId(), currentSite.getName());
                 }
             }
-            wpProductImageSiteMappingRepository.flush();
+        } else {
+            // Глобално - за ВСИЧКИ сайтове (няма избран сайт)
+            for (WpProductImageEntity img : entity.getImages()) {
+                if (!incomingIds.contains(img.getId())) {
+                    wpProductImageSiteMappingRepository.deleteAllByProductImageId(img.getId());
+                    log.info("Изтрити ВСИЧКИ мапинги за снимка {}", img.getId());
+                }
+            }
         }
+
+        wpProductImageSiteMappingRepository.flush();
 
         // 3. ГЛОБАЛНО ИЗТРИВАНЕ: Трием снимката само ако не е в incomingIds И няма мапинги към ДРУГИ сайтове
         List<WpProductImageEntity> imagesToRemoveGlobally = new ArrayList<>();

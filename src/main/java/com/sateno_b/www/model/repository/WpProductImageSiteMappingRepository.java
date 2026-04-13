@@ -21,4 +21,5 @@ public interface WpProductImageSiteMappingRepository extends JpaRepository<WpPro
     void deleteByProductImageIdAndSite(Long productImageId, SiteEntity site);
 
     long countByProductImageId(Long productImageId);
+    void deleteAllByProductImageId(Long productImageId);
 }
