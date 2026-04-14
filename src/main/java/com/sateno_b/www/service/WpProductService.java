@@ -87,10 +87,10 @@ public class WpProductService {
                 if(++count == 50) {
                     count = 0;
                     wpProductRepository.flush();
-                    wpProductTranslationRepository.flush();
-                    wpProductSiteConfigRepository.flush();
+//                    wpProductTranslationRepository.flush();
+//                    wpProductSiteConfigRepository.flush();
                     wpProductImageSiteMappingRepository.flush();
-                    wpAddonRepository.flush();
+//                    wpAddonRepository.flush();
                     entityManager.clear();
                 }
 
@@ -109,7 +109,7 @@ public class WpProductService {
         }
 
         List<WpProductEntity> productList = wpProductRepository.findAll();
-        ExecutorService executor = Executors.newFixedThreadPool(10);
+//        ExecutorService executor = Executors.newFixedThreadPool(10);
         AtomicInteger count = new AtomicInteger();
         for (WpProductEntity product : productList) {
 //            executor.submit(() -> {
@@ -124,6 +124,7 @@ public class WpProductService {
                }
 //            });
         }
+        System.out.println("УСПЕШНО ПРИКЛЮЧЕН СИНХ");
 //        executor.shutdown();
     }
 
@@ -241,50 +242,51 @@ public class WpProductService {
 
         Optional<WpProductEntity> existingProduct = wpProductRepository.findBySkuAndSite(dto.getSku(), site.getId());
         if (existingProduct.isPresent()) {
-            return;
+//            return;
+            syncImagesForProduct(existingProduct.get(), dto.getImages(), site);
         }
 
-        WpProductEntity product = new WpProductEntity();
-        // 2. Обновяваме Глобалните данни (технически)
-        product.setStockQuantity(dto.getStock_quantity() == null? 0: dto.getStock_quantity());
-        product.setWeight(dto.getWeight());
-        product.setStatus(dto.getStatus());
-        product.setSaleType(dto.isManage_stock() ? ProductSaleType.LIMITED: ProductSaleType.UNLIMITED);
-        product.setManage_stock(dto.isManage_stock());
-        product.setSku(dto.getSku());
-        product.setStock_status(dto.getStock_status());
-        product.setType(dto.getType());
-        product.setFeatured(dto.isFeatured());
-        product.setCatalog_visibility(dto.getCatalog_visibility());
-        product.setDimensions(dto.getDimensions());
-        // 3. Свързваме Бранд (вече синхронизиран)
-        if (dto.getBrands() != null && !dto.getBrands().isEmpty()) {
-            wpBrandRepository.findBySlug(SlugTool.decodeSlug(dto.getBrands().get(0).getSlug()))
-                    .ifPresent(product::setBrand);
-        }
-
-        // 4. Свързваме Категории и Подкатегории (ManyToMany)
-        if (dto.getCategories() != null) {
-            product.getCategories().clear(); // Махаме старите, слагаме новите от WP
-            for (WooProductCategoryDto catDto : dto.getCategories()) {
-                wpCategoryRepository.findBySlug(SlugTool.decodeSlug(catDto.getSlug()))
-                        .ifPresent(product.getCategories()::add);
-            }
-        }
-
-        product = wpProductRepository.save(product);
+//        WpProductEntity product = new WpProductEntity();
+//        // 2. Обновяваме Глобалните данни (технически)
+//        product.setStockQuantity(dto.getStock_quantity() == null? 0: dto.getStock_quantity());
+//        product.setWeight(dto.getWeight());
+//        product.setStatus(dto.getStatus());
+//        product.setSaleType(dto.isManage_stock() ? ProductSaleType.LIMITED: ProductSaleType.UNLIMITED);
+//        product.setManage_stock(dto.isManage_stock());
+//        product.setSku(dto.getSku());
+//        product.setStock_status(dto.getStock_status());
+//        product.setType(dto.getType());
+//        product.setFeatured(dto.isFeatured());
+//        product.setCatalog_visibility(dto.getCatalog_visibility());
+//        product.setDimensions(dto.getDimensions());
+//        // 3. Свързваме Бранд (вече синхронизиран)
+//        if (dto.getBrands() != null && !dto.getBrands().isEmpty()) {
+//            wpBrandRepository.findBySlug(SlugTool.decodeSlug(dto.getBrands().get(0).getSlug()))
+//                    .ifPresent(product::setBrand);
+//        }
+//
+//        // 4. Свързваме Категории и Подкатегории (ManyToMany)
+//        if (dto.getCategories() != null) {
+//            product.getCategories().clear(); // Махаме старите, слагаме новите от WP
+//            for (WooProductCategoryDto catDto : dto.getCategories()) {
+//                wpCategoryRepository.findBySlug(SlugTool.decodeSlug(catDto.getSlug()))
+//                        .ifPresent(product.getCategories()::add);
+//            }
+//        }
+//
+//        product = wpProductRepository.save(product);
 
         // 5. ЗАПИС НА ЦЕНИ И ТЕКСТОВЕ (Translation)
-        updateTranslation(product, dto, site, lang);
+//        updateTranslation(product, dto, site, lang);
 
         // 5a запис на цени
-        updateSiteConfig(product, dto, site);
+//        updateSiteConfig(product, dto, site);
 
         // 6. СНИМКИ (Локално сваляне)
-        syncImagesForProduct(product, dto.getImages(), site);
+//        syncImagesForProduct(existingProduct.get(), dto.getImages(), site);
 
         // 7. АДОНИ (Специфични за продукта и сайта)
-        syncAddonsForProduct(product, dto.getAddons(), site, lang);
+//        syncAddonsForProduct(product, dto.getAddons(), site, lang);
 
     }
 

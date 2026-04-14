@@ -619,4 +619,85 @@ public class WpProductAsyncService {
                 .replaceAll("</p>\\s*$", "")         // премахва последния </p>
                 .trim();
     }
+
+//    @Transactional
+//    @Async
+//    public void updateProductOnSites(WpProductEntity product, Long lastEditedSiteId) throws InterruptedException {
+//        Thread.sleep(2000);
+//        product = wpProductRepository.findById(product.getId()).orElse(null);
+//        if(product == null) return;
+//
+//
+//        List<SiteEntity> siteList = siteRepository.findById(lastEditedSiteId)
+//                .map(List::of) // Превръщаме в списък с един елемент
+//                .orElse(Collections.emptyList());
+//
+//
+////        System.out.println(lastEditedSiteId);
+//        for (SiteEntity site : siteList) {
+////            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
+////            System.out.println(site.toString());
+//            try {
+//                String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+//
+//                var searchResponse = restClient.get()
+//                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products?sku=" + product.getSku())
+//                        .header("Authorization", "Basic " + auth)
+//                        .retrieve()
+//                        .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+//
+//                if (searchResponse == null || searchResponse.isEmpty()) {
+//                    log.warn("Продукт с SKU {} не е намерен в сайта {}", product.getSku(), site.getUrl());
+//                   return;
+//                }
+//
+//
+//
+//
+//                List<Map<String, Object>> imageList = new ArrayList<>();
+//                if (product.getImages() != null) {
+//                    for (WpProductImageEntity imgEntity : product.getImages()) {
+//
+//                        // 1. Търсим съществуващ мапинг за текущия сайт
+//                        Optional<WpProductImageSiteMappingEntity> mappingOpt = wpProductImageSiteMappingRepository
+//                                .findByProductImageIdAndSite(imgEntity.getId(), site);
+//
+//                      if(mappingOpt.isEmpty()) {
+//                                log.info("Качване на НОВА снимка към сайт {}: {}", site.getUrl(), imgEntity.getLocalSrc());
+//                                Long wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
+//
+//                                if (wpMediaId != null) {
+//                                    WpProductImageSiteMappingEntity newMapping = new WpProductImageSiteMappingEntity();
+//                                    newMapping.setWpMediaId(wpMediaId);
+//                                    newMapping.setSite(site);
+//                                    newMapping.setProductImage(imgEntity);
+//                                    wpProductImageSiteMappingRepository.save(newMapping);
+//
+//                                    Map<String, Object> imgMap = new HashMap<>();
+//                                    imgMap.put("id", wpMediaId);
+//                                    imageList.add(imgMap);
+//                                }
+//
+//                        }
+//                    }
+//                }
+//
+//                Map<String, Object> updateBody = new HashMap<>();
+//                updateBody.put("images", imageList);
+//
+//                    Integer wpId = (Integer) searchResponse.get(0).get("id");
+//                    restClient.patch()
+//                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
+//                            .header("Authorization", "Basic " + auth)
+//                            .body(updateBody)
+//                            .retrieve()
+//                            .toBodilessEntity();
+//            } catch (Exception e) {
+//                log.error("Грешка при обновяване на сайт {}: {}", site.getUrl(), e.getMessage());
+//            }
+//
+//        }
+//
+//
+//    }
 }

@@ -600,7 +600,7 @@ public class WpOrderService {
                     }
                 wpProductRepository.save(product);
                     try {
-                        wpProductAsyncService.updateProductOnSites(product, wpOrderEntity.getSite().getId());
+                        wpProductAsyncService.updateProductOnSites(product, null);
                     } catch (Exception e) {}
 
                 }
