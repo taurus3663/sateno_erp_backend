@@ -123,9 +123,10 @@ public class SiteController {
             }
         }
 
+        if(siteDto.getEmail() != null){
         Optional<EmailEntity> email = emailRepository.findById(siteDto.getEmail().getId());
         email.ifPresent(siteEntity::setEmail);
-
+        }
         siteEntity.setNewOrderMessage(siteDto.getNewOrderMessage());
 
         SiteEntity saved = siteRepository.save(siteEntity);

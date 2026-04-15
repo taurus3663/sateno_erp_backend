@@ -126,8 +126,12 @@ public class WpOrderEntity extends BaseEntity {
     @Column(columnDefinition = "jsonb")
     private OrderSavedCourierSettings savedCourierBilling;
 
-    @Column
-    private Double customShippingTotal;
+    public Double getCustomShippingTotal() {
+        return customShippingTotal == null ? 0D : customShippingTotal;
+    }
+
+    @Column(columnDefinition = "double default 0.0", nullable = false)
+    private Double customShippingTotal = 0D;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")

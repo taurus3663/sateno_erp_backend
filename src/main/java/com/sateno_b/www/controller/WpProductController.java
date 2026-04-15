@@ -41,6 +41,7 @@ public class WpProductController {
     private final ChatGptService chatGptService;
     private final LanguageRepository languageRepository;
     private final FileStorageService fileStorageService;
+    private final SchemeWpProductRepository schemeWpProductRepository;
 
     @PatchMapping("/patch")
     public ResponseEntity<?> patchProduct(@RequestBody WpProductDto wpProductDto) {
@@ -334,4 +335,5 @@ public class WpProductController {
         dto.setTranslations(transMap);
         return dto;
     }
+
 }

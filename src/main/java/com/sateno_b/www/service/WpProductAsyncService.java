@@ -100,6 +100,10 @@ public class WpProductAsyncService {
                 updateBody.put("weight", product.getWeight());
                 updateBody.put("status", product.getStatus().getValue());
 
+                if(product.getSaleType() == ProductSaleType.UNLIMITED) {
+                    updateBody.put("stock_status", "instock");
+                }
+
 //                DESCRIPTION
 //                for (WpProductTranslationEntity translation : product.getTranslations()) {
 //                    if(translation.getLanguage() == site.getLanguage()) {

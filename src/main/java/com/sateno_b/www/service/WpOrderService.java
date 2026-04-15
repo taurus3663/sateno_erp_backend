@@ -480,8 +480,9 @@ public class WpOrderService {
         wpOrderEntity.setTotalPriceFCoutier(isPayed? BigDecimal.valueOf(0): totalPrice.get());
 
         CourierParser.CourierMatch parse = CourierParser.parseWithFallback(wpOrderEntity);
+        AtomicReference<Double> tPrice = new AtomicReference<>(0.0);
         if(parse != null && !isPayed) {
-            AtomicReference<Double> tPrice = new AtomicReference<>(0.0);
+//            AtomicReference<Double> tPrice = new AtomicReference<>(0.0);
 // Вземаме сумата на поръчката като double за сравнение
             double orderAmount = wpOrderEntity.getTotalPrice().doubleValue();
 
@@ -524,11 +525,12 @@ public class WpOrderService {
                     }
                 }
             });
-            wpOrderEntity.setCustomShippingTotal(tPrice.get());
+//            wpOrderEntity.setCustomShippingTotal(tPrice.get());
         }
-        if(isPayed) {
-            wpOrderEntity.setCustomShippingTotal(0.0);
-        }
+        wpOrderEntity.setCustomShippingTotal(tPrice.get());
+//        if(isPayed) {
+//            wpOrderEntity.setCustomShippingTotal(0.0);
+//        }
 
         NekorektenResponseDto nekorektenResponseDto = nekorektenService.checkPhone(rawPhone);
         if(nekorektenResponseDto != null) {

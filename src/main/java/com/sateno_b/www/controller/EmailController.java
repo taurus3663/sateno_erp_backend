@@ -76,29 +76,29 @@ public class EmailController implements BaseController<EmailDto, Long> {
 
     @Override
 //    @GetMapping("/list")
-    public Page<EmailDto> list(Pageable pageable) {
+    public ResponseEntity<Page<EmailDto>> list(Pageable pageable) {
 
-        return emailRepository.findAll(pageable).map(entity -> {
+        Page<EmailDto> map1 = emailRepository.findAll(pageable).map(entity -> {
 
             EmailDto map = modelMapper.map(entity, EmailDto.class);
             return map;
         });
-
+        return ResponseEntity.ok(map1);
     }
 
     @Override
 //    @PostMapping("/save")
-    public EmailDto save(@RequestBody EmailDto emailDto) {
+    public ResponseEntity<EmailDto> save(@RequestBody EmailDto emailDto) {
         EmailEntity map = modelMapper.map(emailDto, EmailEntity.class);
         emailService.updateEmailConfig(map);
-     return modelMapper.map(emailRepository.save(map), EmailDto.class);
+     return ResponseEntity.ok(modelMapper.map(emailRepository.save(map), EmailDto.class));
     }
 
     @Override
     @GetMapping("/detail/{id}")
-    public EmailDto get(@PathVariable("id") Long id) {
+    public ResponseEntity<EmailDto> get(@PathVariable("id") Long id) {
         Optional<EmailEntity> byId = emailRepository.findById(id);
-        return modelMapper.map(byId.get(), EmailDto.class);
+        return ResponseEntity.ok(modelMapper.map(byId.get(), EmailDto.class));
     }
 
     @Override
