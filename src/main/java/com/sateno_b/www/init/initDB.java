@@ -5,16 +5,17 @@ import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.UserEntity;
 import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.UserRepository;
-import com.sateno_b.www.service.ChatGptService;
-import com.sateno_b.www.service.EmailService;
-import com.sateno_b.www.service.NekorektenService;
+import com.sateno_b.www.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -24,6 +25,8 @@ public class initDB implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final NekorektenService nekorektenService;
     private final SiteRepository siteRepository;
+    private final CurrencyService currencyService;
+    private final SpeedyService speedyService;
 
     @Override
     public void run(String... args) throws Exception {
@@ -43,6 +46,15 @@ public class initDB implements CommandLineRunner {
 //        "2025-01-11T21:22:21+00:00","views":16,"liked":0,"visibleOnlyForCreator":false,
 //        "isArchived":false}],"count":1,"currentPage":1,"itemsPerPage":20,"server":
 //        {"date":"2026-02-27 20:22:33","httpCode":200}}
+
+//        initCurrencyTest();
+        Map<String, Object> body = speedyService.createBaseBody("1908628", "SpidiAdmirali2558$");
+        Map<String, Object> parcel = new HashMap<>();
+        parcel.put("id", "63538814858"); // Номерът трябва да е в id
+        body.put("parcels", List.of(parcel));
+        var stringObjectMap = speedyService.postToSpeedy("track", body);
+        System.out.println(stringObjectMap);
+
     }
 
     private void initAdmin() {
@@ -96,5 +108,26 @@ public class initDB implements CommandLineRunner {
 //        System.out.println("TEST11");
         String tr = chatGptService.translateText("КАКВО ПРАВИШ?", "преведи го на английски");
 //        System.out.println(tr);
+    }
+
+    private void initCurrencyTest() {
+//        BigDecimal convert = currencyService.convert(BigDecimal.valueOf(5.10), "EUR", "RON");
+//        System.out.println(convert);
+//        BigDecimal convert1 = currencyService.convert(BigDecimal.valueOf(52), "EUR", "RON");
+//        BigDecimal convert2 = currencyService.convert(BigDecimal.valueOf(54), "EUR", "RON");
+//        BigDecimal convert3 = currencyService.convert(BigDecimal.valueOf(55), "EUR", "RON");
+//        BigDecimal convert4 = currencyService.convert(BigDecimal.valueOf(56), "EUR", "RON");
+//        BigDecimal convert5 = currencyService.convert(BigDecimal.valueOf(57), "EUR", "RON");
+//        BigDecimal convert6 = currencyService.convert(BigDecimal.valueOf(58), "EUR", "RON");
+//        BigDecimal convert7 = currencyService.convert(BigDecimal.valueOf(59), "EUR", "RON");
+//        System.out.println(convert);
+//        System.out.println(convert1);
+//        System.out.println(convert2);
+//        System.out.println(convert3);
+//        System.out.println(convert4);
+//        System.out.println(convert5);
+//        System.out.println(convert6);
+//        System.out.println(convert7);
+
     }
 }

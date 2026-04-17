@@ -11,6 +11,8 @@ import jakarta.persistence.PostUpdate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 
 @Component
@@ -28,9 +30,13 @@ public class WpOrderEntityListener {
     }
 
     @PostUpdate
-    @PostPersist
-    @PostRemove
     public void onOrderChange(WpOrderEntity wpOrderEntity) {
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println("11");
         WpOrderEntity old = wpOrderEntity.getSnapshot();
 
         // Проверка за статус CANCELLED
@@ -42,7 +48,7 @@ public class WpOrderEntityListener {
             wpProductServiceProvider.ifAvailable(service -> service.restoreQuantity(wpOrderEntity));
         }
 
-        // Изпращаме WebSocket нотификация
+//        // Изпращаме WebSocket нотификация
         notificationServiceProvider.ifAvailable(service ->
                 service.sendUpdate("orders", WsAction.UPDATED)
         );

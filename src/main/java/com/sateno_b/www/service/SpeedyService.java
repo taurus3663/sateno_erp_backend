@@ -720,7 +720,7 @@ public class SpeedyService implements ShippingProvider {
     }
 
 
-    private Map<String, Object> createBaseBody(String user, String pass) {
+    public Map<String, Object> createBaseBody(String user, String pass) {
         Map<String, Object> body = new HashMap<>();
         body.put("userName", user);
         body.put("password", pass);
@@ -728,7 +728,7 @@ public class SpeedyService implements ShippingProvider {
         return body;
     }
 
-    private Map<String, Object> postToSpeedy(String endpoint, Map<String, Object> body) {
+    public Map<String, Object> postToSpeedy(String endpoint, Map<String, Object> body) {
         return restClient.post()
                 .uri("https://api.speedy.bg/v1/" + endpoint)
 //                .uri("https://demo.speedy.bg/v1/" + endpoint)
@@ -842,6 +842,7 @@ public class SpeedyService implements ShippingProvider {
                         for (Map<String, Object> op : operations) {
                             String desc = (String) op.get("description");
                             String dateTimeStr = (String) op.get("dateTime");
+                            String opCode = String.valueOf(op.get("operationCode"));
 
                             if (desc == null || dateTimeStr == null) continue;
 
@@ -865,13 +866,13 @@ public class SpeedyService implements ShippingProvider {
 
                             // 2. АВТОМАТИЧНО МАРКИРАНЕ КАТО ПРИКЛЮЧЕНА
                             // Проверяваме дали описанието съдържа фразата за доставка
-                            if (desc.contains("Доставка на клиент") && order.getStatus() != OrderStatus.COMPLETED) {
+                            if (desc.toLowerCase().contains("доставка на клиент") && order.getStatus() != OrderStatus.COMPLETED) {
                                 order.setStatus(OrderStatus.COMPLETED);
                                 isUpdated = true;
                                 log.info("Order #{} marked as COMPLETED based on Speedy status: {}", order.getId(), desc);
                             }
-                            else if(desc.contains("Връщане към подателя")) {
-                                order.setStatus(OrderStatus.CANCELLED);
+                            else if(desc.toLowerCase().contains("връщане към подателя") || opCode.equals("111")) {
+                                order.setStatus(OrderStatus.FAILED);
                                 isUpdated = true;
                             }
                         }

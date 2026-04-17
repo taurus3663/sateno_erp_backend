@@ -28,7 +28,11 @@ public class WpOrderAsyncService {
     @Transactional
     @Async
     public void updateOrderOnSites(WpOrderEntity order, Long sourceSiteId) {
-
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
 //        order = wpOrderRepository.findById(order.getId()).orElse(null);
         List<SiteEntity> siteList = new ArrayList<>();
         if(sourceSiteId != null){
@@ -39,8 +43,6 @@ public class WpOrderAsyncService {
             Optional<SiteEntity> byId = siteRepository.findById(order.getSite().getId());
             byId.ifPresent(siteList::add);
         }
-
-
 
         for (SiteEntity site : siteList) {
 //            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;

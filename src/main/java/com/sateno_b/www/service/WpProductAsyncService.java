@@ -29,6 +29,9 @@ public class WpProductAsyncService {
     private final WpCategorySiteMappingRepository wpCategorySiteMappingRepository;
     private final WpProductTranslationRepository wpProductTranslationRepository;
     private final ChatGptService chatGptService;
+    private final CurrencyService currencyService;
+    private final WpProductSiteConfigRepository wpProductSiteConfigRepository;
+    private final CurrencyRepository currencyRepository;
 
 
     @Transactional
@@ -421,8 +424,10 @@ public class WpProductAsyncService {
 //                }
 
 
+                CurrencyEntity currency = site.getCurrency();
+
                 // 7. ADDONS (FORCE GENERATION)
-                List<Map<String, Object>> wooAddons = generateWooAddons(product, site);
+                List<Map<String, Object>> wooAddons = generateWooAddons(product, site, currency);
                 updateBody.put("addons", wooAddons);
 
 
@@ -527,7 +532,7 @@ public class WpProductAsyncService {
 
     }
 
-    private List<Map<String, Object>> generateWooAddons(WpProductEntity product, SiteEntity site) {
+    private List<Map<String, Object>> generateWooAddons(WpProductEntity product, SiteEntity site, CurrencyEntity currency) {
         List<Map<String, Object>> wooAddons = new ArrayList<>();
         if (product.getAddonConfig() == null || product.getAddonConfig().isEmpty()) return wooAddons;
 
@@ -594,8 +599,19 @@ public class WpProductAsyncService {
                     Map<String, Object> option = new HashMap<>();
                     option.put("label", label);
                     // Ако цената е 0, пращаме празен стринг, за да не се показва "+0.00" в сайта
-                    option.put("price", config.getPriceModifier().compareTo(BigDecimal.ZERO) > 0
-                            ? config.getPriceModifier().toString() : "");
+                    String priceRs = "";
+//                    System.out.println(currency.getCode().toUpperCase());
+                    if(config.getPriceModifier().compareTo(BigDecimal.ZERO) > 0) {
+                        if(!currency.getCode().equals("EUR")) {
+                            BigDecimal convert = currencyService.convert(config.getPriceModifier(), "EUR", currency.getCode().toUpperCase());
+                            priceRs = convert.toString();
+                        } else {
+                            priceRs = config.getPriceModifier().toString();
+                        }
+                    }
+                    option.put("price", priceRs);
+//                    option.put("price", config.getPriceModifier().compareTo(BigDecimal.ZERO) > 0
+//                            ? config.getPriceModifier().toString() : "");
                     option.put("price_type", "quantity_based");
                     option.put("position", optionPosition++);
                     option.put("image", "");
@@ -624,40 +640,69 @@ public class WpProductAsyncService {
                 .trim();
     }
 
-//    @Transactional
-//    @Async
-//    public void updateProductOnSites(WpProductEntity product, Long lastEditedSiteId) throws InterruptedException {
-//        Thread.sleep(2000);
-//        product = wpProductRepository.findById(product.getId()).orElse(null);
-//        if(product == null) return;
-//
-//
-//        List<SiteEntity> siteList = siteRepository.findById(lastEditedSiteId)
-//                .map(List::of) // Превръщаме в списък с един елемент
-//                .orElse(Collections.emptyList());
-//
-//
-////        System.out.println(lastEditedSiteId);
-//        for (SiteEntity site : siteList) {
-////            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
-////            System.out.println(site.toString());
-//            try {
-//                String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
-//
-//                var searchResponse = restClient.get()
-//                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products?sku=" + product.getSku())
-//                        .header("Authorization", "Basic " + auth)
-//                        .retrieve()
-//                        .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
-//
-//                if (searchResponse == null || searchResponse.isEmpty()) {
-//                    log.warn("Продукт с SKU {} не е намерен в сайта {}", product.getSku(), site.getUrl());
-//                   return;
-//                }
-//
-//
-//
-//
+    @Transactional
+    @Async
+    public void updateProductOnSitesOnlyPrices(WpProductEntity product, Long lastEditedSiteId) throws InterruptedException {
+        Thread.sleep(2000);
+        log.info("започва за продукт {}", product.getSku());
+        product = wpProductRepository.findById(product.getId()).orElse(null);
+        if(product == null) return;
+
+
+        List<SiteEntity> siteList = siteRepository.findById(lastEditedSiteId)
+                .map(List::of) // Превръщаме в списък с един елемент
+                .orElse(Collections.emptyList());
+
+
+//        System.out.println(lastEditedSiteId);
+        for (SiteEntity site : siteList) {
+//            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
+//            System.out.println(site.toString());
+            try {
+                String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+
+                var searchResponse = restClient.get()
+                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products?sku=" + product.getSku())
+                        .header("Authorization", "Basic " + auth)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+
+                if (searchResponse == null || searchResponse.isEmpty()) {
+                    log.warn("Продукт с SKU {} не е намерен в сайта {}", product.getSku(), site.getUrl());
+                   return;
+                }
+
+                Map<String, Object> updateBody = new HashMap<>();
+
+                List<Map<String, Object>> currentAddons = (List<Map<String, Object>>) searchResponse.get(0).get("addons");
+
+                if (currentAddons != null && !currentAddons.isEmpty()) {
+
+                    // Преминаваме през всяка група адони (напр. "Размер")
+                    for (Map<String, Object> addonGroup : currentAddons) {
+                        List<Map<String, Object>> options = (List<Map<String, Object>>) addonGroup.get("options");
+
+                        if (options != null) {
+                            for (Map<String, Object> option : options) {
+                                String rawPrice = (String) option.get("price");
+
+                                if (rawPrice != null && !rawPrice.isEmpty()) {
+                                    // ПРЕВАЛУТИРАМЕ: Приемаме, че в сайта цената е била в EUR
+                                    BigDecimal eurPrice = new BigDecimal("5.10");
+                                    BigDecimal ronPrice = currencyService.convert(eurPrice, "EUR", "RON");
+
+                                    // Записваме новата цена в обекта
+                                    option.put("price", ronPrice.toString());
+                                }
+                            }
+                        }
+                    }
+
+                    // Добавяме превалутираните адони към тялото за обновяване
+                    updateBody.put("addons", currentAddons);
+                }
+
+//                System.out.println(updateBody.toString());
 //                List<Map<String, Object>> imageList = new ArrayList<>();
 //                if (product.getImages() != null) {
 //                    for (WpProductImageEntity imgEntity : product.getImages()) {
@@ -685,23 +730,67 @@ public class WpProductAsyncService {
 //                        }
 //                    }
 //                }
-//
-//                Map<String, Object> updateBody = new HashMap<>();
 //                updateBody.put("images", imageList);
+
+
+//                SiteEntity si = siteRepository.findSiteEntityByUrl("sateno.bg");
+//                Optional<WpProductSiteConfigEntity> satenoBgSiteConfig = wpProductSiteConfigRepository.findByProductAndSite(product, si);
+//                Optional<WpProductSiteConfigEntity> satenoRoSiteConfig = wpProductSiteConfigRepository.findByProductAndSite(product, site);
+//                if (satenoBgSiteConfig.isEmpty() ) {
+//                    System.out.println("RETURN");
+//                    return;
+//                }
 //
-//                    Integer wpId = (Integer) searchResponse.get(0).get("id");
-//                    restClient.patch()
-//                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
-//                            .header("Authorization", "Basic " + auth)
-//                            .body(updateBody)
-//                            .retrieve()
-//                            .toBodilessEntity();
-//            } catch (Exception e) {
-//                log.error("Грешка при обновяване на сайт {}: {}", site.getUrl(), e.getMessage());
-//            }
+//                WpProductSiteConfigEntity satenoBgCOnfig = satenoBgSiteConfig.get();
+//                WpProductSiteConfigEntity satenoRoConfig;
+//                if(satenoRoSiteConfig.isEmpty()) {
+//                    satenoRoConfig = new WpProductSiteConfigEntity();
+//                    satenoRoConfig.setSite(site);
+//                    satenoRoConfig.setProduct(product);
+//                } else {
+//                    satenoRoConfig = satenoRoSiteConfig.get();
+//                }
 //
-//        }
+////                log.info("t 1{}", satenoBgCOnfig.getPrice());
+//                if(satenoBgCOnfig.getPrice() != null && satenoBgCOnfig.getPrice().compareTo(BigDecimal.ZERO) > 0) {
+////                    log.info("getPrice {}",  satenoBgCOnfig.getPrice());
+//                    BigDecimal ron = currencyService.convert(satenoBgCOnfig.getPrice(), "EUR", "RON");
+////                    log.info("getPrice RS {}",  ron.toString());
+//                    satenoRoConfig.setPrice(ron);
+//                    updateBody.put("price", ron.toString());
+//                }
 //
+//                if(satenoBgCOnfig.getRegularPrice() != null && satenoBgCOnfig.getRegularPrice().compareTo(BigDecimal.ZERO) > 0) {
+//                    BigDecimal ron = currencyService.convert(satenoBgCOnfig.getRegularPrice(), "EUR", "RON");
+//                    satenoRoConfig.setRegularPrice(ron);
+//                    updateBody.put("regular_price", ron.toString());
+//                }
 //
-//    }
+//                if(satenoBgCOnfig.getSalePrice() != null && satenoBgCOnfig.getSalePrice().compareTo(BigDecimal.ZERO) > 0) {
+////                    log.info("getSalePrice {}",  satenoBgCOnfig.getSalePrice());
+//                    BigDecimal ron = currencyService.convert(satenoBgCOnfig.getSalePrice(), "EUR", "RON");
+////                    log.info("getSalePrice RS {}",  ron.toString());
+//                    satenoRoConfig.setSalePrice(ron);
+//                    updateBody.put("sale_price", ron.toString());
+//                }
+//
+//                wpProductSiteConfigRepository.save(satenoRoConfig);
+
+                Integer wpId = (Integer) searchResponse.get(0).get("id");
+                    restClient.patch()
+                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
+                            .header("Authorization", "Basic " + auth)
+                            .body(updateBody)
+                            .retrieve()
+                            .toBodilessEntity();
+                log.info("успешно за продукт {}", product.getSku());
+
+            } catch (Exception e) {
+                log.error("Грешка при обновяване на сайт {}: {}", site.getUrl(), e.getMessage());
+            }
+
+        }
+
+
+    }
 }

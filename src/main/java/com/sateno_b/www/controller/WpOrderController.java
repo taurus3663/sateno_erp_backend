@@ -80,9 +80,10 @@ public class WpOrderController {
     @PatchMapping("/patch")
     public ResponseEntity<?> patch(@RequestBody WpOrderDto wpOrderDto) {
         try {
-            WpOrderDto wpOrder = wpOrderService.patchOrder(wpOrderDto);
+            WpOrderDto wpOrder = wpOrderService.patchOrderMain(wpOrderDto);
             return  ResponseEntity.ok(wpOrder);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body("Грешка при частично обновяване: " + e.getMessage());

@@ -26,6 +26,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestClient;
 
@@ -66,6 +68,8 @@ public class WpProductService {
     private final WpProductHistoryRepository wpProductHistoryRepository;
     private final ImageToWordPress imageToWordPress;
     private final ChatGptService chatGptService;
+    private final WpOrderRepository wpOrderRepository;
+    private final CurrencyService currencyService;
 
 
     @Transactional
@@ -114,11 +118,14 @@ public class WpProductService {
         for (WpProductEntity product : productList) {
 //            executor.submit(() -> {
                 count.getAndIncrement();
+//                if(count.get() == 10) {
+//                    return;
+//                }
                try {
 //                    clearAllProductsFromSite(site);
-                   wpProductAsyncService.updateProductOnSites(product, siteId);
-                   System.out.println(count.get());
-                   log.info("Успешно създаден нов продукт с SKU {} в сайт {}", product.getSku(), site.getUrl());
+//                   wpProductAsyncService.updateProductOnSites(product, siteId);
+                   wpProductAsyncService.updateProductOnSitesOnlyPrices(product, siteId);
+//                   log.info("Успешно създаден нов продукт с SKU {} в сайт {}", product.getSku(), site.getUrl());
                } catch (Exception e) {
                    log.error("Критична грешка при масова синхронизация на SKU {}: {}", product.getSku(), e.getMessage());
                }
@@ -592,18 +599,6 @@ public class WpProductService {
                     .filter(sc -> sc.getSite() != null && sc.getSite().getUrl().contains("sateno.bg"))
                     .findFirst().orElse(null);
 
-
-            // ДЕБЪГване
-            log.info("=== SITE CONFIG DEBUG ===");
-            for (WpProductSiteConfigDto sc : dto.getSiteConfig()) {
-                log.info("Site: {}, Price: {}, RegularPrice: {}, Id: {}",
-                        sc.getSite() != null ? sc.getSite().getUrl() : "NULL",
-                        sc.getPrice(),
-                        sc.getRegularPrice(),
-                        sc.getId()
-                );
-            }
-
             BigDecimal satenoRegular = satenoDto != null ? satenoDto.getRegularPrice() : BigDecimal.ZERO;
             BigDecimal satenoPrice = satenoDto != null ? satenoDto.getPrice() : BigDecimal.ZERO;
 
@@ -621,18 +616,23 @@ public class WpProductService {
                         .findById(wpProductSiteConfigDto.getId())
                         .orElse(new WpProductSiteConfigEntity());
 
-                SiteEntity site = siteRepository.getReferenceById(wpProductSiteConfigDto.getSite().getId());
+//                SiteEntity site = siteRepository.getReferenceById(wpProductSiteConfigDto.getSite().getId());
+                Optional<SiteEntity> site = siteRepository.findById(wpProductSiteConfigDto.getSite().getId());
+                if (site.isEmpty()){ throw new RuntimeException("site not found"); };
+                CurrencyEntity currency = site.get().getCurrency();
                 siteConfig.setPrice(wpProductSiteConfigDto.getPrice());
                 siteConfig.setRegularPrice(wpProductSiteConfigDto.getRegularPrice());
-                siteConfig.setSite(site);
+                siteConfig.setSite(site.get());
                 siteConfig.setProduct(entity);
 
                 if (!wpProductSiteConfigDto.getSite().getUrl().contains("sateno.bg")) {
                     if (siteConfig.getPrice() == null || siteConfig.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
-                        siteConfig.setPrice(satenoPrice);
+                        BigDecimal convert = currencyService.convert(satenoPrice, "EUR", currency.getCode().toUpperCase());
+                        siteConfig.setPrice(convert);
                     }
                     if (siteConfig.getRegularPrice() == null || siteConfig.getRegularPrice().compareTo(BigDecimal.ZERO) <= 0) {
-                        siteConfig.setRegularPrice(satenoRegular);
+                        BigDecimal convert = currencyService.convert(satenoRegular, "EUR", currency.getCode().toUpperCase());
+                        siteConfig.setRegularPrice(convert);
                     }
                 }
 
@@ -694,11 +694,15 @@ public class WpProductService {
                 if (imgDto.isTemp()) {
                     String finalPath = fileStorageService.moveTempImageToProductDir(imgDto.getTempName(), entity.getId());
                     if (finalPath != null) {
-                        WpProductImageEntity imageEntity = new WpProductImageEntity();
-                        imageEntity.setProduct(entity);
-                        imageEntity.setLocalSrc(finalPath);
-                        wpProductImageRepository.save(imageEntity);
-                        entity.getImages().add(imageEntity); // Добавяме към текущата сесия
+                        boolean alreadyExists = entity.getImages().stream()
+                                .anyMatch(existing -> finalPath.equals(existing.getLocalSrc()));
+                        if(!alreadyExists){
+                            WpProductImageEntity imageEntity = new WpProductImageEntity();
+                            imageEntity.setProduct(entity);
+                            imageEntity.setLocalSrc(finalPath);
+                            wpProductImageRepository.save(imageEntity);
+                            entity.getImages().add(imageEntity); // Добавяме към текущата сесия
+                        }
                     }
                 }
             }
@@ -883,11 +887,11 @@ public class WpProductService {
 //    @Transactional(Transactional.TxType.REQUIRES_NEW)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void restoreQuantity(WpOrderEntity wpOrderEntity) {
-
+        wpOrderEntity = wpOrderRepository.findById(wpOrderEntity.getId()).orElse(null);
         for (OrderLineItem orderLineItem : wpOrderEntity.getOrderLine()) {
             String pSku = orderLineItem.getSku();
 
-            Optional<WpProductHistoryEntity> byProductSku = wpProductHistoryRepository.findByProductSkuAndOrder(pSku, wpOrderEntity);
+            Optional<WpProductHistoryEntity> byProductSku = wpProductHistoryRepository.findFirstByProductSkuAndOrder(pSku, wpOrderEntity);
             if (byProductSku.isPresent()) {
                WpProductHistoryEntity pHistory = byProductSku.get();
 
@@ -898,7 +902,10 @@ public class WpProductService {
                     wpProductRepository.save(wpProductEntity);
                     try{
                         wpProductAsyncService.updateProductOnSites(wpProductEntity, null);
-                    } catch (Exception e) {}
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        throw new RuntimeException(e.getMessage());
+                    }
                 }
 
                 wpProductHistoryRepository.delete(pHistory);

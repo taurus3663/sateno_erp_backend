@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -67,7 +68,7 @@ public class FileStorageService {
 
             // Генерираме име
             String extension = getExtension(tempFileName);
-            String finalFileName = "prod_" + System.currentTimeMillis() + extension;
+            String finalFileName = "prod_" + UUID.randomUUID().toString() + extension;
             Path targetPath = targetDir.resolve(finalFileName);
 
             // 3. ПРЕМЕСТВАНЕ

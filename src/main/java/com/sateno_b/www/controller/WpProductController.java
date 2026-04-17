@@ -94,6 +94,8 @@ public class WpProductController {
             log.info("Продукт с ID {} и всички негови връзки бяха изтрити.", id);
         }
     }
+
+
     @GetMapping("/list")
     public ResponseEntity<Page<WpProductDto>> getWpProducts(
             Pageable pageable,
@@ -271,34 +273,36 @@ public class WpProductController {
 //        return true;
 //    }
 
-    @PostMapping("/sync/products/web/{siteId}")
-    public boolean syncWpProductsToWeb(@PathVariable Long siteId) {
-            wpProductService.syncProductsToSite(siteId);
-            return true;
-    }
+//    @PostMapping("/sync/products/web/{siteId}")
+//    public boolean syncWpProductsToWeb(@PathVariable Long siteId) {
+//            wpProductService.syncProductsToSite(siteId);
+//            return true;
+//    }
 
     @PostMapping("/upload_temp")
-    public ResponseEntity<Map<String, String>> uploadTemp(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<List<Map<String, String>>> uploadTemp(@RequestParam("file") MultipartFile[] files) {
         try {
-            String extension = StringUtils.getFilenameExtension(file.getOriginalFilename());
-            String tempName = "temp_" + UUID.randomUUID().toString() + "." + extension;
-
-            // Използвай същия базов път като в WebConfig
+            List<Map<String, String>> responses = new ArrayList<>();
             String rootPath = System.getProperty("user.home") + "/uploads/sateno_pim/";
-            Path tempDir = Paths.get(rootPath, "temp"); // Слагаме ги в /uploads/sateno_pim/temp/
+            Path tempDir = Paths.get(rootPath, "temp");
 
             if (!Files.exists(tempDir)) {
                 Files.createDirectories(tempDir);
             }
 
-            Files.copy(file.getInputStream(), tempDir.resolve(tempName), StandardCopyOption.REPLACE_EXISTING);
+            for (MultipartFile file : files) {
+                String extension = StringUtils.getFilenameExtension(file.getOriginalFilename());
+                String tempName = "temp_" + UUID.randomUUID().toString() + "." + extension;
 
-            Map<String, String> response = new HashMap<>();
-            response.put("fileName", tempName);
-            // Тук URL-ът ще бъде правилно разпознат от WebConfig, защото започва с /media/
-            response.put("url", "/media/temp/" + tempName);
+                Files.copy(file.getInputStream(), tempDir.resolve(tempName), StandardCopyOption.REPLACE_EXISTING);
 
-            return ResponseEntity.ok(response);
+                Map<String, String> res = new HashMap<>();
+                res.put("fileName", tempName);
+                res.put("url", "/media/temp/" + tempName);
+                responses.add(res);
+            }
+
+            return ResponseEntity.ok(responses);
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

@@ -916,8 +916,15 @@ public class WpOrderService {
     }
 
 
+    public WpOrderDto patchOrderMain(WpOrderDto dto) {
+        WpOrderEntity wpOrderDto = patchOrder(dto);
+        System.out.println("222");
+        wpOrderAsyncService.updateOrderOnSites(wpOrderDto, null);
+        return modelMapper.map(wpOrderDto, WpOrderDto.class);
+    }
 //    @CacheEvict(value = "ordersList", allEntries = true)
-    public WpOrderDto patchOrder(WpOrderDto wpOrderDto) {
+//    @Transactional
+    public WpOrderEntity patchOrder(WpOrderDto wpOrderDto) {
         Optional<WpOrderEntity> byId = wpOrderRepository.findById(wpOrderDto.getId());
         if(byId.isPresent()) {
             WpOrderEntity wpOrderEntity = byId.get();
@@ -935,8 +942,8 @@ public class WpOrderService {
             }
 
             WpOrderEntity save = wpOrderRepository.save(wpOrderEntity);
-            wpOrderAsyncService.updateOrderOnSites(save, null);
-            return modelMapper.map(wpOrderEntity, WpOrderDto.class);
+//            return modelMapper.map(wpOrderEntity, WpOrderDto.class);
+            return save;
         }
         throw new RuntimeException("Order not found");
     }

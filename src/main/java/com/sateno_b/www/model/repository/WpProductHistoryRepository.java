@@ -13,5 +13,5 @@ import java.util.Optional;
 public interface WpProductHistoryRepository extends JpaRepository<WpProductHistoryEntity, Long> {
     Optional<WpProductHistoryEntity> findByProductSku(String productSku);
 
-    Optional<WpProductHistoryEntity> findByProductSkuAndOrder(String productSku, WpOrderEntity order);
+    Optional<WpProductHistoryEntity> findFirstByProductSkuAndOrder(String productSku, WpOrderEntity order);
 }
