@@ -10,6 +10,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @RequiredArgsConstructor
 @Service
 @Slf4j
@@ -26,16 +28,29 @@ public class SchemeWpProductService {
            SchemeWpProductDto sc = new  SchemeWpProductDto();
             sc.setName(entity.getName());
             sc.setDescription(entity.getDescription());
+            sc.setId(entity.getId());
             return sc;
         });
         return dtoRs;
     }
 
+    public SchemeWpProductDto getById(Long id) {
+        Optional<SchemeWpProductEntity> byId = schemeWpProductRepository.findById(id);
+        return modelMapper.map(byId.get(), SchemeWpProductDto.class);
+    }
+
     public SchemeWpProductDto save(SchemeWpProductDto dto){
-        SchemeWpProductEntity sp = new SchemeWpProductEntity();
+        SchemeWpProductEntity sp;
+        Optional<SchemeWpProductEntity> byId = schemeWpProductRepository.findById(dto.getId());
+        sp = byId.orElseGet(SchemeWpProductEntity::new);
         sp.setName(dto.getName());
         sp.setDescription(dto.getDescription());
         SchemeWpProductEntity save = schemeWpProductRepository.save(sp);
         return  modelMapper.map(save, SchemeWpProductDto.class);
+    }
+
+    public boolean deleteById(Long id) {
+        schemeWpProductRepository.deleteById(id);
+        return true;
     }
 }

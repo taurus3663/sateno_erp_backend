@@ -29,8 +29,9 @@ public class SchemeWpProductController implements BaseController<SchemeWpProduct
     }
 
     @Override
-    public ResponseEntity<SchemeWpProductDto> get(Long aLong) {
-        return null;
+    public ResponseEntity<SchemeWpProductDto> get(Long id) {
+        SchemeWpProductDto byId = schemeWpProductService.getById(id);
+        return ResponseEntity.ok(byId);
     }
 
     @Override
@@ -40,7 +41,7 @@ public class SchemeWpProductController implements BaseController<SchemeWpProduct
     }
 
     @Override
-    public boolean delete(Long aLong) {
-        return false;
+    public boolean delete(Long id) {
+        return schemeWpProductService.deleteById(id);
     }
 }

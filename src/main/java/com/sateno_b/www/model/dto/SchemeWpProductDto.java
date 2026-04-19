@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class SchemeWpProductDto {
 
+    private Long id;
     private String name;
     private String description;
 }
