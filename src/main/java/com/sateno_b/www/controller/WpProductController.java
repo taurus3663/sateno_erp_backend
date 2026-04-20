@@ -325,8 +325,8 @@ public class WpProductController {
 
     @PostMapping("/ai_product_gen")
     public ResponseEntity<AIProductGenDTO> aiProductGen(@RequestBody AIProductGenDTO dto) {
-
-        return null;
+        AIProductGenDTO aiProductGenDTO = wpProductService.aiProductGen(dto);
+        return ResponseEntity.ok(aiProductGenDTO);
     }
 
 

@@ -70,6 +70,7 @@ public class WpProductService {
     private final ChatGptService chatGptService;
     private final WpOrderRepository wpOrderRepository;
     private final CurrencyService currencyService;
+    private final SchemeWpProductRepository schemeWpProductRepository;
 
 
     @Transactional
@@ -1667,6 +1668,82 @@ protected void clearAllProductsFromSite(SiteEntity site) {
         else if (type == 3L) translation.setDescription(text);
 
         wpProductTranslationRepository.saveAndFlush(translation);
+    }
+
+
+    public AIProductGenDTO  aiProductGen(AIProductGenDTO dto) {
+
+        SchemeWpProductEntity scheme = schemeWpProductRepository.findById(dto.getSchemeId())
+                .orElseThrow(() -> new RuntimeException("Scheme not found"));
+
+        List<String> imagePaths = dto.getTempImages().stream()
+                .map(img -> fileStorageService.getFullTempFilePath(img.getTempName()))
+                .filter(Objects::nonNull)
+                .toList();
+
+        String target = switch (dto.getStep().intValue()) {
+            case 1 -> "КРАТКО ИМЕ НА ПРОДУКТ (до 5 думи, без изречения)";
+            case 2 -> "КРАТКО ОПИСАНИЕ само";
+            case 3 -> "ПЪЛНО ОПИСАНИЕ само";
+            default -> "ТЕКСТ";
+        };
+
+        String productContext =
+                "Данни за продукта:\n" +
+                        "- Марка: " + dto.getProductInfo().getBrand().getName() + "\n" +
+                        "- Категория: " + String.join(", ",
+                        dto.getProductInfo()
+                                .getCategories()
+                                .stream()
+                                .map(WpCategoryDetailDto::getName)
+                                .toList()
+                ) + "\n" +
+                        "- Тегло: " + dto.getProductInfo().getWeight() + "\n";
+
+        String prompt;
+
+        if (dto.getStep() == 1) {
+            prompt = productContext + "\nГенерирай име на продукт по снимките.\n" +
+                    "Строги правила:\n" +
+                    "- Само име (един ред)\n" +
+                    "- Максимум 5 думи\n" +
+                    "- Без описание\n" +
+                    "- Без 'Име на продукта:'\n" +
+                    "- Без допълнителен текст\n" +
+                    "- Без нови редове\n" +
+                    "- Отговорът трябва да съдържа САМО името\n";
+        } else if(dto.getStep() == 2) {
+            prompt = productContext + "\nГенерирай КРАТКО ОПИСАНИЕ на продукт по снимките.\n" +
+                    "Строги правила:\n" +
+                    "- 1 до 2 изречения\n" +
+                    "- Максимум 200 символа\n" +
+                    "- Без списъци\n" +
+                    "- Без 'Описание:'\n" +
+                    "- Без допълнителни обяснения\n" +
+                    "- Само кратък текст\n" +
+                    "Да звучи като текст за онлайн магазин.\n";
+        } else if(dto.getStep() == 3) {
+            prompt = productContext + "\nГенерирай ПЪЛНО ОПИСАНИЕ на продукт по снимките.\n" +
+                    "Изисквания:\n" +
+                    "- Структуриран текст\n" +
+                    "- Включи: кратко въведение\n" +
+                    "- Основни характеристики (списък)\n" +
+                    "- Предимства (списък)\n" +
+                    "- Подходящ за\n" +
+                    "- Да е добре форматирано за онлайн магазин\n" +
+                    "- Без излишни обяснения извън описанието\n" +
+                    "Инструкция: " + scheme.getDescription() + "\n";
+        }
+        else {
+            prompt = "Задача: Генерирай " + target + " за продукт.\n" +
+                    "Инструкция: " + scheme.getDescription() + "\n" +
+                    "Уточнение: " + (dto.getRefinement() != null ? dto.getRefinement() : "няма");
+        }
+
+        String aiResponse = chatGptService.generateWithImages(prompt, imagePaths);
+
+        dto.setResponseAI(aiResponse);
+        return dto;
     }
 
 

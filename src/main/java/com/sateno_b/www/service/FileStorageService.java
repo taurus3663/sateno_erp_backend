@@ -124,4 +124,10 @@ public class FileStorageService {
             return null;
         }
     }
+
+    public String getFullTempFilePath(String tempFileName) {
+        if (tempFileName == null || tempFileName.isEmpty()) return null;
+        // Резултат: /home/taurus/uploads/sateno_pim/temp/temp_uuid.jpg
+        return Paths.get(TEMP_DIR, tempFileName).toString();
+    }
 }

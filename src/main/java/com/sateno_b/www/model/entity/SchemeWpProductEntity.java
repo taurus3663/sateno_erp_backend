@@ -19,7 +19,7 @@ public class SchemeWpProductEntity extends BaseEntity {
     @Column
     String name;
 
-    @Column
+    @Column(columnDefinition = "text")
     String description;
 
 }
