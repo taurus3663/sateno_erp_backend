@@ -1683,8 +1683,8 @@ protected void clearAllProductsFromSite(SiteEntity site) {
 
         String target = switch (dto.getStep().intValue()) {
             case 1 -> "КРАТКО ИМЕ НА ПРОДУКТ (до 5 думи, без изречения)";
-            case 2 -> "КРАТКО ОПИСАНИЕ само";
-            case 3 -> "ПЪЛНО ОПИСАНИЕ само";
+            case 2 -> "КРАТКО ОПИСАНИЕ";
+            case 3 -> "ПЪЛНО ОПИСАНИЕ";
             default -> "ТЕКСТ";
         };
 
@@ -1700,20 +1700,40 @@ protected void clearAllProductsFromSite(SiteEntity site) {
                 ) + "\n" +
                         "- Тегло: " + dto.getProductInfo().getWeight() + "\n";
 
-        String prompt;
+
+        String sectionRule =
+                "ВАЖНО:\n" +
+                        "- В подадения шаблон има секции: КРАТКО ИМЕ НА ПРОДУКТ, КРАТКО ОПИСАНИЕ и ПЪЛНО ОПИСАНИЕ\n" +
+                        "- Ти трябва да използваш САМО секцията, която съответства на задачата\n" +
+                        "- Игнорирай всички останали секции напълно\n" +
+                        "- Не смесвай текст между секции\n" +
+                        "- Не използвай информация извън избраната секция\n\n";
+
+
+        String refinementBlock = "";
+
+        if (dto.getRefinement() != null && !dto.getRefinement().isBlank()) {
+            refinementBlock =
+                    "\n🚨 OVERRIDE INSTRUCTIONS (highest priority):\n" +
+                            dto.getRefinement() +
+                            "\n";
+        }
+
+        String prompt = "";
 
         if (dto.getStep() == 1) {
-            prompt = productContext + "\nГенерирай име на продукт по снимките.\n" +
+            prompt = refinementBlock + productContext + sectionRule + "\nГенерирай "+target+" по снимките.\n" +
                     "Строги правила:\n" +
                     "- Само име (един ред)\n" +
-                    "- Максимум 5 думи\n" +
+                    "- Максимум 5 думи - ако няма инструкция\n" +
                     "- Без описание\n" +
                     "- Без 'Име на продукта:'\n" +
                     "- Без допълнителен текст\n" +
                     "- Без нови редове\n" +
-                    "- Отговорът трябва да съдържа САМО името\n";
+                    "- Отговорът трябва да съдържа САМО името\n" +
+                    "Инструкция: " + scheme.getDescription() + "\n";
         } else if(dto.getStep() == 2) {
-            prompt = productContext + "\nГенерирай КРАТКО ОПИСАНИЕ на продукт по снимките.\n" +
+            prompt = refinementBlock +  productContext + sectionRule + "\nГенерирай "+ target +" на продукт по снимките.\n" +
                     "Строги правила:\n" +
                     "- 1 до 2 изречения\n" +
                     "- Максимум 200 символа\n" +
@@ -1721,9 +1741,10 @@ protected void clearAllProductsFromSite(SiteEntity site) {
                     "- Без 'Описание:'\n" +
                     "- Без допълнителни обяснения\n" +
                     "- Само кратък текст\n" +
-                    "Да звучи като текст за онлайн магазин.\n";
+                    "Да звучи като текст за онлайн магазин.\n" +
+                    "Инструкция: " + scheme.getDescription() + "\n";
         } else if(dto.getStep() == 3) {
-            prompt = productContext + "\nГенерирай ПЪЛНО ОПИСАНИЕ на продукт по снимките.\n" +
+            prompt = refinementBlock +  productContext + sectionRule + "\nГенерирай "+target+" на продукт по снимките.\n" +
                     "Изисквания:\n" +
                     "- Структуриран текст\n" +
                     "- Включи: кратко въведение\n" +
@@ -1733,11 +1754,6 @@ protected void clearAllProductsFromSite(SiteEntity site) {
                     "- Да е добре форматирано за онлайн магазин\n" +
                     "- Без излишни обяснения извън описанието\n" +
                     "Инструкция: " + scheme.getDescription() + "\n";
-        }
-        else {
-            prompt = "Задача: Генерирай " + target + " за продукт.\n" +
-                    "Инструкция: " + scheme.getDescription() + "\n" +
-                    "Уточнение: " + (dto.getRefinement() != null ? dto.getRefinement() : "няма");
         }
 
         String aiResponse = chatGptService.generateWithImages(prompt, imagePaths);
