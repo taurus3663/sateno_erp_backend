@@ -323,6 +323,13 @@ public class WpProductController {
         return dto;
     }
 
+    @PostMapping("/ai_product_gen")
+    public ResponseEntity<AIProductGenDTO> aiProductGen(@RequestBody AIProductGenDTO dto) {
+
+        return null;
+    }
+
+
     private WpAddonValueDto mapToValueDto(WpAddonValueEntity entity) {
         WpAddonValueDto dto = new WpAddonValueDto();
         dto.setId(entity.getId());
