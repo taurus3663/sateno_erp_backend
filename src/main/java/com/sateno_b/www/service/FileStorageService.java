@@ -130,4 +130,10 @@ public class FileStorageService {
         // Резултат: /home/taurus/uploads/sateno_pim/temp/temp_uuid.jpg
         return Paths.get(TEMP_DIR, tempFileName).toString();
     }
+
+    public String getFullPhysicalFilePath(String physicalFilePath) {
+        if (physicalFilePath == null || physicalFilePath.isEmpty()) return null;
+        String relativePath = physicalFilePath.replace("/media/", "");
+        return Paths.get(ROOT_PATH, relativePath).toString();
+    }
 }

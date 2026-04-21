@@ -41,10 +41,15 @@ public class SchemeWpProductService {
 
     public SchemeWpProductDto save(SchemeWpProductDto dto){
         SchemeWpProductEntity sp;
-        Optional<SchemeWpProductEntity> byId = schemeWpProductRepository.findById(dto.getId());
-        sp = byId.orElseGet(SchemeWpProductEntity::new);
+        if(dto.getId() !=null && dto.getId()>0){
+            sp = schemeWpProductRepository.findById(dto.getId()).get();
+        } else {
+           sp = new SchemeWpProductEntity();
+        }
         sp.setName(dto.getName());
         sp.setDescription(dto.getDescription());
+        sp.setShortDescription(dto.getShortDescription());
+        sp.setTitle(dto.getTitle());
         SchemeWpProductEntity save = schemeWpProductRepository.save(sp);
         return  modelMapper.map(save, SchemeWpProductDto.class);
     }

@@ -8,4 +8,6 @@ public class SchemeWpProductDto {
     private Long id;
     private String name;
     private String description;
+    private String shortDescription;
+    private String title;
 }

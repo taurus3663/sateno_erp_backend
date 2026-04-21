@@ -22,4 +22,10 @@ public class SchemeWpProductEntity extends BaseEntity {
     @Column(columnDefinition = "text")
     String description;
 
+    @Column(columnDefinition = "text")
+    private String shortDescription;
+
+    @Column(columnDefinition = "text")
+    private String title;
+
 }

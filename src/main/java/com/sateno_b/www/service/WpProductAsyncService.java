@@ -630,15 +630,31 @@ public class WpProductAsyncService {
     private String cleanHtml(String html) {
         if (html == null) return "";
 
-        return html
-                .replaceAll("&nbsp;", " ")
-                .replaceAll(" style=\"[^\"]*\"", "") // премахва inline стилове
-                .replaceAll("<p[^>]*>\\s*</p>", "")  // премахва празни <p>
-                .replaceAll("</p>\\s*<p[^>]*>", "<br>") // слепва параграфите
-                .replaceAll("^<p[^>]*>", "")         // премахва първия <p>
-                .replaceAll("</p>\\s*$", "")         // премахва последния </p>
-                .trim();
+        // 1. Първо оправяме "твърдите" интервали
+        String result = html.replaceAll("&nbsp;", " ");
+
+        // 2. АКО ТЕКСТЪТ ИДВА ОТ TEXTAREA (без тагове), той ползва \n
+        // Превръщаме двойните нови редове в параграф с невидимо съдържание
+        result = result.replaceAll("\n\n", "</p><p>&nbsp;</p><p>");
+
+        // 3. Единичните нови редове превръщаме в затваряне и отваряне на параграф
+        result = result.replaceAll("\n", "</p><p>");
+
+        // 4. Обвиваме целия текст в начален и краен параграф
+        result = "<p>" + result + "</p>";
+
+        // 5. ПОЧИСТВАНЕ: Премахваме празни параграфи, създадени от грешни преноси,
+        // но ГАРАНТИРАМЕ, че тези с &nbsp; остават
+        result = result.replaceAll("<p>\\s*</p>", "");
+
+        // Премахваме излишни стилове, ако случайно са влезли
+        result = result.replaceAll(" style=\"[^\"]*\"", "");
+
+        return result.trim();
     }
+
+
+
 
     @Transactional
     @Async

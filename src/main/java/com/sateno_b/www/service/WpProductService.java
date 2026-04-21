@@ -1677,12 +1677,18 @@ protected void clearAllProductsFromSite(SiteEntity site) {
                 .orElseThrow(() -> new RuntimeException("Scheme not found"));
 
         List<String> imagePaths = dto.getTempImages().stream()
-                .map(img -> fileStorageService.getFullTempFilePath(img.getTempName()))
+                .map(img -> {
+
+                    if(img.getLocalSrc() != null) {
+                        return fileStorageService.getFullPhysicalFilePath(img.getLocalSrc());
+                    }
+                   return fileStorageService.getFullTempFilePath(img.getTempName());
+                })
                 .filter(Objects::nonNull)
                 .toList();
 
         String target = switch (dto.getStep().intValue()) {
-            case 1 -> "КРАТКО ИМЕ НА ПРОДУКТ (до 5 думи, без изречения)";
+            case 1 -> "КРАТКО ИМЕ НА ПРОДУКТ";
             case 2 -> "КРАТКО ОПИСАНИЕ";
             case 3 -> "ПЪЛНО ОПИСАНИЕ";
             default -> "ТЕКСТ";
@@ -1701,13 +1707,19 @@ protected void clearAllProductsFromSite(SiteEntity site) {
                         "- Тегло: " + dto.getProductInfo().getWeight() + "\n";
 
 
-        String sectionRule =
-                "ВАЖНО:\n" +
-                        "- В подадения шаблон има секции: КРАТКО ИМЕ НА ПРОДУКТ, КРАТКО ОПИСАНИЕ и ПЪЛНО ОПИСАНИЕ\n" +
-                        "- Ти трябва да използваш САМО секцията, която съответства на задачата\n" +
-                        "- Игнорирай всички останали секции напълно\n" +
-                        "- Не смесвай текст между секции\n" +
-                        "- Не използвай информация извън избраната секция\n\n";
+        String taskRules = switch (dto.getStep().intValue()) {
+            case 1 -> "- до 5 думи\n- без изречения\n- само име\n- един ред";
+            case 2 -> "- 700 до 1000 символа\n- продаващ стил\n- без списъци";
+            case 3 -> "- структурирано описание\n- въведение, характеристики, предимства";
+            default -> "";
+        };
+
+        String instructions = switch (dto.getStep().intValue()) {
+            case 1 -> scheme.getTitle();
+            case 2 -> scheme.getShortDescription();
+            case 3 -> scheme.getDescription();
+            default -> "";
+        };
 
 
         String refinementBlock = "";
@@ -1719,42 +1731,51 @@ protected void clearAllProductsFromSite(SiteEntity site) {
                             "\n";
         }
 
-        String prompt = "";
+        String prompt =
+                        productContext +
+//                        taskRules +
 
-        if (dto.getStep() == 1) {
-            prompt = refinementBlock + productContext + sectionRule + "\nГенерирай "+target+" по снимките.\n" +
-                    "Строги правила:\n" +
-                    "- Само име (един ред)\n" +
-                    "- Максимум 5 думи - ако няма инструкция\n" +
-                    "- Без описание\n" +
-                    "- Без 'Име на продукта:'\n" +
-                    "- Без допълнителен текст\n" +
-                    "- Без нови редове\n" +
-                    "- Отговорът трябва да съдържа САМО името\n" +
-                    "Инструкция: " + scheme.getDescription() + "\n";
-        } else if(dto.getStep() == 2) {
-            prompt = refinementBlock +  productContext + sectionRule + "\nГенерирай "+ target +" на продукт по снимките.\n" +
-                    "Строги правила:\n" +
-                    "- 1 до 2 изречения\n" +
-                    "- Максимум 200 символа\n" +
-                    "- Без списъци\n" +
-                    "- Без 'Описание:'\n" +
-                    "- Без допълнителни обяснения\n" +
-                    "- Само кратък текст\n" +
-                    "Да звучи като текст за онлайн магазин.\n" +
-                    "Инструкция: " + scheme.getDescription() + "\n";
-        } else if(dto.getStep() == 3) {
-            prompt = refinementBlock +  productContext + sectionRule + "\nГенерирай "+target+" на продукт по снимките.\n" +
-                    "Изисквания:\n" +
-                    "- Структуриран текст\n" +
-                    "- Включи: кратко въведение\n" +
-                    "- Основни характеристики (списък)\n" +
-                    "- Предимства (списък)\n" +
-                    "- Подходящ за\n" +
-                    "- Да е добре форматирано за онлайн магазин\n" +
-                    "- Без излишни обяснения извън описанието\n" +
-                    "Инструкция: " + scheme.getDescription() + "\n";
-        }
+                        "\nЗАДАЧА: " + target + "\n\n" +
+
+//                        "ПРАВИЛА ЗА ИЗПЪЛНЕНИЕ:\n" +
+//                        taskRules + "\n\n" +
+
+                        "ИНСТРУКЦИЯ ОТ ШАБЛОНА:\n" +
+                        instructions +
+                                refinementBlock ;
+//        String prompt = "";
+//
+//        if (dto.getStep() == 1) {
+//            prompt = refinementBlock + productContext + sectionRule + "\nГенерирай "+target+" по снимките.\n" +
+//                    "Строги правила:\n" +
+//                    "- Само име (един ред)\n" +
+//                    "- Без описание\n" +
+//                    "- Без 'Име на продукта:'\n" +
+//                    "- Без допълнителен текст\n" +
+//                    "- Без нови редове\n" +
+//                    "- Отговорът трябва да съдържа САМО името\n" +
+//                    "Инструкция: " + scheme.getDescription() + "\n";
+//        } else if(dto.getStep() == 2) {
+//            prompt = refinementBlock +  productContext + sectionRule + "\nГенерирай "+ target +" на продукт по снимките.\n" +
+//                    "Строги правила:\n" +
+////                    "- Без списъци\n" +
+////                    "- Без 'Описание:'\n" +
+////                    "- Без допълнителни обяснения\n" +
+////                    "- Само кратък текст\n" +
+//                    "Да звучи като текст за онлайн магазин.\n" +
+//                    "Инструкция: " + scheme.getDescription() + "\n";
+//        } else if(dto.getStep() == 3) {
+//            prompt = refinementBlock +  productContext + sectionRule + "\nГенерирай "+target+" на продукт по снимките.\n" +
+//                    "Изисквания:\n" +
+//                    "- Структуриран текст\n" +
+////                    "- Включи: кратко въведение\n" +
+////                    "- Основни характеристики (списък)\n" +
+////                    "- Предимства (списък)\n" +
+////                    "- Подходящ за\n" +
+//                    "- Да е добре форматирано за онлайн магазин\n" +
+//                    "- Без излишни обяснения извън описанието\n" +
+//                    "Инструкция: " + scheme.getDescription() + "\n";
+//        }
 
         String aiResponse = chatGptService.generateWithImages(prompt, imagePaths);
 
