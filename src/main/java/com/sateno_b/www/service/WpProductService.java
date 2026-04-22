@@ -854,14 +854,17 @@ public class WpProductService {
 
             // 2. Безопасна снимка
             if (entity.getImages() != null && !entity.getImages().isEmpty()) {
-                // Взимаме първата снимка от списъка на Entity-то
-                String localPath = entity.getImages().get(0).getLocalSrc();
 
-                // Базовият URL на твоя сървър
-                //                    String baseUrl = "http://192.168.31.232:9494";
-                // Тъй като localPath вече започва с /media, просто ги съединяваме
-                //                    String fullUrl = localPath;
-                // Записваме пълния URL в DTO-то за Angular
+                // 1. Опитваме се да намерим Primary снимка
+                String localPath = entity.getImages().stream()
+                        .filter(img -> Boolean.TRUE.equals(img.getIsPrimary())) // Безопасно сравнение с Boolean
+                        .map(WpProductImageEntity::getLocalSrc)
+                        .findFirst() // Връща Optional<String>
+                        .orElseGet(() -> {
+                            // 2. Ако няма Primary, вземи пътя на първата снимка в списъка
+                            return entity.getImages().get(0).getLocalSrc();
+                        });
+
                 wpProductDto.setM_image(localPath);
             } else {
                 wpProductDto.setM_image(null);
