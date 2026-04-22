@@ -147,6 +147,9 @@ public class WpProductController {
                 imgDto.setId(img.getId());
                 imgDto.setLocalSrc(img.getLocalSrc());
                 imgDto.setTemp(false);
+                imgDto.setIsPrimary(img.getIsPrimary() != null && img.getIsPrimary());
+
+
 
                 // КРИТИЧНО: Мапваме и siteMappings
                 if (img.getSiteMappings() != null) {

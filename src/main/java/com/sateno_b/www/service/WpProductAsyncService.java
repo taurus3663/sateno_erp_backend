@@ -344,7 +344,7 @@ public class WpProductAsyncService {
 
                     // СОРТИРАНЕ: Слагаме Primary снимката най-отпред
                     List<WpProductImageEntity> sortedImages = product.getImages().stream()
-                            .sorted((a, b) -> Boolean.compare(b.isPrimary(), a.isPrimary()))
+                            .sorted((a, b) -> Boolean.compare(b.getIsPrimary(), a.getIsPrimary()))
                             .toList();
 
 

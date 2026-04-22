@@ -18,5 +18,5 @@ public class WpProductImageDto {
     @JsonProperty("isTemp")
     private boolean isTemp;   // Идва като true от Angular за нови снимки
     private String tempName;  // Идва като "temp_uuid.jpg" от Angular
-    private boolean isPrimary;
+    private Boolean isPrimary;
 }

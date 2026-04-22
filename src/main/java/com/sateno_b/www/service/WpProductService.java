@@ -701,7 +701,7 @@ public class WpProductService {
                             WpProductImageEntity imageEntity = new WpProductImageEntity();
                             imageEntity.setProduct(entity);
                             imageEntity.setLocalSrc(finalPath);
-                            imageEntity.setPrimary(imgDto.isPrimary());
+                            imageEntity.setIsPrimary(imgDto.getIsPrimary() != null &&  imgDto.getIsPrimary());
                             wpProductImageRepository.save(imageEntity);
                             entity.getImages().add(imageEntity); // Добавяме към текущата сесия
                         }

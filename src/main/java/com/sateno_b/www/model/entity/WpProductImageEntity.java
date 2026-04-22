@@ -29,6 +29,6 @@ public class WpProductImageEntity extends BaseEntity {
     @OneToMany(mappedBy = "productImage", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WpProductImageSiteMappingEntity> siteMappings = new ArrayList<>();
 
-    @Column
-    private boolean isPrimary;
+    @Column()
+    private Boolean isPrimary = false;
 }
