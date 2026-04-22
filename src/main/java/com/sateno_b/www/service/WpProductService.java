@@ -707,6 +707,15 @@ public class WpProductService {
                         }
                     }
                 }
+                else {
+                    entity.getImages().stream()
+                            .filter(img -> img.getId().equals(imgDto.getId()))
+                            .findFirst()
+                            .ifPresent(img -> {
+                                // Актуализираме флага isPrimary (безопасно спрямо null)
+                                img.setIsPrimary(Boolean.TRUE.equals(imgDto.getIsPrimary()));
+                            });
+                }
             }
         }
 

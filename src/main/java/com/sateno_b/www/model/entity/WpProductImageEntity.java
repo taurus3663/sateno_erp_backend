@@ -31,4 +31,9 @@ public class WpProductImageEntity extends BaseEntity {
 
     @Column()
     private Boolean isPrimary = false;
+
+    public Boolean getIsPrimary() {
+        if(isPrimary == null) return false;
+        return isPrimary;
+    }
 }
