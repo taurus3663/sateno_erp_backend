@@ -1704,9 +1704,13 @@ protected void clearAllProductsFromSite(SiteEntity site) {
             default -> "ТЕКСТ";
         };
 
+        String brandName = (dto.getProductInfo().getBrand() != null)
+                ? dto.getProductInfo().getBrand().getName()
+                : "Не е посочена";
+
         String productContext =
                 "Данни за продукта:\n" +
-                        "- Марка: " + dto.getProductInfo().getBrand().getName() + "\n" +
+                        "- Марка: " + brandName + "\n" +
                         "- Категория: " + String.join(", ",
                         dto.getProductInfo()
                                 .getCategories()

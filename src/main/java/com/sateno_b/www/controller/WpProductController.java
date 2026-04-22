@@ -4,6 +4,7 @@ import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.service.ChatGptService;
+import com.sateno_b.www.service.CurrencyService;
 import com.sateno_b.www.service.FileStorageService;
 import com.sateno_b.www.service.WpProductService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -42,6 +44,7 @@ public class WpProductController {
     private final LanguageRepository languageRepository;
     private final FileStorageService fileStorageService;
     private final SchemeWpProductRepository schemeWpProductRepository;
+    private final CurrencyService currencyService;
 
     @PatchMapping("/patch")
     public ResponseEntity<?> patchProduct(@RequestBody WpProductDto wpProductDto) {
@@ -330,6 +333,12 @@ public class WpProductController {
     public ResponseEntity<AIProductGenDTO> aiProductGen(@RequestBody AIProductGenDTO dto) {
         AIProductGenDTO aiProductGenDTO = wpProductService.aiProductGen(dto);
         return ResponseEntity.ok(aiProductGenDTO);
+    }
+
+    @PostMapping("/calc_currency")
+    public ResponseEntity<Object> calculateCurrency(@RequestBody CurrencyCalculateDTO dto) {
+        BigDecimal convert = currencyService.convert(dto.getFromAmount(), dto.getFromCode(), dto.getToCode());
+        return ResponseEntity.ok(convert);
     }
 
 
