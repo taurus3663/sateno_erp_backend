@@ -339,45 +339,17 @@ public class WpProductAsyncService {
                 updateBody.put("categories", categoriesList);
 
 
-//                List<Map<String, Object>> imageList = new ArrayList<>();
-//                if (product.getImages() != null) {
-//                    for (WpProductImageEntity imgEntity : product.getImages()) {
-//
-//                        Optional<WpProductImageSiteMappingEntity> mappingOpt = wpProductImageSiteMappingRepository
-//                                .findByProductImageIdAndSite(imgEntity.getId(), site);
-//
-//                        Long wpMediaId = null;
-//                        if (mappingOpt.isPresent()) {
-//                            wpMediaId = mappingOpt.get().getWpMediaId();
-//                        }
-//                        else {
-//                            wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
-//                            if (wpMediaId != null) {
-//                                WpProductImageSiteMappingEntity wpProductImageSiteMappingEntity = new WpProductImageSiteMappingEntity();
-//                                wpProductImageSiteMappingEntity.setWpMediaId(wpMediaId);
-//                                wpProductImageSiteMappingEntity.setSite(site);
-//                                wpProductImageSiteMappingEntity.setProductImage(imgEntity);
-////                                wpProductImageSiteMappingEntity.setWpUrl();
-//                                wpProductImageSiteMappingRepository.save(wpProductImageSiteMappingEntity);
-//                            }
-//
-//                        }
-//                        if (wpMediaId != null) {
-//                            Map<String, Object> imgMap = new HashMap<>();
-//                            imgMap.put("id", wpMediaId);
-//                            imageList.add(imgMap);
-//                        }
-//                    }
-//                }
-//                if(!imageList.isEmpty()) {
-//                    updateBody.put("images", imageList);
-//                }
-
-                // В WpProductAsyncService.java - промени цикъла за снимките:
-
                 List<Map<String, Object>> imageList = new ArrayList<>();
                 if (product.getImages() != null) {
-                    for (WpProductImageEntity imgEntity : product.getImages()) {
+
+                    // СОРТИРАНЕ: Слагаме Primary снимката най-отпред
+                    List<WpProductImageEntity> sortedImages = product.getImages().stream()
+                            .sorted((a, b) -> Boolean.compare(b.isPrimary(), a.isPrimary()))
+                            .toList();
+
+
+
+                    for (WpProductImageEntity imgEntity : sortedImages) {
 
                         // 1. Търсим съществуващ мапинг за текущия сайт
                         Optional<WpProductImageSiteMappingEntity> mappingOpt = wpProductImageSiteMappingRepository
@@ -717,80 +689,6 @@ public class WpProductAsyncService {
                     // Добавяме превалутираните адони към тялото за обновяване
                     updateBody.put("addons", currentAddons);
                 }
-
-//                System.out.println(updateBody.toString());
-//                List<Map<String, Object>> imageList = new ArrayList<>();
-//                if (product.getImages() != null) {
-//                    for (WpProductImageEntity imgEntity : product.getImages()) {
-//
-//                        // 1. Търсим съществуващ мапинг за текущия сайт
-//                        Optional<WpProductImageSiteMappingEntity> mappingOpt = wpProductImageSiteMappingRepository
-//                                .findByProductImageIdAndSite(imgEntity.getId(), site);
-//
-//                      if(mappingOpt.isEmpty()) {
-//                                log.info("Качване на НОВА снимка към сайт {}: {}", site.getUrl(), imgEntity.getLocalSrc());
-//                                Long wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
-//
-//                                if (wpMediaId != null) {
-//                                    WpProductImageSiteMappingEntity newMapping = new WpProductImageSiteMappingEntity();
-//                                    newMapping.setWpMediaId(wpMediaId);
-//                                    newMapping.setSite(site);
-//                                    newMapping.setProductImage(imgEntity);
-//                                    wpProductImageSiteMappingRepository.save(newMapping);
-//
-//                                    Map<String, Object> imgMap = new HashMap<>();
-//                                    imgMap.put("id", wpMediaId);
-//                                    imageList.add(imgMap);
-//                                }
-//
-//                        }
-//                    }
-//                }
-//                updateBody.put("images", imageList);
-
-
-//                SiteEntity si = siteRepository.findSiteEntityByUrl("sateno.bg");
-//                Optional<WpProductSiteConfigEntity> satenoBgSiteConfig = wpProductSiteConfigRepository.findByProductAndSite(product, si);
-//                Optional<WpProductSiteConfigEntity> satenoRoSiteConfig = wpProductSiteConfigRepository.findByProductAndSite(product, site);
-//                if (satenoBgSiteConfig.isEmpty() ) {
-//                    System.out.println("RETURN");
-//                    return;
-//                }
-//
-//                WpProductSiteConfigEntity satenoBgCOnfig = satenoBgSiteConfig.get();
-//                WpProductSiteConfigEntity satenoRoConfig;
-//                if(satenoRoSiteConfig.isEmpty()) {
-//                    satenoRoConfig = new WpProductSiteConfigEntity();
-//                    satenoRoConfig.setSite(site);
-//                    satenoRoConfig.setProduct(product);
-//                } else {
-//                    satenoRoConfig = satenoRoSiteConfig.get();
-//                }
-//
-////                log.info("t 1{}", satenoBgCOnfig.getPrice());
-//                if(satenoBgCOnfig.getPrice() != null && satenoBgCOnfig.getPrice().compareTo(BigDecimal.ZERO) > 0) {
-////                    log.info("getPrice {}",  satenoBgCOnfig.getPrice());
-//                    BigDecimal ron = currencyService.convert(satenoBgCOnfig.getPrice(), "EUR", "RON");
-////                    log.info("getPrice RS {}",  ron.toString());
-//                    satenoRoConfig.setPrice(ron);
-//                    updateBody.put("price", ron.toString());
-//                }
-//
-//                if(satenoBgCOnfig.getRegularPrice() != null && satenoBgCOnfig.getRegularPrice().compareTo(BigDecimal.ZERO) > 0) {
-//                    BigDecimal ron = currencyService.convert(satenoBgCOnfig.getRegularPrice(), "EUR", "RON");
-//                    satenoRoConfig.setRegularPrice(ron);
-//                    updateBody.put("regular_price", ron.toString());
-//                }
-//
-//                if(satenoBgCOnfig.getSalePrice() != null && satenoBgCOnfig.getSalePrice().compareTo(BigDecimal.ZERO) > 0) {
-////                    log.info("getSalePrice {}",  satenoBgCOnfig.getSalePrice());
-//                    BigDecimal ron = currencyService.convert(satenoBgCOnfig.getSalePrice(), "EUR", "RON");
-////                    log.info("getSalePrice RS {}",  ron.toString());
-//                    satenoRoConfig.setSalePrice(ron);
-//                    updateBody.put("sale_price", ron.toString());
-//                }
-//
-//                wpProductSiteConfigRepository.save(satenoRoConfig);
 
                 Integer wpId = (Integer) searchResponse.get(0).get("id");
                     restClient.patch()

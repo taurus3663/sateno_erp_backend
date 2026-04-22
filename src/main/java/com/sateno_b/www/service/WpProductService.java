@@ -701,6 +701,7 @@ public class WpProductService {
                             WpProductImageEntity imageEntity = new WpProductImageEntity();
                             imageEntity.setProduct(entity);
                             imageEntity.setLocalSrc(finalPath);
+                            imageEntity.setPrimary(imgDto.isPrimary());
                             wpProductImageRepository.save(imageEntity);
                             entity.getImages().add(imageEntity); // Добавяме към текущата сесия
                         }
@@ -1706,14 +1707,6 @@ protected void clearAllProductsFromSite(SiteEntity site) {
                 ) + "\n" +
                         "- Тегло: " + dto.getProductInfo().getWeight() + "\n";
 
-
-        String taskRules = switch (dto.getStep().intValue()) {
-            case 1 -> "- до 5 думи\n- без изречения\n- само име\n- един ред";
-            case 2 -> "- 700 до 1000 символа\n- продаващ стил\n- без списъци";
-            case 3 -> "- структурирано описание\n- въведение, характеристики, предимства";
-            default -> "";
-        };
-
         String instructions = switch (dto.getStep().intValue()) {
             case 1 -> scheme.getTitle();
             case 2 -> scheme.getShortDescription();
@@ -1731,51 +1724,27 @@ protected void clearAllProductsFromSite(SiteEntity site) {
                             "\n";
         }
 
+        String rr = dto.getPreviousTexts().entrySet().stream()
+                .map(entry -> {
+                    String type = switch (entry.getKey().intValue()) {
+                        case 1 -> "Име на продукт: ";
+                        case 2 -> "Кратко описание: ";
+                        case 3 -> "Описание: ";
+                        default -> " ";
+                    };
+                    return type + entry.getValue();
+                })
+                .collect(Collectors.joining("\n---\n"));
+        // Използваме joining с нов ред и разделител за по-добра яснота за AI
+
         String prompt =
                         productContext +
-//                        taskRules +
-
                         "\nЗАДАЧА: " + target + "\n\n" +
-
-//                        "ПРАВИЛА ЗА ИЗПЪЛНЕНИЕ:\n" +
-//                        taskRules + "\n\n" +
-
                         "ИНСТРУКЦИЯ ОТ ШАБЛОНА:\n" +
                         instructions +
+                              "ИМАЙ ГО В ПРЕДВИД ТИЯ -"  +
+                                rr +
                                 refinementBlock ;
-//        String prompt = "";
-//
-//        if (dto.getStep() == 1) {
-//            prompt = refinementBlock + productContext + sectionRule + "\nГенерирай "+target+" по снимките.\n" +
-//                    "Строги правила:\n" +
-//                    "- Само име (един ред)\n" +
-//                    "- Без описание\n" +
-//                    "- Без 'Име на продукта:'\n" +
-//                    "- Без допълнителен текст\n" +
-//                    "- Без нови редове\n" +
-//                    "- Отговорът трябва да съдържа САМО името\n" +
-//                    "Инструкция: " + scheme.getDescription() + "\n";
-//        } else if(dto.getStep() == 2) {
-//            prompt = refinementBlock +  productContext + sectionRule + "\nГенерирай "+ target +" на продукт по снимките.\n" +
-//                    "Строги правила:\n" +
-////                    "- Без списъци\n" +
-////                    "- Без 'Описание:'\n" +
-////                    "- Без допълнителни обяснения\n" +
-////                    "- Само кратък текст\n" +
-//                    "Да звучи като текст за онлайн магазин.\n" +
-//                    "Инструкция: " + scheme.getDescription() + "\n";
-//        } else if(dto.getStep() == 3) {
-//            prompt = refinementBlock +  productContext + sectionRule + "\nГенерирай "+target+" на продукт по снимките.\n" +
-//                    "Изисквания:\n" +
-//                    "- Структуриран текст\n" +
-////                    "- Включи: кратко въведение\n" +
-////                    "- Основни характеристики (списък)\n" +
-////                    "- Предимства (списък)\n" +
-////                    "- Подходящ за\n" +
-//                    "- Да е добре форматирано за онлайн магазин\n" +
-//                    "- Без излишни обяснения извън описанието\n" +
-//                    "Инструкция: " + scheme.getDescription() + "\n";
-//        }
 
         String aiResponse = chatGptService.generateWithImages(prompt, imagePaths);
 
