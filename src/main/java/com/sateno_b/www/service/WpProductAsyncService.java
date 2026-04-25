@@ -707,4 +707,69 @@ public class WpProductAsyncService {
 
 
     }
+
+
+    @Transactional
+    @Async
+    public void deleteProductFromSites(String sku) {
+
+        for (SiteEntity site : siteRepository.findByActiveTrue()) {
+            try {
+                String auth = Base64.getEncoder().encodeToString(
+                        (site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes()
+                );
+
+                var searchResponse = restClient.get()
+                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products?sku=" + sku)
+                        .header("Authorization", "Basic " + auth)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+
+                if (searchResponse != null && !searchResponse.isEmpty()) {
+                    // Вземаме WordPress ID
+                    Map<String, Object> wpProduct = searchResponse.get(0);
+                    Integer wpProductId = (Integer) wpProduct.get("id");
+
+                    // 2. Вземаме списъка със снимки от отговора на WordPress
+                    List<Map<String, Object>> wpImages = (List<Map<String, Object>>) wpProduct.get("images");
+
+                    if (wpImages != null && !wpImages.isEmpty()) {
+                        Set<Long> mediaIds = wpImages.stream()
+                                .map(img -> Long.valueOf(img.get("id").toString()))
+                                .collect(Collectors.toSet());
+
+                        // Използваме твоята логика за триене на медийни файлове
+                        imageToWordPress.deleteMediaOneByOne(site, mediaIds, auth);
+                        log.info("Изтрити са {} медийни файла от Media Library на {}", mediaIds.size(), site.getUrl());
+                    }
+
+                    // 3. Изтриваме продукта (force=true изтрива перманентно, без да го праща в кошчето)
+                    restClient.delete()
+                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpProductId + "?force=true")
+                            .header("Authorization", "Basic " + auth)
+                            .retrieve()
+                            .toBodilessEntity();
+
+                    log.info("Успешно изтрит продукт с SKU {} (WP ID: {}) от сайт {}",
+                            sku, wpProductId, site.getUrl());
+
+                    // 4. (ВАЖНО) Изтриваме мапингите за снимките за този сайт
+                    // Тъй като продуктът вече го няма, не искаме ERP да мисли, че снимките са качени там
+//                    if (product.getImages() != null) {
+//                        for (WpProductImageEntity img : product.getImages()) {
+//                            wpProductImageSiteMappingRepository.deleteByProductImageIdAndSite(img.getId(), site);
+//                        }
+//                    }
+                } else {
+                    log.info("Продукт с SKU {} не е намерен в сайт {}, прескачане...",
+                            sku, site.getUrl());
+                }
+
+            } catch (Exception e) {
+                log.error("Грешка при изтриване на продукт от сайт {}: {}", site.getUrl(), e.getMessage());
+            }
+        }
+
+
+    }
 }

@@ -46,15 +46,5 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
 
     Optional<WpProductEntity> findFirstByOrderBySkuDesc();
 
-//    @Override
-//    @EntityGraph(attributePaths = {
-//            "brand",
-//            "translations",
-//            "images",
-//            "categories",
-////            "categories.translations",
-////            "siteConfigs"
-//    })
-//    @NotNull
-//    Page<WpProductEntity> findAll(Specification<WpProductEntity> spec, @NotNull Pageable pageable);
+
     }

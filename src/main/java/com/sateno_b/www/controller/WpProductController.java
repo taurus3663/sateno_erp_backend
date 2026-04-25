@@ -73,29 +73,11 @@ public class WpProductController {
         }
     }
 
-    @Transactional
-    public void deleteMultipleProducts(Long[] ids) {
-        for (Long id : ids) {
-            WpProductEntity product = wpProductRepository.findById(id).orElse(null);
-            if (product == null) continue;
+    @DeleteMapping("/delete")
+    public boolean deleteMultipleProducts(@RequestBody Long[] ids) {
 
-            // 1. Физическо изтриване на снимките от диска
-            if (product.getImages() != null) {
-                for (WpProductImageEntity img : product.getImages()) {
-                    fileStorageService.deleteProductImage(img.getLocalSrc());
-                }
-            }
-
-            // 2. Изтриване от базата
-            // Благодарение на CascadeType.ALL в Entity-то, това ще изтрие автоматично:
-            // - Translations
-            // - AddonConfigs
-            // - SiteConfigs
-            // - ImageSiteMappings (ако са настроени правилно)
-            wpProductRepository.delete(product);
-
-            log.info("Продукт с ID {} и всички негови връзки бяха изтрити.", id);
-        }
+        boolean b = wpProductService.deleteProducts(ids);
+            return b;
     }
 
 

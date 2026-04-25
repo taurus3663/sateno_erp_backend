@@ -1768,5 +1768,28 @@ protected void clearAllProductsFromSite(SiteEntity site) {
         return dto;
     }
 
+    @Transactional
+    public boolean deleteProducts(Long[] ids) {
+        for (Long id : ids) {
+            WpProductEntity product = wpProductRepository.findById(id).orElse(null);
+            if (product == null) continue;
+
+            if (product.getImages() != null) {
+                for (WpProductImageEntity img : product.getImages()) {
+                    fileStorageService.deleteProductImage(img.getLocalSrc());
+                }
+            }
+
+            String pSku = product.getSku();
+            wpProductRepository.delete(product);
+
+        wpProductAsyncService.deleteProductFromSites(pSku);
+
+
+        }
+
+        return true;
+    }
+
 
 }
