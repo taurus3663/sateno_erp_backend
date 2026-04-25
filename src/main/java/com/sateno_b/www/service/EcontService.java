@@ -667,29 +667,54 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
         return -1.0;
 }
 
-    public double calculatePriceDefault(double weight, CourierShipmentType type) {
-        double basePrice = 0;
+//    public double calculatePriceDefault(double weight, CourierShipmentType type) {
+//        double basePrice = 0;
+//
+//        if (type == CourierShipmentType.OFFICE) {
+//            if (weight <= 3) basePrice = 4.05;
+//            else if (weight <= 5) basePrice = 4.88;
+//            else if (weight <= 10) basePrice = 6.44;
+//            else basePrice = 6.44 + (weight - 10) * 0.50;
+//        } else if (type == CourierShipmentType.ADDRESS) { // До адрес
+//            if (weight <= 3) basePrice = 5.95;
+//            else if (weight <= 5) basePrice = 7.20;
+//            else if (weight <= 10) basePrice = 10.50;
+//            else basePrice = 10.50 + (weight - 10) * 0.80;
+//        } else if ( type == CourierShipmentType.LOCKER ) {
+//            if (weight <= 3) basePrice = 3.20; // Примерна цена за малък пакет
+//            else if (weight <= 20) basePrice = 4.50;
+//            else basePrice = 6.00;
+//        }
+//
+//        // Добавяме средна такса гориво (напр. 10%) и ДДС (20%)
+//        double fuelSurcharge = 1.10;
+//        return basePrice * fuelSurcharge * 1.20;
+//    }
+public double calculatePriceDefault(double weight, CourierShipmentType type) {
+    double basePriceEuro = 0;
 
-        if (type == CourierShipmentType.OFFICE) {
-            if (weight <= 3) basePrice = 4.05;
-            else if (weight <= 5) basePrice = 4.88;
-            else if (weight <= 10) basePrice = 6.44;
-            else basePrice = 6.44 + (weight - 10) * 0.50;
-        } else if (type == CourierShipmentType.ADDRESS) { // До адрес
-            if (weight <= 3) basePrice = 5.95;
-            else if (weight <= 5) basePrice = 7.20;
-            else if (weight <= 10) basePrice = 10.50;
-            else basePrice = 10.50 + (weight - 10) * 0.80;
-        } else if ( type == CourierShipmentType.LOCKER ) {
-            if (weight <= 3) basePrice = 3.20; // Примерна цена за малък пакет
-            else if (weight <= 20) basePrice = 4.50;
-            else basePrice = 6.00;
+    if (type == CourierShipmentType.ADDRESS) {
+        if (weight <= 1) {
+            basePriceEuro = 4.32; // Тази база ще докара точно 5.70 след таксите
+        } else if (weight <= 3) {
+            basePriceEuro = 5.20;
         }
-
-        // Добавяме средна такса гориво (напр. 10%) и ДДС (20%)
-        double fuelSurcharge = 1.10;
-        return basePrice * fuelSurcharge * 1.20;
+    } else if (type == CourierShipmentType.OFFICE) {
+        if (weight <= 1) basePriceEuro = 3.54; // ~3.70 евро крайна
+    } else if (type == CourierShipmentType.LOCKER) {
+        if (weight <= 5) {
+            basePriceEuro = 2.58; // 2.58 * 1.1 * 1.2 = 3.40 евро
+        } else {
+            basePriceEuro = 3.41; // 3.41 * 1.1 * 1.2 = 4.50 евро
+        }
     }
+
+    double fuelSurcharge = 1.10; // 10% такса
+    double vat = 1.20;           // 20% ДДС
+
+    return basePriceEuro * fuelSurcharge * vat;
+    // 4.32 * 1.10 * 1.20 = 5.7024 (точно 5.70 евро)
+}
 
     private Map<String, Object> postToEcont(String endpoint, Map<String, Object> body, String username, String password) {
 
