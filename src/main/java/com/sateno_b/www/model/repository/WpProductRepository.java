@@ -60,4 +60,5 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
     @EntityGraph(attributePaths = {"brand"})
     @Query("SELECT p FROM WpProductEntity p")
     Page<WpProductMinified> findAllOptimized(Specification<WpProductEntity> spec, Pageable pageable);
+
 }

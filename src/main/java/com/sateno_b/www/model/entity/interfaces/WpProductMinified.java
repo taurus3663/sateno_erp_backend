@@ -23,7 +23,9 @@ public interface WpProductMinified {
     @Value("#{target.brand != null ? target.brand.name : ''}")
     String getBrandName();
 
-    @Value("#{target.images.size() > 0 ? target.images[0].localSrc : null}")
+    @Value("#{target.images.?[isPrimary == true].size() > 0 ? " +
+            "target.images.?[isPrimary == true][0].localSrc : " +
+            "(target.images.size() > 0 ? target.images[0].localSrc : null)}")
     String getM_image();
 
     @Value("#{target.categories}")

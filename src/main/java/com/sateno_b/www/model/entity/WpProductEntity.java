@@ -48,16 +48,16 @@ public class WpProductEntity extends BaseEntity {
     @JoinColumn(name = "brand_id")
     private WpBrandEntity brand;
 
-    @BatchSize(size = 100)
+    @BatchSize(size = 250)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     List<WpProductTranslationEntity> translations = new ArrayList<>();
 
-    @BatchSize(size = 100)
+    @BatchSize(size = 250)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     List<WpProductImageEntity> images = new ArrayList<>();
 
-    @BatchSize(size = 100)
+    @BatchSize(size = 250)
     @ManyToMany
     @JoinTable(
             name = "wp_product_category_mapping",
@@ -67,11 +67,11 @@ public class WpProductEntity extends BaseEntity {
     private Set<WpCategoryEntity> categories = new HashSet<>();
 
     // В WpProductEntity.java
-    @BatchSize(size = 100)
+    @BatchSize(size = 250)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WpProductAddonConfigEntity> addonConfig = new ArrayList<>();
 
-    @BatchSize(size = 100)
+    @BatchSize(size = 250)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WpProductSiteConfigEntity> siteConfigs = new ArrayList<>();
 

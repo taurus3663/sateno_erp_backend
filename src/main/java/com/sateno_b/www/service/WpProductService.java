@@ -15,6 +15,8 @@ import com.sateno_b.www.shared.ImageToWordPress;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.*;
+import org.springframework.data.projection.ProjectionFactory;
+import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -755,36 +757,45 @@ public class WpProductService {
             String name_sku
     ) {
         Specification<WpProductEntity> spec = (root, query, cb) -> {
-            // Важно за страницирането с JOIN-ове
-            query.distinct(true);
+            // 1. МАХАМЕ distinct(true), за да работи orderBy
+            query.distinct(false);
 
             List<Predicate> predicates = new ArrayList<>();
 
-            // 1. Търсене по име или SKU (твоята логика със Subquery)
             if (name_sku != null && !name_sku.isEmpty()) {
+
                 String pattern = "%" + name_sku.toLowerCase() + "%";
 
+                // 1. Създаваме Subquery за търсене по ИМЕ в преводите
                 Subquery<Long> nameSubquery = query.subquery(Long.class);
                 Root<WpProductEntity> subRootName = nameSubquery.from(WpProductEntity.class);
                 Join<WpProductEntity, WpProductTranslationEntity> transJoin = subRootName.join("translations");
-                nameSubquery.select(subRootName.get("id")).where(cb.like(cb.lower(transJoin.get("name")), pattern));
 
+                nameSubquery.select(subRootName.get("id"))
+                        .where(cb.like(cb.lower(transJoin.get("name")), pattern));
+
+                // 2. Дефинираме предикатите за OR условието
+                // Проверяваме: (Основно SKU LIKE pattern) ИЛИ (ID-то е в резултатите от имената)
                 Predicate skuMatch = cb.like(cb.lower(root.get("sku")), pattern);
                 Predicate nameMatch = root.get("id").in(nameSubquery);
+
+                // Добавяме общия OR към списъка с филтри
                 predicates.add(cb.or(skuMatch, nameMatch));
             }
-
-            // 2. Филтър Категория
+            // Филтър по Категория (чрез Subquery)
             if (category != null && !category.isEmpty()) {
                 Subquery<Long> catSubquery = query.subquery(Long.class);
                 Root<WpProductEntity> subRoot = catSubquery.from(WpProductEntity.class);
                 Join<WpProductEntity, WpCategoryEntity> catJoin = subRoot.join("categories");
-                Join<WpCategoryEntity, WpCategoryTranslationEntity> catTransJoin = catJoin.join("translations");
-                catSubquery.select(subRoot.get("id")).where(cb.like(cb.lower(catTransJoin.get("name")), "%" + category.toLowerCase() + "%"));
+                Join<WpCategoryEntity, WpCategoryTranslationEntity> transJoin = catJoin.join("translations");
+
+                catSubquery.select(subRoot.get("id"))
+                        .where(cb.like(cb.lower(transJoin.get("name")), "%" + category.toLowerCase() + "%"));
+
                 predicates.add(root.get("id").in(catSubquery));
             }
 
-            // 3. Директни филтри
+            // Обикновени филтри (директни полета)
             if (brand != null && !brand.isEmpty()) {
                 predicates.add(cb.equal(root.get("brand").get("name"), brand));
             }
@@ -794,21 +805,37 @@ public class WpProductService {
             if (status != null && status >= 0) {
                 predicates.add(cb.equal(root.get("status"), status));
             }
-            if (saleType != null && saleType >= 0) {
+
+            if(saleType != null && saleType >= 0) {
                 predicates.add(cb.equal(root.get("saleType"), saleType));
             }
+
+
+
+
+
+            // 2. ВЕЧЕ МОЖЕШ ДА СОРТИРАШ БЕЗОПАСНО
+            query.orderBy(
+//                    cb.asc(
+//                            cb.selectCase()
+//                                    .when(cb.equal(root.get("status"), ProductStatus.PUBLISHED), 1)
+//                                    .otherwise(2)
+//                    ),
+//                    cb.asc(root.get("stockQuantity")),
+                    cb.desc(root.get("sku"))
+            );
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        // Извикваме репозиторитито с проекцията
-        return wpProductRepository.findAllOptimized(spec, pageable);
-    }
+        Page<WpProductEntity> productPage = wpProductRepository.findAll(spec, pageable);
+         ProjectionFactory projectionFactory = new SpelAwareProxyProjectionFactory();
 
-    public Page<WpProductMinified> getProductsForList(Specification<WpProductEntity> spec, Pageable pageable) {
-        // Връщаме директно проекцията. Hibernate не зарежда излишни данни,
-        // а Spring автоматично мапва резултата към интерфейса.
-        return wpProductRepository.findAllOptimized(spec, pageable);
+        return productPage.map(entity ->
+                projectionFactory.createProjection(WpProductMinified.class, entity)
+        );
+        // Извикваме репозиторитито с проекцията
+//        return wpProductRepository.findAllOptimized(spec, pageable);
     }
 
     public WpProductDto patchProduct(WpProductDto wpProductDto) {
