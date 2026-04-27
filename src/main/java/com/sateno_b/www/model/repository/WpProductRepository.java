@@ -1,6 +1,7 @@
 package com.sateno_b.www.model.repository;
 
 import com.sateno_b.www.model.entity.WpProductEntity;
+import com.sateno_b.www.model.entity.interfaces.WpProductMinified;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -46,5 +47,17 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
 
     Optional<WpProductEntity> findFirstByOrderBySkuDesc();
 
+    /**
+     * Взима пътищата на снимките за конкретен продукт.
+     * Благодарение на ORDER BY, първият елемент винаги ще е Primary снимката (ако има такава).
+     */
+    @Query("SELECT i.localSrc FROM WpProductImageEntity i " +
+            "WHERE i.product.id = :productId " +
+            "ORDER BY i.isPrimary DESC, i.id ASC LIMIT 1")
+    String findImagePathsByProductId(@Param("productId") Long productId);
 
-    }
+
+    @EntityGraph(attributePaths = {"brand"})
+    @Query("SELECT p FROM WpProductEntity p")
+    Page<WpProductMinified> findAllOptimized(Specification<WpProductEntity> spec, Pageable pageable);
+}

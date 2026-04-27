@@ -1,0 +1,751 @@
+
+/**
+ * SILIYAN ERP - SHIPPING MODULE (MODE-SPECIFIC PRICES ONLY)
+ */
+// 1. ВАЛИДАЦИЯ ПРИ ПОРЪЧКА - ПРОВЕРКА ЗА ИЗБРАНИ ДЕТАЙЛИ
+add_action( 'woocommerce_checkout_process', function() {
+    if ( empty($_POST['siliyan_courier_full']) ) {
+        wc_add_notice( 'Моля, изберете метод на доставка.', 'error' );
+        return;
+    }
+
+    $unique_id = $_POST['siliyan_courier_full']; // Пример: speedy_office_10
+    $parts = explode('_', $unique_id);
+    $mode = $parts[1] ?? ''; // office, locker или address
+
+    if ($mode === 'office' || $mode === 'locker') {
+        // Проверка дали е избран офис от падащото меню (скритото поле sl_val_...)
+        if ( empty($_POST['sl_val_' . $unique_id]) ) {
+            wc_add_notice( 'Моля, изберете конкретен офис или автомат от списъка.', 'error' );
+        }
+    } elseif ($mode === 'address') {
+    // 1. Проверка за ГРАД
+    // Взимаме "Бургас" и махаме интервалите
+    $city = isset($_POST['billing_city']) ? trim($_POST['billing_city']) : '';
+
+    if ( empty($city) || mb_strlen($city) < 2 ) {
+        wc_add_notice( '<strong>Грешка:</strong> Моля, изберете град за доставка.', 'error' );
+    }
+
+    // 2. Проверка за УЛИЦА
+    // Взимаме "[ADDRESS] [] [ECONT]"
+    $address = isset($_POST['billing_address_1']) ? trim($_POST['billing_address_1']) : '';
+    // Тук е хитрината: Махаме всичко излишно, за да видим дали потребителят е писал нещо
+    $clean_street = str_replace(['[ADDRESS]', '[]', '[ECONT]', '[SPEEDY]', '[BOXNOW]'], '', $address);
+    $clean_street = trim($clean_street); // Остава само това, което е между таговетеф
+
+// 		echo "<script>console.log('ERP Debug - Clean Street: " . esc_js($clean_street) . "');</script>";
+    // Ако потребителят не е въвел нищо, $clean_street ще е празен низ ""
+    if ( empty($clean_street) || mb_strlen($clean_street) < 3 ) {
+        wc_add_notice( '<strong>Грешка:</strong> Моля, въведете точен адрес (улица и номер).', 'error' );
+    }
+}
+});
+
+// 2. СКРИВАНЕ НА СТАНДАРТНИТЕ ПОЛЕТА
+add_filter( 'woocommerce_checkout_fields', function( $fields ) {
+    $allowed = ['billing_first_name', 'billing_last_name', 'billing_phone', 'billing_email'];
+    foreach ( $fields['billing'] as $key => $field ) {
+        if ( ! in_array( $key, $allowed ) ) {
+            $fields['billing'][$key]['type'] = 'hidden';
+            $fields['billing'][$key]['label'] = '';
+            $fields['billing'][$key]['required'] = false;
+        }
+    }
+    return $fields;
+});
+
+// 1. Изключваме проверката на формата на пощенския код (валидацията)
+add_filter( 'woocommerce_validate_postcode', '__return_true', 100 );
+
+// 2. Допълнителна застраховка: премахваме изискването на ниво държава
+add_filter( 'woocommerce_get_country_locale', function( $locale ) {
+    foreach ( $locale as $country => $fields ) {
+        if ( isset( $locale[$country]['postcode'] ) ) {
+            $locale[$country]['postcode']['required'] = false;
+            $locale[$country]['postcode']['validate'] = false; // Изключва валидацията
+        }
+    }
+    return $locale;
+}, 100 );
+
+// 3. ДОБАВЯНЕ НА СКРИТИ ПОЛЕТА ЗА ERP-ТО
+add_filter( 'woocommerce_billing_fields' , 'siliyan_add_custom_billing_fields' );
+function siliyan_add_custom_billing_fields( $fields ) {
+    $fields['billing_office_code'] = array('type' => 'hidden', 'required' => false, 'class' => array('sl-hidden'));
+    $fields['billing_courier_type'] = array('type' => 'hidden', 'required' => false, 'class' => array('sl-hidden'));
+    return $fields;
+}
+
+// 4. ОСНОВЕН МОДУЛ ЗА ДОСТАВКА
+add_action( 'woocommerce_after_checkout_billing_form', 'siliyan_erp_advanced_search' );
+
+function siliyan_erp_advanced_search() {
+    $cart = WC()->cart;
+    $cart_items = array();
+    $total_weight = 0;
+
+    foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
+        $_product = $cart_item['data'];
+        $quantity = $cart_item['quantity'];
+        $total_weight += (float)$_product->get_weight() * $quantity;
+        $cart_items[] = array(
+            'id'       => $cart_item['product_id'],
+            'name'     => $_product->get_name(),
+            'sku'      => $_product->get_sku(),
+            'quantity' => $quantity,
+            'price'    => $cart_item['line_total'],
+            'weight'   => (float)$_product->get_weight(),
+        );
+    }
+
+    $api_url = 'https://erp.sateno.bg/erp/checkout/check-couriers';
+    $response = wp_remote_post( $api_url, array(
+        'body'    => json_encode(array(
+            'site'        => $_SERVER['HTTP_HOST'],
+            'cart_total'  => $cart->get_total('edit'),
+            'cart_weight' => $total_weight,
+            'items_count' => $cart->get_cart_contents_count(),
+            'items'       => $cart_items,
+            'currency'    => get_woocommerce_currency()
+        )),
+        'headers' => array( 'Content-Type' => 'application/json' ),
+        'timeout' => 15
+    ));
+
+    if ( is_wp_error( $response ) ) return;
+
+    $data = json_decode( wp_remote_retrieve_body( $response ), true );
+    $delivery_options = $data['checkOutCourierList'] ?? [];
+    $currency_symbol = $data['currencySymbol'] ?? '€';
+    $cities_json = wp_remote_retrieve_body(wp_remote_get("https://couriers.lynk.bg/new/bg-cities.txt"));
+
+    if (!empty($delivery_options)) {
+        usort($delivery_options, function($a, $b) {
+            $orderA = (isset($a['sortOrder']) && $a['sortOrder'] !== null) ? (int)$a['sortOrder'] : 999;
+            $orderB = (isset($b['sortOrder']) && $b['sortOrder'] !== null) ? (int)$b['sortOrder'] : 999;
+            return $orderA <=> $orderB;
+        });
+    }
+    ?>
+
+    <script>
+        var sl_CitiesList = <?php echo $cities_json ?: '{}'; ?>;
+        var sl_MasterDB = { speedy: null, econt: null, boxnow: null };
+        var sl_CurrentCourier = '';
+        var sl_CurrentMode = '';
+        var sl_ActiveUID = '';
+		 var sl_CartWeight = <?php echo $total_weight; ?>;
+        var sl_CartTotal = "<?php echo $cart->get_total('edit'); ?>";
+        var sl_CurrencySymbol = "<?php echo $currency_symbol; ?>";
+		var postcode = '';
+		var cityName = '';
+    </script>
+
+    <div id="sl-shipping-system" style="clear:both; margin-top:30px;">
+        <h3 style="font-weight:600; margin-bottom:15px; font-size:18px;">Метод на доставка</h3>
+
+        <div class="sl-shipping-wrapper" style="display: flex; flex-direction: column; gap: 10px;">
+        <?php
+        if (!empty($delivery_options)) :
+            foreach ($delivery_options as $opt):
+                $slug = str_replace('_', '', strtolower($opt['courierType']));
+                $courier_id = $opt['id'] ?? 0;
+
+                // КОНФИГУРАЦИЯ БЕЗ ОБЩА ЦЕНА - ВСЕКИ МЕТОД ГЛЕДА СОБСТВЕНАТА СИ КОЛОНА
+                $modes_config = [
+                    'office'  => [
+                        'label' => 'До офис',
+                        'price' => (float)($opt['officeFixedShippingPrice'] ?? 0)
+                    ],
+                    'locker'  => [
+                        'label' => 'До автомат',
+                        'price' => (float)($opt['lockerFixedShippingPrice'] ?? 0)
+                    ],
+                    'address' => [
+                        'label' => 'До адрес',
+                        'price' => (float)($opt['addressFixedShippingPrice'] ?? 0)
+                    ]
+                ];
+
+                foreach ($modes_config as $m_key => $m_data):
+                    if (empty($opt[$m_key])) continue;
+
+                    $unique_id = $slug . '_' . $m_key . '_' . $courier_id;
+                    $current_price = $m_data['price'];
+        ?>
+            <div class="sl-card" id="box-<?php echo $unique_id; ?>" onclick="slOpen('<?php echo $slug; ?>', '<?php echo $m_key; ?>', <?php echo $courier_id; ?>, '<?php echo $unique_id; ?>')">
+                <div class="sl-row">
+                    <div class="sl-info" style="display: flex;">
+                        <input type="radio" name="siliyan_courier_full" value="<?php echo $unique_id; ?>" id="r-<?php echo $unique_id; ?>">
+                        <label for="r-<?php echo $unique_id; ?>" style="cursor:pointer; margin:unset;">
+                            <strong><?php echo $m_data['label']; ?></strong>
+                            <span class="price-holder" id="price-<?php echo $unique_id; ?>">
+                                <?php echo ($current_price <= 0) ? '<span class="sl-badge-free">БЕЗПЛАТНО</span>' : '<span class="sl-price-tag">'.number_format($current_price, 2).' '.$currency_symbol.'</span>'; ?>
+                            </span>
+                        </label>
+                    </div>
+                    <img class="sl-courier-logo" src="https://co.middleware.bg/courier-menus/<?php echo $slug; ?>-logo.png" width="115" onerror="this.style.visibility='hidden'">
+                </div>
+
+                <div class="sl-dropdowns" id="drop-<?php echo $unique_id; ?>" style="display:none; margin-top:15px;">
+                    <?php if ($m_key !== 'address'): ?>
+                        <div class="mw-chips">
+                            <span class="sl-chip" onclick="slQuick('<?php echo $unique_id; ?>', 'София')">София</span>
+                            <span class="sl-chip" onclick="slQuick('<?php echo $unique_id; ?>', 'Пловдив')">Пловдив</span>
+                        </div>
+                        <input type="text" id="input-<?php echo $unique_id; ?>" class="sl-search-input combined-search" placeholder="Търси град или обект..." autocomplete="off">
+                        <div id="results-<?php echo $unique_id; ?>" class="mw-results-list" style="display:none;"></div>
+                        <input type="hidden" name="sl_val_<?php echo $unique_id; ?>" id="val-<?php echo $unique_id; ?>">
+                    <?php else: ?>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <input type="text" id="city-input-<?php echo $unique_id; ?>" class="sl-search-input city-autocomplete" placeholder="Напишете град..." autocomplete="off">
+                            <div id="city-results-<?php echo $unique_id; ?>" class="mw-results-list" style="display:none;"></div>
+                            <input type="text" id="postcode-<?php echo $unique_id; ?>" placeholder="ПК" class="sl-search-input">
+                            <input type="text" id="street-<?php echo $unique_id; ?>" placeholder="Улица и номер..." class="sl-search-input">
+                            <input type="hidden" id="city-hidden-<?php echo $unique_id; ?>">
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endforeach; endforeach; endif; ?>
+        </div>
+        <input type="hidden" name="siliyan_courier_id" id="final-courier-id">
+        <input type="hidden" name="siliyan_mode" id="final-mode">
+    </div>
+
+    <style>
+        .sl-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; cursor: pointer; background: #fff; transition: 0.2s; }
+        .sl-card.active { border: 2px solid #27ae60 !important; background: #f9fffb !important; }
+        .sl-row { display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+        .sl-price-tag { color: #27ae60; font-weight: 800; background: #f1f1f1; padding: 2px 8px; border-radius: 4px; }
+        .sl-badge-free { background: #27ae60; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: 800; }
+        .sl-search-input { width: 100% !important; height: 44px !important; border: 1px solid #ccc !important; padding: 0 15px !important; border-radius: 6px !important; }
+        .mw-results-list { max-height: 250px; overflow-y: auto; background: #fff; border: 1px solid #ddd; z-index: 9999; }
+        .mw-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .mw-item:hover { background: #f8f8f8; font-weight: bold; }
+        .sl-chip { background: #f0f0f0; padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; display: inline-block; margin: 3px 2px; }
+        #billing_city_field, #billing_postcode_field, #billing_address_1_field, #billing_address_2_field, #billing_country_field, #billing_state_field { display: none !important; }
+		/* По подразбиране за големи екрани */
+.sl-courier-logo {
+    width: 115px;
+    height: auto; /* Запазва пропорциите */
+    transition: width 0.3s ease; /* Плавно преливане при оразмеряване */
+}
+
+/* За екрани под 800px (таблети и телефони) */
+@media screen and (max-width: 1028px) {
+    .sl-courier-logo {
+        width: 80px;
+    }
+}
+    </style>
+
+    <script>
+    (function($) {
+        window.slOpen = function(courier, mode, courierId, uid) {
+            sl_CurrentCourier = courier; sl_CurrentMode = mode; sl_ActiveUID = uid;
+            $('.sl-card').removeClass('active'); $('.sl-dropdowns').hide();
+            $('#box-' + uid).addClass('active'); $('#drop-' + uid).show();
+            $('#r-' + uid).prop('checked', true);
+            $('#final-courier-id').val(courierId); $('#final-mode').val(mode);
+            if ((mode === 'office' || mode === 'locker') && !sl_MasterDB[courier]) {
+                var u = { 'speedy': 'https://couriers.lynk.bg/new/bg-speedy-offices.txt', 'econt': 'https://couriers.lynk.bg/new/bg-econt-offices.txt', 'boxnow': 'https://couriers.lynk.bg/new/bg-boxnow-offices.txt' };
+                $.get(u[courier], function(res) { sl_MasterDB[courier] = (typeof res === 'string') ? JSON.parse(res) : res; });
+            }
+            $(document.body).trigger('update_checkout');
+        };
+
+        window.slGlobalSync = function() {
+            if (!sl_ActiveUID) return;
+            var uid = sl_ActiveUID, city = "", pc = "", addr = "";
+            if (sl_CurrentMode !== 'address') {
+                var name = $('#input-' + uid).val() || "", code = $('#val-' + uid).val() || "";
+                addr = "[" + sl_CurrentMode.toUpperCase() + "] " + name + " [" + code + "] [" + sl_CurrentCourier.toUpperCase() + "]";
+                city = name.split(' - ')[0] || "";
+            } else {
+                var street = $('#street-' + uid).val() || "";
+                city = $('#city-hidden-' + uid).val() || ""; pc = $('#postcode-' + uid).val() || "";
+                addr = "[ADDRESS] " + street + " [] [" + sl_CurrentCourier.toUpperCase() + "]";
+            }
+            $('#billing_city, #shipping_city').val(city.trim());
+            $('#billing_postcode, #shipping_postcode').val(pc.trim());
+            $('#billing_address_1, #shipping_address_1').val(addr.trim());
+        };
+
+		function slCheckType(name, mode, courier) {
+    if (courier === 'boxnow') return true;
+
+    var n = name.toLowerCase();
+
+    // Ако сме избрали режим АВТОМАТ
+    if (mode === 'locker') {
+        return n.includes('автомат') || n.includes('apm') || n.includes('locker') || n.includes('aps');
+    }
+
+    // Ако сме избрали режим ОФИС - тук е добре да СКРИЕМ автоматите, за да не се бъркат хората
+    if (mode === 'office') {
+        return !(n.includes('автомат') || n.includes('apm') || n.includes('locker') || n.includes('aps'));
+    }
+
+    return true;
+}
+
+       $(document).on('input focus', '.combined-search', function() {
+    var uid = this.id.replace('input-', ''),
+        parts = uid.split('_'),
+        courier = parts[0],
+        mode = parts[1]; // Вземаме mode (locker/office) от UID-то
+
+    var term = $(this).val().toLowerCase();
+    console.log("Courier: " + courier + " | Mode: " + mode); // Твоят принт
+
+    if (!sl_MasterDB[courier]) return;
+
+    var html = '', count = 0, words = term.split(/\s+/);
+
+    $.each(sl_MasterDB[courier], function(key, value) {
+        $.each(Array.isArray(value) ? value : [value], function(i, off) {
+            var label = (off.city || key).toUpperCase() + " - " + off.name;
+            var labelLower = label.toLowerCase();
+
+            // --- СПЕЦИФИЧНА ПРОВЕРКА ЗА СПИДИ LOCKER ---
+            if (courier === 'speedy' && mode === 'locker') {
+                var isSpeedyLocker = labelLower.includes('автомат') || labelLower.includes('aps') || labelLower.includes('апс');
+                if (!isSpeedyLocker) return true; // Продължи към следващия обект (пропусни този)
+            }
+            // ------------------------------------------
+
+            if (words.every(w => labelLower.includes(w))) {
+                var officeCity = off.city || key;
+            html += `<div class="mw-item" onclick="slSelectOffice('${uid}','${label}','${off.code}','${off.postCode || ''}','${officeCity}')">🏢 ${label}</div>`;
+                count++;
+            }
+            if (count >= 20) return false;
+        });
+        if (count >= 20) return false;
+    });
+    $('#results-' + uid).html(html).show();
+});
+
+        $(document).on('input focus', '.city-autocomplete', function() {
+            var uid = this.id.replace('city-input-', ''), term = $(this).val().toLowerCase(), html = '', count = 0;
+            $.each(sl_CitiesList, function(city, zips) {
+                if (city.toLowerCase().includes(term)) {
+                    $.each(zips, function(pc, data) {
+                        html += `<div class="mw-item" onclick="slSelectCity('${uid}','${city}','${pc}')">📍 ${city} (${pc})</div>`;
+                        count++;
+                    });
+                }
+                if (count >= 10) return false;
+            });
+            $('#city-results-' + uid).html(html).show();
+        });
+
+        window.slSelectOffice = function(uid, label, code) {
+            $('#input-' + uid).val(label); $('#val-' + uid).val(code); $('.mw-results-list').hide(); slGlobalSync(); slRecalculate(code, postcode, cityName);
+        };
+
+        window.slSelectCity = function(uid, city, pc) {
+            $('#city-input-' + uid).val(city + ' (' + pc + ')'); $('#city-hidden-' + uid).val(city); $('#postcode-' + uid).val(pc); $('.mw-results-list').hide(); slGlobalSync(); slRecalculate('', pc, city);
+        };
+
+        $(document).on('input', '.sl-search-input', function() { slGlobalSync(); });
+        window.slQuick = function(uid, city) { $('#input-' + uid).val(city).trigger('input').focus(); };
+        $(document).on('click', function(e) { if (!$(e.target).closest('.sl-card').length) $('.mw-results-list').hide(); });
+
+
+		window.slRecalculate = function(targetId, postcode, cityName) {
+    var $ = jQuery;
+    if (!sl_ActiveUID) return;
+    var uid = sl_ActiveUID;
+
+    $('#price-' + uid).html('<small style="color:#666; font-style:italic;">Изчисляване...</small>');
+
+    var payload = {
+        site: window.location.hostname,
+        cart_total: sl_CartTotal,
+        cart_weight: parseFloat(sl_CartWeight),
+        items_count: "<?php echo $cart->get_cart_contents_count(); ?>",
+        currency: "<?php echo get_woocommerce_currency(); ?>",
+        courierType: sl_CurrentCourier.toUpperCase() === 'BOXNOW' ? 'BOX_NOW' : sl_CurrentCourier.toUpperCase(),
+        courierShipmentType: sl_CurrentMode.toUpperCase(),
+        targetId: String(targetId),
+        postcode: String(postcode),
+        cityName: String(cityName),
+        items: <?php echo json_encode($cart_items); ?>
+    };
+
+    $.ajax({
+        url: 'https://erp.sateno.bg/erp/checkout/recalculate-price',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload),
+        success: function(res) {
+    // Тъй като отговорът е директно число (напр. 4.44)
+    if (res !== undefined && res !== null && res !== "") {
+        var p = parseFloat(res); // Превръщаме отговора в число
+
+        if (!isNaN(p)) {
+            var symbol = sl_CurrencySymbol;
+            var html = (p <= 0)
+                ? '<span class="sl-badge-free">БЕЗПЛАТНО</span>'
+                : '<span class="sl-price-tag">' + p.toFixed(2) + ' ' + symbol + '</span>';
+
+            // Намираме елемента и го обновяваме
+            $('#price-' + uid).html(html);
+
+            // Казваме на WooCommerce да обнови тоталите
+            $(document.body).trigger('update_checkout');
+        } else {
+            console.error("Върнатият отговор не е валидно число:", res);
+        }
+    }
+},
+        error: function(err) {
+            console.error("Грешка при връзка с ERP за цена.", err);
+        }
+    });
+};
+
+    })(jQuery);
+    </script>
+    <?php
+}
+
+// REST OF PROXY & PUSH FUNCTIONS
+add_action('wp_ajax_sl_recalculate_proxy', 'sl_recalculate_proxy_func');
+add_action('wp_ajax_nopriv_sl_recalculate_proxy', 'sl_recalculate_proxy_func');
+function sl_recalculate_proxy_func() {
+    $response = wp_remote_post('https://erp.sateno.bg/erp/checkout/recalculate-price', array(
+        'body' => file_get_contents('php://input'),
+        'headers' => array('Content-Type' => 'application/json'),
+        'timeout' => 15
+    ));
+    echo is_wp_error($response) ? '0' : wp_remote_retrieve_body($response);
+    wp_die();
+}
+
+// add_action( 'woocommerce_checkout_order_processed', function( $order_id, $posted_data, $order ) {
+//     $api_url = 'https://erp.sateno.bg/erp/wp_order/create';
+//     $secret  = 'a319b7ce-f428-46e7-90be-e753fe83efa7';
+
+//     $data = $order->get_data();
+//     foreach (['date_created', 'date_modified', 'date_completed', 'date_paid'] as $f) {
+//         if (isset($data[$f]) && $data[$f] instanceof WC_DateTime) $data[$f] = $data[$f]->date_i18n('Y-m-d\TH:i:s');
+//     }
+
+//     $data['line_items'] = array();
+//     foreach ($order->get_items() as $item) $data['line_items'][] = $item->get_data();
+
+//     $payload   = json_encode( $data );
+//     $signature = base64_encode( hash_hmac( 'sha256', $payload, $secret, true ) );
+
+//     $args = array(
+//         'body'        => $payload,
+//         'headers'     => array(
+//             'Content-Type'           => 'application/json',
+//             'x-wc-webhook-signature' => $signature,
+//             'x-wc-webhook-topic'     => 'order.created',
+//             'x-wc-webhook-resource'  => 'order',
+//             'x-wc-webhook-event'     => 'created',
+//             'User-Agent'             => 'WooCommerce/Siliyan-ERP-Push'
+//         ),
+//         'timeout'     => 60,
+//         'blocking'    => false,
+//         'sslverify'   => false,
+//     );
+
+//     wp_remote_post( $api_url, $args );
+// }, 10, 3 );
+
+
+
+/**
+ * Build payload similar to WooCommerce wc/v3/orders webhook.
+ *
+ * @param int $order_id
+ * @return array|null
+ */
+add_action('woocommerce_thankyou', 'mw_send_webhook_after_thankyou', 10, 1);
+
+function mw_send_webhook_after_thankyou($order_id) {
+    $payload = mw_build_order_webhook_payload($order_id);
+
+    if (!$payload) {
+        return;
+    }
+    $webhooks = getWebHookData();
+    $webhook_url = $webhooks->delivery_url; // change this
+    $secret = $webhooks->secret; // MUST MATCH receiver
+    // IMPORTANT: Woo signature = base64(hmac_sha256(payload, secret))
+    $signature = base64_encode(hash_hmac('sha256', wp_json_encode($payload), $secret, true));
+
+    $headers = array(
+        'Content-Type' => 'application/json',
+        'User-Agent' => 'WooCommerce/' . WC()->version . '; ' . home_url(),
+        // Required Woo headers:
+        'X-WC-Webhook-Source' => home_url(),
+        'X-WC-Webhook-Topic' => 'order.created', // must match receiver logic
+        'X-WC-Webhook-Resource' => 'order',
+        'X-WC-Webhook-Event' => 'created',
+        'X-WC-Webhook-Signature' => $signature,
+        'X-WC-Webhook-ID' => '999999', // any numeric ID, normally Woo uses an internal webhook ID
+    );
+
+    $response = wp_remote_post($webhook_url, array(
+        'method' => 'POST',
+        'timeout' => 0.01,
+        'blocking' => false,
+        'headers' => $headers,
+        'body' => wp_json_encode($payload),
+    ));
+
+    if (is_wp_error($response)) {
+        error_log('[MW] Webhook send error for order ' . $order_id . ': ' . $response->get_error_message());
+    }
+};
+
+function mw_build_order_webhook_payload($order_id) {
+    $order = wc_get_order($order_id);
+
+    if (!$order) {
+        return null;
+    }
+    // Basic fields
+    $payload = array(
+        'id' => $order->get_id(),
+        'parent_id' => $order->get_parent_id(),
+        'status' => $order->get_status(), // e.g. 'abandoned', 'processing'
+        'currency' => $order->get_currency(),
+        'version' => WC()->version,
+        'prices_include_tax' => wc_prices_include_tax(),
+        'date_created' => $order->get_date_created() ? $order->get_date_created()->date_i18n('Y-m-d\TH:i:s', true) : null,
+        'date_modified' => $order->get_date_modified() ? $order->get_date_modified()->date_i18n('Y-m-d\TH:i:s', true) : null,
+        'discount_total' => $order->get_discount_total(),
+        'discount_tax' => $order->get_discount_tax(),
+        'shipping_total' => $order->get_shipping_total(),
+        'shipping_tax' => $order->get_shipping_tax(),
+        'cart_tax' => $order->get_cart_tax(),
+        'total' => $order->get_total(),
+        'total_tax' => $order->get_total_tax(),
+        'customer_id' => $order->get_customer_id(),
+        'order_key' => $order->get_order_key(),
+        'billing' => array(
+            'first_name' => $order->get_billing_first_name(),
+            'last_name' => $order->get_billing_last_name(),
+            'company' => $order->get_billing_company(),
+            'address_1' => $order->get_billing_address_1(),
+            'address_2' => $order->get_billing_address_2(),
+            'city' => $order->get_billing_city(),
+            'state' => $order->get_billing_state(),
+            'postcode' => $order->get_billing_postcode(),
+            'country' => $order->get_billing_country(),
+            'email' => $order->get_billing_email(),
+            'phone' => $order->get_billing_phone(),
+        ),
+        'shipping' => array(
+            'first_name' => $order->get_shipping_first_name(),
+            'last_name' => $order->get_shipping_last_name(),
+            'company' => $order->get_shipping_company(),
+            'address_1' => $order->get_shipping_address_1(),
+            'address_2' => $order->get_shipping_address_2(),
+            'city' => $order->get_shipping_city(),
+            'state' => $order->get_shipping_state(),
+            'postcode' => $order->get_shipping_postcode(),
+            'country' => $order->get_shipping_country(),
+            'phone' => $order->get_shipping_phone(),
+        ),
+        'payment_method' => $order->get_payment_method(),
+        'payment_method_title' => $order->get_payment_method_title(),
+        'transaction_id' => $order->get_transaction_id(),
+        'customer_ip_address' => $order->get_customer_ip_address(),
+        'customer_user_agent' => $order->get_customer_user_agent(),
+        'created_via' => $order->get_created_via(),
+        'customer_note' => $order->get_customer_note(),
+        'date_completed' => $order->get_date_completed() ? $order->get_date_completed()->date_i18n('Y-m-d\TH:i:s', true) : null,
+        'date_paid' => $order->get_date_paid() ? $order->get_date_paid()->date_i18n('Y-m-d\TH:i:s', true) : null,
+        'cart_hash' => $order->get_cart_hash(),
+        'number' => $order->get_order_number(),
+        'meta_data' => array(),
+        'line_items' => array(),
+        'tax_lines' => array(),
+        'shipping_lines' => array(),
+        'fee_lines' => array(),
+        'coupon_lines' => array(),
+        'refunds' => array(),
+        'payment_url' => $order->get_checkout_payment_url(),
+        'is_editable' => $order->is_editable(),
+        'needs_payment' => $order->needs_payment(),
+        'needs_processing' => $order->needs_processing(),
+        'date_created_gmt' => $order->get_date_created() ? $order->get_date_created()->date_i18n('Y-m-d\TH:i:s', true) : null,
+        'date_modified_gmt' => $order->get_date_modified() ? $order->get_date_modified()->date_i18n('Y-m-d\TH:i:s', true) : null,
+        'date_completed_gmt' => $order->get_date_completed() ? $order->get_date_completed()->date_i18n('Y-m-d\TH:i:s', true) : null,
+        'date_paid_gmt' => $order->get_date_paid() ? $order->get_date_paid()->date_i18n('Y-m-d\TH:i:s', true) : null,
+        'currency_symbol' => html_entity_decode(get_woocommerce_currency_symbol($order->get_currency())),
+        '_links' => array(
+            'self' => array(
+                array(
+                    'href' => rest_url(sprintf('wc/v3/orders/%d', $order->get_id())),
+                    'targetHints' => array(
+                        'allow' => array('GET', 'POST', 'PUT', 'PATCH', 'DELETE'),
+                    ),
+                ),
+            ),
+            'collection' => array(
+                array(
+                    'href' => rest_url('wc/v3/orders'),
+                ),
+            ),
+            'customer' => $order->get_customer_id() ? array(
+                array(
+                    'href' => rest_url(sprintf('wc/v3/customers/%d', $order->get_customer_id())),
+                ),
+            ) : array(),
+        ),
+        'new_version' => 1
+    );
+
+    // Order meta_data
+    foreach ($order->get_meta_data() as $meta) {
+        $payload['meta_data'][] = array(
+            'id' => $meta->id,
+            'key' => $meta->key,
+            'value' => $meta->value,
+        );
+    }
+
+    // Line items
+    foreach ($order->get_items('line_item') as $item_id => $item) {
+        $product = $item->get_product();
+        $image_id = $product ? $product->get_image_id() : 0;
+        $image_src = $image_id ? wp_get_attachment_image_url($image_id, 'full') : '';
+
+        $item_data = array(
+            'id' => $item_id,
+            'name' => $item->get_name(),
+            'product_id' => $item->get_product_id(),
+            'variation_id' => $item->get_variation_id(),
+            'quantity' => $item->get_quantity(),
+            'tax_class' => $item->get_tax_class(),
+            'subtotal' => $item->get_subtotal(),
+            'subtotal_tax' => $item->get_subtotal_tax(),
+            'total' => $item->get_total(),
+            'total_tax' => $item->get_total_tax(),
+            'taxes' => $item->get_taxes(),
+            'meta_data' => array(),
+            'sku' => $product ? $product->get_sku() : '',
+            'price' => $item->get_total() / max(1, $item->get_quantity()),
+            'image' => array(
+                'id' => $image_id,
+                'src' => $image_src,
+            ),
+            'parent_name' => $product && $product->get_parent_id() ? get_the_title($product->get_parent_id()) : '',
+        );
+
+        foreach ($item->get_meta_data() as $meta) {
+            $item_data['meta_data'][] = array(
+                'id' => $meta->id,
+                'key' => $meta->key,
+                'value' => $meta->value,
+                'display_key' => wc_attribute_label($meta->key),
+                'display_value' => wc_clean($meta->value),
+            );
+        }
+
+
+        $payload['line_items'][] = $item_data;
+    }
+
+    // Shipping lines
+    foreach ($order->get_shipping_methods() as $item_id => $item) {
+        $payload['shipping_lines'][] = array(
+            'id' => $item_id,
+            'method_title' => $item->get_name(),
+            'method_id' => $item->get_method_id(),
+            'instance_id' => $item->get_instance_id(),
+            'total' => $item->get_total(),
+            'total_tax' => $item->get_total_tax(),
+            'taxes' => $item->get_taxes(),
+            'tax_status' => $item->get_tax_status(),
+            'meta_data' => array_map(function ($meta) {
+                return array(
+                    'id' => $meta->id,
+                    'key' => $meta->key,
+                    'value' => $meta->value,
+                );
+            }, $item->get_meta_data()),
+        );
+    }
+
+    // Tax lines
+    foreach ($order->get_items('tax') as $item_id => $item) {
+        $payload['tax_lines'][] = array(
+            'id' => $item_id,
+            'rate_code' => $item->get_rate_code(),
+            'rate_id' => $item->get_rate_id(),
+            'label' => $item->get_label(),
+            'compound' => (bool) $item->get_compound(),
+            'tax_total' => $item->get_tax_total(),
+            'shipping_tax_total' => $item->get_shipping_tax_total(),
+            'meta_data' => array(),
+        );
+    }
+
+    // Fee lines
+    foreach ($order->get_items('fee') as $item_id => $item) {
+        $payload['fee_lines'][] = array(
+            'id' => $item_id,
+            'name' => $item->get_name(),
+            'tax_class' => $item->get_tax_class(),
+            'tax_status' => $item->get_tax_status(),
+            'total' => $item->get_total(),
+            'total_tax' => $item->get_total_tax(),
+            'taxes' => $item->get_taxes(),
+            'meta_data' => array(),
+        );
+    }
+
+    // Coupon lines
+    foreach ($order->get_items('coupon') as $item_id => $item) {
+        $payload['coupon_lines'][] = array(
+            'id' => $item_id,
+            'code' => $item->get_code(),
+            'discount' => $item->get_discount(),
+            'discount_tax' => $item->get_discount_tax(),
+            'meta_data' => array(),
+        );
+    }
+
+    // Refunds
+    foreach ($order->get_refunds() as $refund) {
+        $payload['refunds'][] = array(
+            'id' => $refund->get_id(),
+            'reason' => $refund->get_reason(),
+            'total' => $refund->get_amount(),
+            'date_created' => $refund->get_date_created() ? $refund->get_date_created()->date_i18n('Y-m-d\TH:i:s', true) : null,
+        );
+    }
+
+    return $payload;
+}
+
+function getWebHookData() {
+    global $wpdb;
+    // Вече търсим запис, който съдържа твоя домейн erp.sateno.bg
+    $result = $wpdb->get_results("SELECT delivery_url, secret FROM {$wpdb->prefix}wc_webhooks WHERE delivery_url LIKE '%erp.sateno.bg%' AND status = 'active' LIMIT 1");
+
+    if (empty($result)) {
+        return null;
+    }
+
+    return $result[0];
+}
+
+add_filter( 'woocommerce_rest_is_request_to_rest_api', function( $is_rest_api_request ) {
+    if ( ! $is_rest_api_request && strpos( $_SERVER['REQUEST_URI'], '/wp-json/wp/v2/media' ) !== false ) {
+        return true;
+    }
+    return $is_rest_api_request;
+});
+

@@ -76,6 +76,7 @@ public class Beans {
 //                "http://192.168.31.232:4200"
 //        ));
         config.setAllowedOrigins(allowedOrigins);
+        System.out.println(allowedOrigins);
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));

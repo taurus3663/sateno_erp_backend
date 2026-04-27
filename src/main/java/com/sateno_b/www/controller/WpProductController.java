@@ -2,6 +2,7 @@ package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
+import com.sateno_b.www.model.entity.interfaces.WpProductMinified;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.service.ChatGptService;
 import com.sateno_b.www.service.CurrencyService;
@@ -82,7 +83,7 @@ public class WpProductController {
 
 
     @GetMapping("/list")
-    public ResponseEntity<Page<WpProductDto>> getWpProducts(
+    public ResponseEntity<Page<WpProductMinified>> getWpProducts(
             Pageable pageable,
             @RequestParam(required = false) String brand,
             @RequestParam(required = false) String category,
@@ -92,7 +93,7 @@ public class WpProductController {
             @RequestParam(required = false) String name_sku
     ) {
 
-        Page<WpProductDto> dtoPage =  wpProductService.getAll(pageable, brand, category, quantity, status, saleType, name_sku);
+        Page<WpProductMinified> dtoPage =  wpProductService.getAll(pageable, brand, category, quantity, status, saleType, name_sku);
 
         return ResponseEntity.ok(dtoPage);
     }
