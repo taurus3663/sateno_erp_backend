@@ -57,8 +57,7 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
     String findImagePathsByProductId(@Param("productId") Long productId);
 
 
-    @EntityGraph(attributePaths = {"brand"})
-    @Query("SELECT p FROM WpProductEntity p")
-    Page<WpProductMinified> findAllOptimized(Specification<WpProductEntity> spec, Pageable pageable);
-
+//    @EntityGraph(attributePaths = {"brand"})
+//    @Query("SELECT p FROM WpProductEntity p")
+//    Page<WpProductMinified> findBy(Specification<WpProductEntity> spec, Pageable pageable);
 }

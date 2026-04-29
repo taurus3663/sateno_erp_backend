@@ -31,9 +31,20 @@ public interface WpProductMinified {
     @Value("#{target.categories}")
     Set<CategoryMin> getCategories();
 
+//    @Value("#{target.siteConfigs}")
+//    List<SiteConfigMin> getSiteConfigs();
+
     interface CategoryMin {
         // Тук също използваме по-прост израз за името на категорията
         @Value("#{target.translations.size() > 0 ? target.translations[0].name : ''}")
         String getName();
     }
+
+//    interface SiteConfigMin {
+//        Long getId();
+//        @Value("#{target.site.id}")
+//        Long getSiteId();
+//        @Value("#{target.site.name}")
+//        String getSiteName();
+//    }
 }

@@ -832,10 +832,11 @@ public class WpProductService {
          ProjectionFactory projectionFactory = new SpelAwareProxyProjectionFactory();
 
         return productPage.map(entity ->
-                projectionFactory.createProjection(WpProductMinified.class, entity)
-        );
+                projectionFactory.createProjection(WpProductMinified.class, entity));
+//        );
         // Извикваме репозиторитито с проекцията
-//        return wpProductRepository.findAllOptimized(spec, pageable);
+//        return wpProductRepository.findBy(spec, pageable);
+//        return productPage.map(entity -> modelMapper.map(entity, WpProductDto.class));
     }
 
     public WpProductDto patchProduct(WpProductDto wpProductDto) {

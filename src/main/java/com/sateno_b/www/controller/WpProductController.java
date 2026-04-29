@@ -205,16 +205,16 @@ public class WpProductController {
 // ПРЕМАХНИ @Transactional ТУК!
     public ResponseEntity<?> translateContent(@RequestBody ProductTranslateContentDTO request) {
         try {
-            WpProductEntity product = wpProductRepository.findById(request.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
-
-            // 1. Записваме източника (използваме новия метод в сървиса)
-            wpProductService.saveSingleTranslation(
-                    request.getProductId(),
-                    request.getItem().getLanguage().getId(),
-                    request.getItem(),
-                    request.getType()
-            );
+//            WpProductEntity product = wpProductRepository.findById(request.getProductId())
+//                    .orElseThrow(() -> new RuntimeException("Product not found"));
+//
+//            // 1. Записваме източника (използваме новия метод в сървиса)
+//            wpProductService.saveSingleTranslation(
+//                    request.getProductId(),
+//                    request.getItem().getLanguage().getId(),
+//                    request.getItem(),
+//                    request.getType()
+//            );
 
             List<LanguageEntity> languages = languageRepository.findAll();
             String sourceLangName = request.getItem().getLanguage().getName();
@@ -225,6 +225,9 @@ public class WpProductController {
             else if (request.getType() == 2L) textToTranslate = request.getItem().getShortDescription();
             else if (request.getType() == 3L) textToTranslate = request.getItem().getDescription();
 
+            // Списък, който ще върнем на фронтенда
+            List<Map<String, Object>> results = new ArrayList<>();
+
             for (LanguageEntity targetLanguage : languages) {
                 if (Objects.equals(targetLanguage.getId(), request.getItem().getLanguage().getId())) continue;
 
@@ -234,15 +237,21 @@ public class WpProductController {
                 String translatedText = chatGptService.translateText(textToTranslate, instruction);
 
                 // 2. Записваме превода в собствена малка трансакция
-                wpProductService.saveTranslatedField(
-                        request.getProductId(),
-                        targetLanguage.getId(),
-                        translatedText,
-                        request.getType()
-                );
+//                wpProductService.saveTranslatedField(
+//                        request.getProductId(),
+//                        targetLanguage.getId(),
+//                        translatedText,
+//                        request.getType()
+//                );
+
+                // Добавяме в резултата за фронтенда
+                Map<String, Object> result = new HashMap<>();
+                result.put("languageId", targetLanguage.getId());
+                result.put("translatedText", translatedText);
+                results.add(result);
             }
 
-            return ResponseEntity.ok(true);
+            return ResponseEntity.ok(results);
         } catch (Exception e) {
             log.error("Грешка при превод: ", e);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
