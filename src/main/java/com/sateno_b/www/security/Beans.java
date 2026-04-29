@@ -6,6 +6,7 @@ import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -90,7 +91,13 @@ public class Beans {
 
     @Bean
     public RestClient restClient() {
+
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10000); // 10 секунди за свързване
+        factory.setReadTimeout(30000);    // 30 секунди за четене на данни
+
         return RestClient.builder()
+                .requestFactory(factory)
                 .baseUrl("") // Може да остане празно, понеже взимаме URL от базата
                 .build();
     }

@@ -781,18 +781,7 @@ public class SpeedyService implements ShippingProvider {
 
             if (settings == null) continue;
 
-
-
-            // 5. Събираме номерата на товарителниците (wayBillShipmentNumber)
-//            List<String> waybillNumbers = siteOrders.stream()
-//                    .map(order -> order.getWayBillShipmentNumber().toString())
-//                    .toList();
-
-//            if (waybillNumbers.isEmpty()) continue;
-
-//            List<String> waybillNumbers = List.of("1055101154014", "1055101141069");
             Map<String, Object> body = createBaseBody(settings.getUsername(), settings.getPassword());
-
 
             // Промени това:
             List<Map<String, String>> parcels = siteOrders.stream()
@@ -801,7 +790,6 @@ public class SpeedyService implements ShippingProvider {
                     .toList();
                 if(parcels.isEmpty()) continue;
             body.put("parcels", parcels); // Ключът е parcelIds, стойността е List<String>
-            System.out.println(body);
             try {
                 var response = postToSpeedy("track", body);
 //                System.out.println(response);
