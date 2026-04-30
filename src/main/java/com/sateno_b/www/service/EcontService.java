@@ -534,10 +534,10 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
     label.put("senderAddress",  senderAddress);
 
 //        RECEIVER
-    Map<String, Object> receiverClient = new HashMap<>();
-    receiverClient.put("name", "ТЕСТ" + " " + "ТЕСТ");
-    receiverClient.put("phones", List.of());
-    label.put("receiverClient", receiverClient);
+//    Map<String, Object> receiverClient = new HashMap<>();
+//    receiverClient.put("name", "ТЕСТ" + " " + "ТЕСТ");
+//    receiverClient.put("phones", List.of());
+//    label.put("receiverClient", receiverClient);
 
 
 
