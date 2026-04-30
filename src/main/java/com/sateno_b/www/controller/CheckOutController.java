@@ -85,23 +85,26 @@ public class CheckOutController {
 //            if(courier.getFreeShippingPriceMaxBol() == true && courier.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())) {
 //                courierDto.setFixedShippingPrice(0.0);
 //            }
-             if(courier.getAutoShippingPrice() == true) {
-
-//                System.out.println("works");
-//                if(courier.getCourierType() == CourierType.SPEEDY) {
-//                    double finalPrice = speedyService.calculatePriceDefault(request.getCart_weight(),  courier.getCourierShipmentType());
+//             if(courier.getAutoShippingPrice() == true) {
+//
+////                System.out.println("works");
+//                if(courier.getCourierType() == CourierType.SPEEDY && courier.isOffice() && courier.isOfficeAutoShippingPrice()) {
+//                    double finalPrice = speedyService.calculatePriceDefault(request.getCart_weight(),  CourierShipmentType.OFFICE);
 //                    courierDto.setFixedShippingPrice(finalPrice);
-//                } else if (courier.getCourierType() == CourierType.ECONT) {
-//                    double finalPrice = econtService.calculatePriceDefault(request.getCart_weight(), courier.getCourierShipmentType());
+//                }
+//                else if (courier.getCourierType() == CourierType.ECONT && courier.isAddress() && courier.isAddressAutoShippingPrice()) {
+//                    System.out.println("111111");
+//                    double finalPrice = econtService.calculatePriceDefault(request.getCart_weight(), CourierShipmentType.ADDRESS);
+//                    System.out.println(finalPrice);
 //                    courierDto.setFixedShippingPrice(finalPrice);
 //
 //                }
-//                else if (courier.getCourierType() == CourierType.BOX_NOW) {
-//                    double finalPrice = boxNowService.calculatePriceDefault(request.getCart_weight(), courier.getCourierShipmentType());
+//                else if (courier.getCourierType() == CourierType.BOX_NOW && courier.isLocker() && courier.isLockerAutoShippingPrice()) {
+//                    double finalPrice = boxNowService.calculatePriceDefault(request.getCart_weight(), CourierShipmentType.LOCKER);
 //                    courierDto.setFixedShippingPrice(finalPrice);
 //                }
-
-            }
+//
+//            }
 
              if(courier.isOfficeAutoShippingPrice()) {
                  if(courier.getCourierType() == CourierType.SPEEDY) {
@@ -117,9 +120,6 @@ public class CheckOutController {
                      double finalPrice = speedyService.calculatePriceDefault(request.getCart_weight(),  CourierShipmentType.LOCKER);
                      courierDto.setLockerFixedShippingPrice(finalPrice);
                  }
-//                 else if(courier.getCourierType() == CourierType.ECONT) {
-//
-//                 }
              }
              if (courier.isAddressAutoShippingPrice()) {
                  if(courier.getCourierType() == CourierType.SPEEDY) {

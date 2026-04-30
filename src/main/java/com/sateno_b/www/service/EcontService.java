@@ -698,9 +698,14 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
             basePriceEuro = 4.32; // Тази база ще докара точно 5.70 след таксите
         } else if (weight <= 3) {
             basePriceEuro = 5.20;
+        } else {
+            basePriceEuro = 6.50;
         }
     } else if (type == CourierShipmentType.OFFICE) {
         if (weight <= 1) basePriceEuro = 3.54; // ~3.70 евро крайна
+        else {
+            basePriceEuro = 5.80;
+        }
     } else if (type == CourierShipmentType.LOCKER) {
         if (weight <= 5) {
             basePriceEuro = 2.58; // 2.58 * 1.1 * 1.2 = 3.40 евро

@@ -92,12 +92,12 @@ public class Beans {
     @Bean
     public RestClient restClient() {
 
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(10000); // 10 секунди за свързване
-        factory.setReadTimeout(30000);    // 30 секунди за четене на данни
+//        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+//        factory.setConnectTimeout(10000); // 10 секунди за свързване
+//        factory.setReadTimeout(30000);    // 30 секунди за четене на данни
 
         return RestClient.builder()
-                .requestFactory(factory)
+//                .requestFactory(factory)
                 .baseUrl("") // Може да остане празно, понеже взимаме URL от базата
                 .build();
     }
