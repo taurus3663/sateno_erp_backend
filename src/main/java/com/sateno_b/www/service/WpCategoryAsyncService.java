@@ -231,4 +231,101 @@ public class WpCategoryAsyncService {
         }
         return translated;
     }
+
+    public boolean syncWpCategoryToSite(Long siteId) {
+        List<WpCategoryEntity> all = wpCategoryRepository.findAll();
+
+        all.sort((a, b) -> {
+            if (a.getParent() == null && b.getParent() != null) return -1;
+            if (a.getParent() != null && b.getParent() == null) return 1;
+            return 0;
+        });
+
+        SiteEntity site = siteRepository.findById(siteId).orElse(null);
+        if(site == null) return false;
+
+        for (WpCategoryEntity wpCategoryEntity : all) {
+
+            WpCategoryTranslationEntity baseTranslation = wpCategoryEntity.getTranslations().get(0);
+            LanguageEntity baseLanguage = baseTranslation.getLanguage();
+
+//            List<SiteEntity> siteList = siteRepository.findAll();
+//            for (SiteEntity site : siteList) {
+
+                try {
+                    // 1. Търсим съществуващ мапинг
+                    WpCategorySiteMappingEntity mapping = wpCategorySiteMappingRepository
+                            .findByWpCategoryAndSite(wpCategoryEntity, site)
+                            .orElse(null);
+
+                    // 2. Логика за името (превод) - същата като досега
+                    LanguageEntity siteLanguage = site.getLanguage();
+                    String targetName = getOrTranslateName(wpCategoryEntity, baseTranslation, baseLanguage, siteLanguage);
+
+                    // 3. Логика за родителя (Parent)
+                    Long wpParentId = 0L;
+                    if (wpCategoryEntity.getParent() != null) {
+                        // ВЗЕМАМЕ РОДИТЕЛЯ ОТ БАЗАТА, ЗА ДА СМЕ СИГУРНИ, ЧЕ Е ТАМ
+                        WpCategoryEntity parentEntity = wpCategoryEntity.getParent();
+
+                        // Търсим мапинга на родителя
+                        wpParentId = wpCategorySiteMappingRepository
+                                .findByWpCategoryAndSite(parentEntity, site)
+                                .map(WpCategorySiteMappingEntity::getWpId)
+                                .orElse(0L);
+
+                        if (wpParentId == 0) {
+                            log.warn("Родителят на категория {} все още няма WP_ID за сайт {}. Категорията ще бъде създадена като главна.",
+                                    wpCategoryEntity.getId(), site.getUrl());
+                        }
+                    }
+
+                    // 4. Подготовка на Auth и Body
+                    String auth = Base64.getEncoder().encodeToString(
+                            (site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+
+                    Map<String, Object> body = new HashMap<>();
+                    body.put("name", targetName);
+                    body.put("parent", wpParentId);
+
+                    if (mapping != null) {
+                        // --- UPDATE ---
+                        restClient.put()
+                                .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories/" + mapping.getWpId())
+                                .header("Authorization", "Basic " + auth)
+                                .body(body)
+                                .retrieve()
+                                .toBodilessEntity();
+                        log.info("Успешно обновен сайт {}: WP_ID {}", site.getUrlWithHttps(), mapping.getWpId());
+
+                    } else {
+                        // --- CREATE (Ако мапингът липсва) ---
+                        Map<String, Object> response = restClient.post()
+                                .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories")
+                                .header("Authorization", "Basic " + auth)
+                                .body(body)
+                                .retrieve()
+                                .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
+
+                        if (response != null && response.containsKey("id")) {
+                            WpCategorySiteMappingEntity newMapping = new WpCategorySiteMappingEntity();
+                            newMapping.setWpCategory(wpCategoryEntity);
+                            newMapping.setSite(site);
+                            newMapping.setWpId(Long.valueOf(response.get("id").toString()));
+                            newMapping.setSlug(response.get("slug").toString());
+
+                            wpCategorySiteMappingRepository.save(newMapping);
+                            log.info("Създадена липсваща категория в сайт {}: WP_ID {}", site.getUrlWithHttps(), newMapping.getWpId());
+                        }
+                    }
+
+                } catch (Exception e) {
+                    log.error("Грешка при обработка на сайт {}: {}", site.getUrlWithHttps(), e.getMessage());
+                }
+//            }
+        }
+
+        return true;
+    }
+
 }

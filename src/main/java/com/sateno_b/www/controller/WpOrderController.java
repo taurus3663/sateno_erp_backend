@@ -285,7 +285,7 @@ public class WpOrderController {
 //                    ObjectMapper objectMapper = new ObjectMapper();
                     // Използваме ObjectMapper, защото rawPayload ни трябваше като String за проверката
                     WoOrderDto dto = objectMapper.readValue(rawPayload, WoOrderDto.class);
-//                    System.out.println(dto.toString());
+                    System.out.println(dto.toString());
                     // 3. Извикваме сървиса за запис в базата
 //                    System.out.println("1");
                     wpOrderService.newOrderFromSite(dto, siteId);

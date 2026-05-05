@@ -54,6 +54,10 @@ public class SiteController {
     public ResponseEntity<SiteDto> getSiteById(@PathVariable Long id) {
         Optional<SiteEntity> siteEntity = siteRepository.findById(id);
         SiteDto siteDto = modelMapper.map(siteEntity, SiteDto.class);
+
+        List<CourierSettingsDto> allBySite = courierSettingsRepository.findAllBySiteOrderBySortOrderAsc(siteEntity.get())
+                .stream().map(d -> modelMapper.map(d, CourierSettingsDto.class)).toList();
+        siteDto.setCouriers(allBySite);
         return ResponseEntity.ok(siteDto);
     }
 

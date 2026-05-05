@@ -9,6 +9,7 @@ import com.sateno_b.www.model.entity.WpCategoryTranslationEntity;
 import com.sateno_b.www.model.repository.WpCategoryRepository;
 import com.sateno_b.www.model.repository.WpCategorySiteMappingRepository;
 import com.sateno_b.www.model.repository.WpCategoryTranslationRepository;
+import com.sateno_b.www.service.WpCategoryAsyncService;
 import com.sateno_b.www.service.WpCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -31,6 +32,7 @@ public class WpCategoryController {
     private final WpCategorySiteMappingRepository wpCategorySiteMappingRepository;
     private final ModelMapper modelMapper;
     private final WpCategoryService wpCategoryService;
+    private final WpCategoryAsyncService  wpCategoryAsyncService;
 
     @PostMapping("/sync/{siteId}")
     public boolean syncWpCategory(@PathVariable Long siteId) {
@@ -131,5 +133,10 @@ public class WpCategoryController {
         // Връщаме абсолютно всички категории в плосък списък
         return wpCategoryService.getAllNodesFlat();
     }
+
+//    @PostMapping("/sync/to/{siteId}")
+//    public boolean syncWpCategoryToSite(@PathVariable Long siteId) {
+//        return wpCategoryAsyncService.syncWpCategoryToSite(siteId);
+//    }
 
 }

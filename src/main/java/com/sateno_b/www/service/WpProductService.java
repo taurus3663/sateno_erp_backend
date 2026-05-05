@@ -121,14 +121,14 @@ public class WpProductService {
         AtomicInteger count = new AtomicInteger();
         for (WpProductEntity product : productList) {
 //            executor.submit(() -> {
-                count.getAndIncrement();
+//                count.getAndIncrement();
 //                if(count.get() == 10) {
 //                    return;
 //                }
                try {
 //                    clearAllProductsFromSite(site);
-//                   wpProductAsyncService.updateProductOnSites(product, siteId);
-                   wpProductAsyncService.updateProductOnSitesOnlyPrices(product, siteId);
+                   wpProductAsyncService.updateProductOnSitesOnlyNewSiteUpload(product, siteId);
+//                   wpProductAsyncService.updateProductOnSitesOnlyPrices(product, siteId);
 //                   log.info("Успешно създаден нов продукт с SKU {} в сайт {}", product.getSku(), site.getUrl());
                } catch (Exception e) {
                    log.error("Критична грешка при масова синхронизация на SKU {}: {}", product.getSku(), e.getMessage());

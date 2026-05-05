@@ -52,14 +52,187 @@ public class SpeedyService implements ShippingProvider {
 //                       .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(),
 //                               request.getCourierShipmentType());
         Optional<CourierSettingsEntity> g = courierSettingsRepository.findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(site, request.getCourierType());
-       if(g.isPresent()) {
-           CourierSettingsEntity courierSettings = g.get();
+        if(g.isPresent()) {
+            CourierSettingsEntity courierSettings = g.get();
 
 
 
            if(courierSettings.getFreeShippingPriceMaxBol() == true && courierSettings.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())){
                return 0;
            }
+
+
+
+            try {
+                Map<String, Object> body = createBaseBody(courierSettings.getUsername(), courierSettings.getPassword());
+                body.put("shippingDate", java.time.LocalDate.now().toString());
+
+                Map<String, Object> content = new HashMap<>();
+                content.put("contents", "Текстилни изделия");
+                if(request.getCourierShipmentType() == CourierShipmentType.LOCKER){
+                    content.put("parcelsCount", 1);
+                } else {
+                    content.put("parcelsCount", request.getItems().size());
+                }
+
+                content.put("totalWeight", request.getCart_weight());
+                body.put("content", content);
+
+                Map<String, Object> payment = new HashMap<>();
+                payment.put("courierServicePayer", "RECIPIENT");
+                payment.put("declaredValuePayer", "RECIPIENT");
+                body.put("payment", payment);
+
+                Map<String, Object> service = new HashMap<>();
+
+                service.put("autoAdjustPickupDate", true);
+//               service.put("payerType", 1);
+
+                // 3. НАЛОЖЕН ПЛАТЕЖ (Cash on Delivery)
+                Map<String, Object> additionalServices = new HashMap<>();
+                Map<String, Object> cod = new HashMap<>();
+                cod.put("amount", Double.parseDouble(request.getCart_total())); // Сумата за събиране
+                cod.put("currency", "EUR");
+                additionalServices.put("cod", cod);
+
+                Map<String, Object> obpd = new HashMap<>();
+                obpd.put("option", "OPEN");   // само преглед (отваряне)
+                obpd.put("payer", "RECIPIENT");
+                obpd.put("returnShipmentServiceId", 505L);
+                obpd.put("returnShipmentPayer", "SENDER");
+                if(request.getCourierShipmentType() == CourierShipmentType.OFFICE ||
+                        request.getCourierShipmentType() == CourierShipmentType.ADDRESS) {
+
+                }
+
+
+
+
+                service.put("additionalServices", additionalServices);
+
+
+
+                var contract = courierSettings.getCourierContractDetails();
+                Map<String, Object> sender = new HashMap<>();
+                sender.put("clientId", contract.getClientId());
+                body.put("sender", sender);
+
+                Map<String, Object> recipient = new HashMap<>();
+                recipient.put("privatePerson", true);
+                if (request.getCourierShipmentType() == CourierShipmentType.OFFICE ||
+                        request.getCourierShipmentType() == CourierShipmentType.LOCKER) {
+                    service.put("serviceIds", List.of(505L));
+
+                    // ВАЖНО: За офиси и автомати targetId е ID на офиса
+                    recipient.put("pickupOfficeId", Long.parseLong(request.getTargetId()));
+                } else if (request.getCourierShipmentType() == CourierShipmentType.ADDRESS) {
+                    service.put("serviceIds", List.of(505L));
+
+                    // До адрес: Спиди предпочита да получи siteId вътре в addressLocation
+                    Map<String, Object> addressLocation = new HashMap<>();
+//                   addressLocation.put("siteId", Long.parseLong(request.getTargetId()));
+
+                    // Ако имаш пощенски код в рекуеста, добави го за по-голяма точност
+                    if (request.getPostcode() != null && !request.getPostcode().isEmpty()) {
+                        addressLocation.put("postCode", request.getPostcode());
+                        addressLocation.put("siteName", request.getTargetId());
+                    }
+
+                    recipient.put("addressLocation", addressLocation);
+                }
+//               recipient.put("siteId", request.getTargetId());
+                body.put("recipient", recipient);
+                body.put("service", service);
+
+//               List<Map<String, Object>> parcels = new ArrayList<>();
+                Map<String, Object> response = postToSpeedy("calculate", body);
+//               System.out.println(response);
+                if (response != null && response.containsKey("calculations")) {
+                    List<Map<String, Object>> calculations =
+                            (List<Map<String, Object>>) response.get("calculations");
+
+                    if (!calculations.isEmpty()) {
+
+                        Map<String, Object> calc = calculations.get(0);
+
+                        if (calc.containsKey("error")) {
+                            System.out.println("Speedy service error: " + calc.get("error"));
+                            return 0.0;
+                        }
+
+                        Map<String, Object> price =
+                                (Map<String, Object>) calc.get("price");
+
+                        if (price != null && price.containsKey("total")) {
+//                        return Double.parseDouble(price.get("total").toString());
+//                        System.out.println(Double.parseDouble(price.get("total").toString()));
+                            return Double.parseDouble(price.get("total").toString());
+                        }
+                    }
+                }
+
+
+                return -1;
+
+
+            } catch (Exception e) {
+                System.out.printf("Speedy service error: %s%n", e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
+
+
+        return 0;
+    }
+
+    public double calculatePrice2(CheckCourierRequest request) {
+
+        SiteEntity site = siteRepository.findSiteEntityByUrl(request.getSite());
+
+//       Optional<CourierSettingsEntity> g =
+//               courierSettingsRepository
+//                       .findBySiteAndCourierTypeAndCourierShipmentTypeAndActiveTrue(site, request.getCourierType(),
+//                               request.getCourierShipmentType());
+        Optional<CourierSettingsEntity> g = courierSettingsRepository.findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(site, request.getCourierType());
+       if(g.isPresent()) {
+           CourierSettingsEntity courierSettings = g.get();
+
+
+
+//           if(courierSettings.getFreeShippingPriceMaxBol() == true && courierSettings.getFreeShippingPriceMax() < Double.parseDouble(request.getCart_total())){
+//               return 0;
+//           }
+
+           // 1. ЛОГИКА ЗА БЕЗПЛАТНА ДОСТАВКА (Адаптирана спрямо типа доставка)
+           if (request.getCourierShipmentType() == CourierShipmentType.OFFICE) {
+               if (courierSettings.isOfficeFreeShippingPriceMaxBol() &&
+                       courierSettings.getOfficeFreeShippingPriceMax() <= Double.parseDouble(request.getCart_total())) {
+                   return 0.0;
+               }
+           } else if (request.getCourierShipmentType() == CourierShipmentType.ADDRESS) {
+               if (courierSettings.isAddressFreeShippingPriceMaxBol() &&
+                       courierSettings.getAddressFreeShippingPriceMax() <= Double.parseDouble(request.getCart_total())) {
+                   return 0.0;
+               }
+           } else if (request.getCourierShipmentType() == CourierShipmentType.LOCKER) {
+               if (courierSettings.isLockerFreeShippingPriceMaxBol() &&
+                       courierSettings.getLockerFreeShippingPriceMax() <= Double.parseDouble(request.getCart_total())) {
+                   return 0.0;
+               }
+           }
+
+           if(courierSettings.getAddressFixedShippingPrice() != null) {
+               if (request.getCourierShipmentType() == CourierShipmentType.OFFICE) {
+                   return courierSettings.getOfficeFixedShippingPrice();
+               } else if (request.getCourierShipmentType() == CourierShipmentType.ADDRESS) {
+                   return courierSettings.getAddressFixedShippingPrice();
+               } else if (request.getCourierShipmentType() == CourierShipmentType.LOCKER) {
+                   return courierSettings.getLockerFixedShippingPrice();
+               }
+           }
+
+
 
            try {
                Map<String, Object> body = createBaseBody(courierSettings.getUsername(), courierSettings.getPassword());

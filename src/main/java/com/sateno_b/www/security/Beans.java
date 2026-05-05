@@ -110,7 +110,7 @@ public class Beans {
         // Максимален брой нишки (напр. 10)
         executor.setMaxPoolSize(20);
         // Колко задачи да чакат на опашка, преди да почнат да се отхвърлят
-        executor.setQueueCapacity(500);
+        executor.setQueueCapacity(2000);
         executor.setThreadNamePrefix("WooSync-");
         executor.initialize();
         return executor;

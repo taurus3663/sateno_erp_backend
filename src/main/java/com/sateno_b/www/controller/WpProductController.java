@@ -202,7 +202,6 @@ public class WpProductController {
     }
 
     @PostMapping("/translate/content")
-// ПРЕМАХНИ @Transactional ТУК!
     public ResponseEntity<?> translateContent(@RequestBody ProductTranslateContentDTO request) {
         try {
 //            WpProductEntity product = wpProductRepository.findById(request.getProductId())

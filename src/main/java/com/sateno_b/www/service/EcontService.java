@@ -503,8 +503,6 @@ public class EcontService implements ShippingProvider {
 
 
 public double calculatePrice(CheckCourierRequest createLabelDto) {
-    System.out.println(createLabelDto.toString());
-    System.out.println("");
   try {
     SiteEntity site = siteRepository.findSiteEntityByUrl(createLabelDto.getSite());
     CourierSettingsEntity courierSettingsEntity = courierSettingsRepository.findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(site, createLabelDto.getCourierType()).get();

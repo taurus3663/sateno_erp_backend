@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -135,10 +136,21 @@ public class CheckOutController {
 
             dto.getCheckOutCourierList().add(courierDto);
         }
+
+        List<CheckOutCourierDto> sortedList = dto.getCheckOutCourierList().stream()
+                .sorted((c1, c2) -> {
+                    Integer s1 = c1.getSortOrder() != null ? c1.getSortOrder() : Integer.MAX_VALUE;
+                    Integer s2 = c2.getSortOrder() != null ? c2.getSortOrder() : Integer.MAX_VALUE;
+                    return s1.compareTo(s2);
+                })
+                .toList();
+
+        dto.setCheckOutCourierList(new ArrayList<>(sortedList));
 //        System.out.println(dto.toString());
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
+//    ERP SIDE
     @PostMapping("/recalculate-price")
     public double recalculate(@RequestBody CheckCourierRequest request) {
         double v = 0;
@@ -153,11 +165,14 @@ public class CheckOutController {
             v = speedyService.calculatePrice(request);
         } else if(request.getCourierType() == CourierType.ECONT) {
             v = econtService.calculatePrice(request);
+        } else if(request.getCourierType() == CourierType.BOX_NOW) {
+            v = 0.0;
         }
 
         return v;
     }
 
+//    ERP/SITE SIDE
     @PostMapping("/recalculate-price-custom-field-shipping-price")
     public double recalculatePriceCustomFieldShippingPrice(@RequestBody CheckCourierRequest request) {
         double v = 0;
@@ -171,5 +186,30 @@ public class CheckOutController {
 
         return v;
     }
+
+//    SITE SIDE
+    @PostMapping("/recalculate-price2")
+    public double recalculate2(@RequestBody CheckCourierRequest request) {
+        double v = 0;
+//        System.out.println(request.toString());
+//        CheckCourierRequest(site=sateno.bg, cart_total=76, cart_weight=1.0, items_count=null,
+//        items=[CheckOutCourierItemsDto(id=null, name=null, price=2.0, quantity=2, sku=a1890, weight=null)],
+//        currency=EUR, targetId=null, cityName=София, postcode=1000, courierType=SPEEDY, courierShipmentType=null,
+//        orderId=2093)
+
+
+        if(request.getCourierType() == CourierType.SPEEDY) {
+            v = speedyService.calculatePrice2(request);
+        } else if(request.getCourierType() == CourierType.ECONT) {
+            v = econtService.calculatePrice(request);
+        } else if(request.getCourierType() == CourierType.BOX_NOW) {
+            v = 0.0;
+        }
+
+        return v;
+    }
+
+
+
 
 }
