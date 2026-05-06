@@ -38,10 +38,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Propagation;
@@ -350,9 +347,20 @@ public class WpOrderService {
         }
     }
 
+    private final Set<String> processingOrders = Collections.newSetFromMap(new ConcurrentHashMap<>());
     @Transactional
 //    @CacheEvict(value = "ordersList", allEntries = true)
     public void newOrderFromSite(WoOrderDto dto, Long siteId) {
+
+       String lockKey = siteId + ":" + dto.getId();
+//
+//    // Ако ключът вече съществува, значи друга нишка работи по него в момента
+    if (!processingOrders.add(lockKey)) {
+        log.info("Duplicate order request ignored for ID: {}", lockKey);
+        return;
+    }
+//
+    try {
 
         Optional<WpOrderEntity> byWpOrderId = wpOrderRepository.findByWpOrderIdAndSiteId(dto.getId(), siteId);
         if(byWpOrderId.isPresent()) {
@@ -608,6 +616,11 @@ public class WpOrderService {
                 }
             }
         }
+
+            } finally {
+//        // Важно: Винаги махаме ключа в finally блок, за да не остане "заключен" завинаги при грешка
+        processingOrders.remove(lockKey);
+    }
     }
 
     private List<WoOrderDto> fetchAllOrders(SiteEntity site){
@@ -918,7 +931,7 @@ public class WpOrderService {
 
     public WpOrderDto patchOrderMain(WpOrderDto dto) {
         WpOrderEntity wpOrderDto = patchOrder(dto);
-        System.out.println("222");
+//        System.out.println("222");
         wpOrderAsyncService.updateOrderOnSites(wpOrderDto, null);
         return modelMapper.map(wpOrderDto, WpOrderDto.class);
     }
