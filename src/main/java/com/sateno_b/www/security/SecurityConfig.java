@@ -39,7 +39,8 @@ public class SecurityConfig {
                                 "/erp/checkout/**",
                                 "/erp/email/seen/**",
                                 "/erp/email/confirm/**",
-                                "/erp/email/cancel/**"
+                                "/erp/email/cancel/**",
+                                "/erp/discount/**"
                         ).permitAll()
                         .anyRequest().authenticated());
 
