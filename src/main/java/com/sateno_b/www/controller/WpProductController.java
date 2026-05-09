@@ -46,6 +46,7 @@ public class WpProductController {
     private final FileStorageService fileStorageService;
     private final SchemeWpProductRepository schemeWpProductRepository;
     private final CurrencyService currencyService;
+    private final WpProductHistoryRepository wpProductHistoryRepository;
 
     @PatchMapping("/patch")
     public ResponseEntity<?> patchProduct(@RequestBody WpProductDto wpProductDto) {
@@ -192,6 +193,23 @@ public class WpProductController {
                         return configDto;
                     }).toList());
         }
+
+//         product history
+        List<WpProductHistoryEntity> historyEntityList = wpProductHistoryRepository
+                .findAllByProduct(entity);
+        dto.setHistory(historyEntityList.stream()
+                .map(wpProductHistoryEntity -> {
+                    WpProductHistoryDTO wpProductHistoryDTO = new WpProductHistoryDTO();
+                    wpProductHistoryDTO.setId(wpProductHistoryEntity.getId());
+                    wpProductHistoryDTO.setReason(wpProductHistoryEntity.getReason());
+                    wpProductHistoryDTO.setProductId(wpProductHistoryEntity.getProduct().getId());
+                    wpProductHistoryDTO.setQuantity(wpProductHistoryEntity.getQuantity());
+                    wpProductHistoryDTO.setCreateTime(wpProductHistoryEntity.getCreateTime());
+                    wpProductHistoryDTO.setOrderId(wpProductHistoryEntity.getOrder().getId());
+                    wpProductHistoryDTO.setWpOrderId(wpProductHistoryEntity.getOrder().getWpOrderId());
+                    wpProductHistoryDTO.setProductSku(wpProductHistoryEntity.getProduct().getSku());
+                    return wpProductHistoryDTO;
+                }).toList());
 
         return ResponseEntity.ok(dto);
     }

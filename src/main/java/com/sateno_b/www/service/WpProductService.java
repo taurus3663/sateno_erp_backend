@@ -1627,8 +1627,8 @@ protected void clearAllProductsFromSite(SiteEntity site) {
 
         String target = switch (dto.getStep().intValue()) {
             case 1 -> "КРАТКО ИМЕ НА ПРОДУКТ";
-            case 2 -> "КРАТКО ОПИСАНИЕ";
-            case 3 -> "ПЪЛНО ОПИСАНИЕ";
+//            case 2 -> "КРАТКО ОПИСАНИЕ";
+            case 2 -> "ПЪЛНО ОПИСАНИЕ";
             default -> "ТЕКСТ";
         };
 
@@ -1650,8 +1650,8 @@ protected void clearAllProductsFromSite(SiteEntity site) {
 
         String instructions = switch (dto.getStep().intValue()) {
             case 1 -> scheme.getTitle();
-            case 2 -> scheme.getShortDescription();
-            case 3 -> scheme.getDescription();
+//            case 2 -> scheme.getShortDescription();
+            case 2 -> scheme.getDescription();
             default -> "";
         };
 
@@ -1669,8 +1669,8 @@ protected void clearAllProductsFromSite(SiteEntity site) {
                 .map(entry -> {
                     String type = switch (entry.getKey().intValue()) {
                         case 1 -> "Име на продукт: ";
-                        case 2 -> "Кратко описание: ";
-                        case 3 -> "Описание: ";
+//                        case 2 -> "Кратко описание: ";
+                        case 2 -> "Описание: ";
                         default -> " ";
                     };
                     return type + entry.getValue();

@@ -27,6 +27,7 @@ public class initDB implements CommandLineRunner {
     private final SiteRepository siteRepository;
     private final CurrencyService currencyService;
     private final SpeedyService speedyService;
+    private final WhatsAppService whatsAppService;
 
     @Override
     public void run(String... args) throws Exception {
@@ -55,6 +56,11 @@ public class initDB implements CommandLineRunner {
         var stringObjectMap = speedyService.postToSpeedy("track", body);
         System.out.println(stringObjectMap);
 
+
+//        String msg = "Здравейте! Поръчка # е приета. Благодарим Ви!";
+//        String response = whatsAppService.sendWhatsApp("0894396766", msg);
+//        System.out.println(response);
+// response обикновено съдържа ID на съобщението или "OK"
     }
 
     private void initAdmin() {

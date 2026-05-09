@@ -6,6 +6,7 @@ import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,6 +18,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.Executor;
 
@@ -95,9 +97,10 @@ public class Beans {
 //        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
 //        factory.setConnectTimeout(10000); // 10 секунди за свързване
 //        factory.setReadTimeout(30000);    // 30 секунди за четене на данни
-
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
+        factory.setReadTimeout(Duration.ofSeconds(30));
         return RestClient.builder()
-//                .requestFactory(factory)
+                .requestFactory(factory)
                 .baseUrl("") // Може да остане празно, понеже взимаме URL от базата
                 .build();
     }

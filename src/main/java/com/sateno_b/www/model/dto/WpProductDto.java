@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.dto;
 
+import com.sateno_b.www.model.entity.WpProductHistoryEntity;
 import com.sateno_b.www.model.enums.ProductSaleType;
 import com.sateno_b.www.model.enums.ProductStatus;
 import com.sateno_b.www.model.enums.ProductUnit;
@@ -34,4 +35,5 @@ public class WpProductDto {
     private String sku;
 //    private ProductUnit unit;
     private Long lastEditedSiteId;
+    private List<WpProductHistoryDTO> history = new  ArrayList<>();
 }

@@ -14,4 +14,6 @@ public interface WpProductHistoryRepository extends JpaRepository<WpProductHisto
     Optional<WpProductHistoryEntity> findByProductSku(String productSku);
 
     Optional<WpProductHistoryEntity> findFirstByProductSkuAndOrder(String productSku, WpOrderEntity order);
+
+    List<WpProductHistoryEntity> findAllByProduct(WpProductEntity product);
 }
