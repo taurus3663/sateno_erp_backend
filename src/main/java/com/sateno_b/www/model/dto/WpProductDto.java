@@ -17,6 +17,7 @@ public class WpProductDto {
     private Integer stockQuantity;
     private String weight;
     private BigDecimal buyPrice;
+    private BigDecimal transportPrice;
 
     private WpBrandDto brand;
 

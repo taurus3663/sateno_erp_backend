@@ -124,7 +124,8 @@ public class WpProductController {
                         modelMapper.map(wpCategoryEntity, WpCategoryDetailDto.class)).toList());
         dto.setTranslations(entity.getTranslations().stream().map(wpProductTranslationEntity -> modelMapper.map(wpProductTranslationEntity, WpProductTranslationDto.class)).toList());
         dto.setSiteConfig(entity.getSiteConfigs().stream().map(en -> modelMapper.map(en, WpProductSiteConfigDto.class)).collect(Collectors.toList()));
-
+        dto.setBuyPrice(entity.getBuyPrice());
+        dto.setTransportPrice(entity.getTransportPrice());
 
         //IMAGES
         // IMAGES

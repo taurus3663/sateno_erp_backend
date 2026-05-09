@@ -44,6 +44,9 @@ public class WpProductEntity extends BaseEntity {
     @Column
     private BigDecimal buyPrice;
 
+    @Column
+    private BigDecimal transportPrice;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "brand_id")
     private WpBrandEntity brand;
