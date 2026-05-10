@@ -3,6 +3,7 @@ package com.sateno_b.www.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sateno_b.www.model.CustomUserDetails;
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
@@ -17,6 +18,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.*;
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -74,6 +76,7 @@ public class WpProductService {
     private final WpOrderRepository wpOrderRepository;
     private final CurrencyService currencyService;
     private final SchemeWpProductRepository schemeWpProductRepository;
+    private final UserRepository userRepository;
 
 
     @Transactional
@@ -519,11 +522,27 @@ public class WpProductService {
 //    @CacheEvict(value = "productsList", allEntries = true)
     public WpProductDto saveProduct(WpProductDto dto) {
         WpProductEntity entity;
+        boolean isHistorical = false;
         if (dto.getId() != null && dto.getId() > 0) {
             entity = wpProductRepository.findById(dto.getId()).orElseThrow();
+            isHistorical = true;
         } else {
             entity = new WpProductEntity();
             entity.setSku(genSky());
+        }
+
+        if(isHistorical && !Objects.equals(entity.getStockQuantity(), dto.getStockQuantity())) {
+            CustomUserDetails user = (CustomUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            UserEntity userr = userRepository.findByEmail(user.getEmail()).orElseThrow();
+
+            WpProductHistoryEntity historyEntity = new WpProductHistoryEntity();
+            historyEntity.setProduct(entity);
+            historyEntity.setOldQuantity(Long.valueOf(entity.getStockQuantity()));
+            historyEntity.setNewQuantity(Long.valueOf(dto.getStockQuantity()));
+            historyEntity.setReason("Changed by User");
+            historyEntity.setQuantity(dto.getStockQuantity());
+            historyEntity.setUser(userr);
+            wpProductHistoryRepository.save(historyEntity);
         }
 
         entity.setStockQuantity(dto.getStockQuantity());

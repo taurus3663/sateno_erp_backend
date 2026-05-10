@@ -15,5 +15,8 @@ public class WpProductHistoryDTO {
     private Long productId;
     private String productSku;
     private Long wpOrderId;
+    private Long oldQuantity;
+    private Long newQuantity;
+    private String changerName;
 
 }

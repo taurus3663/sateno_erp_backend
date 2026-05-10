@@ -27,4 +27,13 @@ public class WpProductHistoryEntity extends BaseEntity {
 
     @Column
     private String reason;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private UserEntity user;
+
+    @Column
+    private Long oldQuantity;
+    @Column
+    private Long newQuantity;
 }

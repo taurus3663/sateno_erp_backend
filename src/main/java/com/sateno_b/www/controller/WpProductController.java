@@ -206,9 +206,16 @@ public class WpProductController {
                     wpProductHistoryDTO.setProductId(wpProductHistoryEntity.getProduct().getId());
                     wpProductHistoryDTO.setQuantity(wpProductHistoryEntity.getQuantity());
                     wpProductHistoryDTO.setCreateTime(wpProductHistoryEntity.getCreateTime());
-                    wpProductHistoryDTO.setOrderId(wpProductHistoryEntity.getOrder().getId());
-                    wpProductHistoryDTO.setWpOrderId(wpProductHistoryEntity.getOrder().getWpOrderId());
+                    if(wpProductHistoryEntity.getOrder() != null) {
+                        wpProductHistoryDTO.setOrderId(wpProductHistoryEntity.getOrder().getId());
+                        wpProductHistoryDTO.setWpOrderId(wpProductHistoryEntity.getOrder().getWpOrderId());
+                    }
                     wpProductHistoryDTO.setProductSku(wpProductHistoryEntity.getProduct().getSku());
+
+                    wpProductHistoryDTO.setOldQuantity(wpProductHistoryEntity.getOldQuantity());
+                    wpProductHistoryDTO.setNewQuantity(wpProductHistoryEntity.getNewQuantity());
+                    UserEntity user = wpProductHistoryEntity.getUser();
+                    wpProductHistoryDTO.setChangerName(user != null? user.getUsername(): "System");
                     return wpProductHistoryDTO;
                 }).toList());
 

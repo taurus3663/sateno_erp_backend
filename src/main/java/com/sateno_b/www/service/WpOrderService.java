@@ -402,7 +402,6 @@ public class WpOrderService {
         } else {
             isPayed = false;
         }
-        System.out.println("1");
         AtomicReference<Double> totalPriceRs = new AtomicReference<>(0.0);
         WpOrderEntity wpOrderEntity = new WpOrderEntity();
         wpOrderEntity.setCustomer(customer);
@@ -499,7 +498,6 @@ public class WpOrderService {
 
             Optional<CourierSettingsEntity> allBySiteAndActive = courierSettingsRepository
                     .findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(siteEntity, CourierType.valueOf(courierKey));
-            System.out.println("2");
             allBySiteAndActive.ifPresent(settings -> {
                 CourierShipmentType target = CourierShipmentType.valueOf(parse.getTargetType());
                 // --- 1. ДО ОФИС ---
@@ -589,6 +587,8 @@ public class WpOrderService {
                     WpProductEntity product = byId.get();
                     WpProductHistoryEntity wpProductHistoryEntity = new WpProductHistoryEntity();
 
+                    int oldPQuantity = product.getStockQuantity();
+
                     if(product.getStockQuantity() == null){
                         product.setStockQuantity(0);
                     }
@@ -606,6 +606,8 @@ public class WpOrderService {
                         wpProductHistoryEntity.setProduct(product);
                         wpProductHistoryEntity.setOrder(wpOrderEntity);
                         wpProductHistoryEntity.setReason("Order");
+                        wpProductHistoryEntity.setOldQuantity((long) oldPQuantity);
+                        wpProductHistoryEntity.setNewQuantity((long) product.getStockQuantity());
                         wpProductHistoryRepository.save(wpProductHistoryEntity);
                     }
                 wpProductRepository.save(product);
