@@ -74,7 +74,6 @@ public class WpProductAsyncService {
 //            log.info("Стартиране на локална синхронизация за SKU: {} само за сайт ID: {}", product.getSku(), lastEditedSiteId);
         }
 
-
 //        System.out.println(lastEditedSiteId);
         for (SiteEntity site : siteList) {
 //            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
@@ -92,6 +91,11 @@ public class WpProductAsyncService {
                 if (searchResponse == null || searchResponse.isEmpty()) {
                     log.warn("Продукт с SKU {} не е намерен в сайта {}", product.getSku(), site.getUrl());
                     isNewProduct = true;
+                }
+
+                List<Map<String, Object>> currentMeta = (List<Map<String, Object>>) searchResponse.get(0).get("meta_data");
+                if (currentMeta == null) {
+                    currentMeta = new ArrayList<>();
                 }
 
 
@@ -188,7 +192,7 @@ public class WpProductAsyncService {
 
 //                PRICE
                 for (WpProductSiteConfigEntity siteConfig : product.getSiteConfigs()) {
-                    if(siteConfig.getSite() == site) {
+                    if(Objects.equals(siteConfig.getSite().getId(), site.getId())) {
                         updateBody.put("price", siteConfig.getRegularPrice().toString());
                         updateBody.put("regular_price", siteConfig.getRegularPrice().toString());
                         String salePriceStr = (siteConfig.getPrice() != null && siteConfig.getPrice().compareTo(BigDecimal.ONE) >= 0)
@@ -196,6 +200,23 @@ public class WpProductAsyncService {
                                 : "";
 
                         updateBody.put("sale_price", salePriceStr);
+
+                        String newLabelValue = !salePriceStr.isEmpty() ? "on" : "";
+                        boolean keyExists = false;
+                        for (Map<String, Object> meta : currentMeta) {
+                            if ("_woodmart_new_label".equals(meta.get("key"))) {
+                                meta.put("value", newLabelValue);
+                                keyExists = true;
+                                break;
+                            }
+                        }
+                        if (!keyExists) {
+                            Map<String, Object> newMeta = new HashMap<>();
+                            newMeta.put("key", "_woodmart_new_label");
+                            newMeta.put("value", newLabelValue);
+                            currentMeta.add(newMeta);
+                        }
+                        updateBody.put("meta_data", currentMeta);
                     }
                 }
 // --- ОБНОВЕНА ЛОГИКА ЗА ЦЕНИ ---

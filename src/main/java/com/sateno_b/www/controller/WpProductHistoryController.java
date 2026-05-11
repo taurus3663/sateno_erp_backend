@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
 @RequiredArgsConstructor
 @Slf4j
@@ -20,9 +22,15 @@ public class WpProductHistoryController implements BaseController<WpProductHisto
 
     private final WpProductHistoryService wpProductHistoryService;
 
+//    @Override
+//    public ResponseEntity<Page<WpProductHistoryDTO>> list(Pageable pageable) {
+//        Page<WpProductHistoryDTO> all = wpProductHistoryService.getAll(pageable, name_sku);
+//        return ResponseEntity.ok(all);
+//    }
+
     @Override
-    public ResponseEntity<Page<WpProductHistoryDTO>> list(Pageable pageable,
-                                                          @RequestParam(required = false) String name_sku) {
+    public ResponseEntity<Page<WpProductHistoryDTO>> list(Pageable pageable, Map<String, String> params) {
+        String name_sku = params.get("name_sku");
         Page<WpProductHistoryDTO> all = wpProductHistoryService.getAll(pageable, name_sku);
         return ResponseEntity.ok(all);
     }

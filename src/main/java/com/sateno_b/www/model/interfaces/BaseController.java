@@ -5,10 +5,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 public interface BaseController<D, ID> {
 
     @GetMapping("/list")
-    ResponseEntity<Page<D>> list(Pageable pageable);
+    default ResponseEntity<Page<D>> list(Pageable pageable, @RequestParam Map<String, String> params) {
+        // Ако не го презапишеш в контролера, той автоматично ще вика чистия list(pageable)
+        return list(pageable);
+    }
+
+    // Втори вариант: чист списък
+    default ResponseEntity<Page<D>> list(Pageable pageable) {
+        // Тук можеш да хвърлиш грешка или да върнеш empty page по подразбиране
+        return ResponseEntity.ok(Page.empty());
+    }
     @GetMapping("/{id}")
     ResponseEntity<D> get( @PathVariable ID id);
     @PostMapping("/save")
