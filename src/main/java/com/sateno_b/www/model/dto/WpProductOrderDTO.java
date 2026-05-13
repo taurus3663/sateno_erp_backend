@@ -9,4 +9,7 @@ import java.util.List;
 public class WpProductOrderDTO {
     private List<Long> productIds = new ArrayList<>();
     private Long category;
+//    RESPONSE
+    private String categoryName;
+    private List<WpProductDto> products = new ArrayList<>();
 }

@@ -17,7 +17,7 @@ import java.util.List;
 @Setter
 @Entity
 @Table(name = "wp_product_order")
-public class WpProductOrder extends BaseEntity {
+public class WpProductOrderEntity extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     @Convert(converter = LongListConverter.class)

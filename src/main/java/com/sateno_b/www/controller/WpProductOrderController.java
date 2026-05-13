@@ -2,7 +2,7 @@ package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.WpProductOrderDTO;
 import com.sateno_b.www.model.interfaces.BaseController;
-import com.sateno_b.www.model.repository.WpProductOrderRepository;
+import com.sateno_b.www.service.WpProductOrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -19,11 +19,14 @@ import java.util.Map;
 @RequestMapping("/wp_product_order")
 public class WpProductOrderController implements BaseController<WpProductOrderDTO, Long> {
 
-    private final WpProductOrderRepository wpProductOrderRepository;
+    private final WpProductOrderService wpProductOrderService;
 
     @Override
     public ResponseEntity<Page<WpProductOrderDTO>> list(Pageable pageable, Map<String, String> params) {
-        return BaseController.super.list(pageable, params);
+
+        Page<WpProductOrderDTO> all = wpProductOrderService.getAll(pageable, params);
+
+        return ResponseEntity.ok(all);
     }
 
     @Override
