@@ -112,6 +112,4 @@ public class WpProductEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private Dimensions dimensions;
-
-
 }

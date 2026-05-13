@@ -201,22 +201,22 @@ public class WpProductAsyncService {
 
                         updateBody.put("sale_price", salePriceStr);
 
-                        String newLabelValue = !salePriceStr.isEmpty() ? "on" : "";
-                        boolean keyExists = false;
-                        for (Map<String, Object> meta : currentMeta) {
-                            if ("_woodmart_new_label".equals(meta.get("key"))) {
-                                meta.put("value", newLabelValue);
-                                keyExists = true;
-                                break;
-                            }
-                        }
-                        if (!keyExists) {
-                            Map<String, Object> newMeta = new HashMap<>();
-                            newMeta.put("key", "_woodmart_new_label");
-                            newMeta.put("value", newLabelValue);
-                            currentMeta.add(newMeta);
-                        }
-                        updateBody.put("meta_data", currentMeta);
+//                        String newLabelValue = !salePriceStr.isEmpty() ? "on" : "";
+//                        boolean keyExists = false;
+//                        for (Map<String, Object> meta : currentMeta) {
+//                            if ("_woodmart_new_label".equals(meta.get("key"))) {
+//                                meta.put("value", newLabelValue);
+//                                keyExists = true;
+//                                break;
+//                            }
+//                        }
+//                        if (!keyExists) {
+//                            Map<String, Object> newMeta = new HashMap<>();
+//                            newMeta.put("key", "_woodmart_new_label");
+//                            newMeta.put("value", newLabelValue);
+//                            currentMeta.add(newMeta);
+//                        }
+//                        updateBody.put("meta_data", currentMeta);
                     }
                 }
 // --- ОБНОВЕНА ЛОГИКА ЗА ЦЕНИ ---
