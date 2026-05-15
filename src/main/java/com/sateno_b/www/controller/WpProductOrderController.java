@@ -36,6 +36,7 @@ public class WpProductOrderController implements BaseController<WpProductOrderDT
 
     @Override
     public ResponseEntity<WpProductOrderDTO> save(WpProductOrderDTO dto) {
+        wpProductOrderService.save(dto);
         return null;
     }
 

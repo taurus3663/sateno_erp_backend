@@ -8,9 +8,12 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface WpProductOrderRepository extends JpaRepository<WpProductOrderEntity, Long>, JpaSpecificationExecutor<WpProductOrderEntity> {
 
     Page<WpProductOrderEntity> findAllByCategoryId(Long categoryId, Pageable pageable);
+
+    Optional<WpProductOrderEntity> findByCategoryId(Long categoryId);
 }

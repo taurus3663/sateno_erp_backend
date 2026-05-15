@@ -8,7 +8,6 @@ import lombok.*;
 import java.util.ArrayList;
 import java.util.List;
 
-@EntityListeners(WpProductEntityListener.class)
 @EqualsAndHashCode(callSuper = true)
 @Data
 @AllArgsConstructor

@@ -9,7 +9,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -40,8 +42,14 @@ public class DiscountPhoneService {
     }
 
     public Page<DiscountPhoneDTO> list(Pageable pageable) {
+        // Създаваме нов PageRequest, базиран на текущия, но с принудително сортиране по createTime в DESC ред
+        Pageable sortedByNewest = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by("createTime").descending() // Замени "createTime" с точното име на полето в твоя DiscountPhoneEntity
+        );
 
-        return discountPhoneRepository.findAll(pageable)
+        return discountPhoneRepository.findAll(sortedByNewest)
                 .map(discountPhone -> {
                     DiscountPhoneDTO discountPhoneDTO = new DiscountPhoneDTO();
                     discountPhoneDTO.setPhone(discountPhone.getPhoneNumber());

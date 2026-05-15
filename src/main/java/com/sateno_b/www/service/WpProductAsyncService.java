@@ -93,10 +93,10 @@ public class WpProductAsyncService {
                     isNewProduct = true;
                 }
 
-                List<Map<String, Object>> currentMeta = (List<Map<String, Object>>) searchResponse.get(0).get("meta_data");
-                if (currentMeta == null) {
-                    currentMeta = new ArrayList<>();
-                }
+//                List<Map<String, Object>> currentMeta = (List<Map<String, Object>>) searchResponse.get(0).get("meta_data");
+//                if (currentMeta == null) {
+//                    currentMeta = new ArrayList<>();
+//                }
 
 
                 Map<String, Object> updateBody = new HashMap<>();
