@@ -286,16 +286,10 @@ public class WpProductAsyncService {
                 // Винаги подаваме списъка (дори и празен, ако искаме да изчистим категориите в WP)
                 updateBody.put("categories", categoriesList);
 
-// 1. Издърпваме стария мап с видеа от мета данните на сайта, за да не ги изгубим
-                Map<String, Object> finalVideoGalleryMap = new HashMap<>();
-                for (Map<String, Object> meta : currentMeta) {
-                    if ("woodmart_wc_video_gallery".equals(meta.get("key")) && meta.get("value") instanceof Map) {
-                        finalVideoGalleryMap.putAll((Map<String, Object>) meta.get("value"));
-                        break;
-                    }
-                }
 
                 List<Map<String, Object>> imageList = new ArrayList<>();
+                Map<String, Object> finalVideoGalleryMap = new HashMap<>();
+
                 if (product.getImages() != null) {
 
                     List<WpProductImageEntity> erpVideos = product.getImages().stream()
@@ -307,8 +301,6 @@ public class WpProductAsyncService {
                             .filter(e -> !e.isVideo())
                             .sorted((a, b) -> Boolean.compare(b.getIsPrimary(), a.getIsPrimary()))
                             .toList();
-
-
 
                     for (WpProductImageEntity imgEntity : sortedImages) {
 
@@ -364,6 +356,7 @@ public class WpProductAsyncService {
                         if (videoMappingOpt.isPresent()) {
                             // Видеото вече съществува в този сайт
                             wpVideoId = videoMappingOpt.get().getWpMediaId();
+                            wpVideoUrl = videoMappingOpt.get().getWpUrl();
                             // Забележка: Тъй като WoodMart изисква и URL, ако уебсайтът не ни го връща в базата,
                             // е най-добре да разчитаме, че ако finalVideoGalleryMap вече съдържа мета данните от уебсайта, няма да ги презаписваме.
                         } else {
@@ -383,6 +376,8 @@ public class WpProductAsyncService {
                                     newVideoMapping.setWpMediaId(wpVideoId);
                                     newVideoMapping.setSite(site);
                                     newVideoMapping.setProductImage(video);
+                                    newVideoMapping.setWpUrl(wpVideoUrl);
+                                    newVideoMapping.setWpMediaId(wpVideoId);
                                     wpProductImageSiteMappingRepository.save(newVideoMapping);
                                 }
                             } else {
@@ -423,15 +418,10 @@ public class WpProductAsyncService {
                     updateBody.put("images", imageList);
 
                 currentMeta.removeIf(meta -> "woodmart_wc_video_gallery".equals(meta.get("key")));
-
-// 2. Ако мапът не е празен, създаваме чист обект и го набиваме в мета данните
-                if (!finalVideoGalleryMap.isEmpty()) {
                     Map<String, Object> videoMetaEntry = new HashMap<>();
                     videoMetaEntry.put("key", "woodmart_wc_video_gallery");
                     videoMetaEntry.put("value", finalVideoGalleryMap);
                     currentMeta.add(videoMetaEntry);
-                }
-//                currentMeta.ge("woodmart_wc_video_gallery", finalVideoGalleryMap);
                     updateBody.put("meta_data", currentMeta);
 
 
