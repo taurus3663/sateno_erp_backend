@@ -137,6 +137,14 @@ public class WpProductController {
                 imgDto.setTemp(false);
                 imgDto.setIsPrimary(img.getIsPrimary() != null && img.getIsPrimary());
 
+                if(img.isVideo()) {
+                     imgDto.setVideo(img.isVideo());
+                    WpProductImageEntity parent = img.getParent();
+                    WpProductImageDto parentDto = new WpProductImageDto();
+                    parentDto.setId(parent.getId());
+                imgDto.setParent(parentDto);
+                }
+
 
 
                 // КРИТИЧНО: Мапваме и siteMappings

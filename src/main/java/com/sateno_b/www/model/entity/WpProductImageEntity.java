@@ -29,8 +29,15 @@ public class WpProductImageEntity extends BaseEntity {
     @OneToMany(mappedBy = "productImage", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WpProductImageSiteMappingEntity> siteMappings = new ArrayList<>();
 
-    @Column()
+    @Column(columnDefinition = "boolean default false")
     private Boolean isPrimary = false;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private WpProductImageEntity parent;
+
+    @Column(columnDefinition = "boolean default false")
+    private boolean isVideo = false;
 
     public Boolean getIsPrimary() {
         if(isPrimary == null) return false;

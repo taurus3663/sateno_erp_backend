@@ -74,10 +74,7 @@ public class WpProductAsyncService {
 //            log.info("Стартиране на локална синхронизация за SKU: {} само за сайт ID: {}", product.getSku(), lastEditedSiteId);
         }
 
-//        System.out.println(lastEditedSiteId);
         for (SiteEntity site : siteList) {
-//            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
-//            System.out.println(site.toString());
             try {
                 String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
 
@@ -97,6 +94,23 @@ public class WpProductAsyncService {
 //                if (currentMeta == null) {
 //                    currentMeta = new ArrayList<>();
 //                }
+
+                //                        String newLabelValue = !salePriceStr.isEmpty() ? "on" : "";
+//                        boolean keyExists = false;
+//                        for (Map<String, Object> meta : currentMeta) {
+//                            if ("_woodmart_new_label".equals(meta.get("key"))) {
+//                                meta.put("value", newLabelValue);
+//                                keyExists = true;
+//                                break;
+//                            }
+//                        }
+//                        if (!keyExists) {
+//                            Map<String, Object> newMeta = new HashMap<>();
+//                            newMeta.put("key", "_woodmart_new_label");
+//                            newMeta.put("value", newLabelValue);
+//                            currentMeta.add(newMeta);
+//                        }
+//                        updateBody.put("meta_data", currentMeta);
 
 
                 Map<String, Object> updateBody = new HashMap<>();
@@ -200,73 +214,8 @@ public class WpProductAsyncService {
                                 : "";
 
                         updateBody.put("sale_price", salePriceStr);
-
-//                        String newLabelValue = !salePriceStr.isEmpty() ? "on" : "";
-//                        boolean keyExists = false;
-//                        for (Map<String, Object> meta : currentMeta) {
-//                            if ("_woodmart_new_label".equals(meta.get("key"))) {
-//                                meta.put("value", newLabelValue);
-//                                keyExists = true;
-//                                break;
-//                            }
-//                        }
-//                        if (!keyExists) {
-//                            Map<String, Object> newMeta = new HashMap<>();
-//                            newMeta.put("key", "_woodmart_new_label");
-//                            newMeta.put("value", newLabelValue);
-//                            currentMeta.add(newMeta);
-//                        }
-//                        updateBody.put("meta_data", currentMeta);
                     }
                 }
-// --- ОБНОВЕНА ЛОГИКА ЗА ЦЕНИ ---
-
-// 1. Намираме базовата конфигурация от sateno.bg (за справка)
-//                WpProductSiteConfigEntity bgConfig = product.getSiteConfigs().stream()
-//                        .filter(c -> c.getSite().getUrl().contains("sateno.bg"))
-//                        .findFirst()
-//                        .orElse(null);
-//
-//                BigDecimal fallbackRegular = (bgConfig != null) ? bgConfig.getRegularPrice() : BigDecimal.ZERO;
-//                BigDecimal fallbackSale = (bgConfig != null) ? bgConfig.getPrice() : null;
-//
-//// 2. Намираме конфигурацията за текущия сайт в цикъла
-//                WpProductSiteConfigEntity currentSiteConfig = product.getSiteConfigs().stream()
-//                        .filter(sc -> sc.getSite().getId().equals(site.getId()))
-//                        .findFirst()
-//                        .orElse(null);
-//
-//// Ако за текущия сайт изобщо липсва конфигурация в базата, създаваме я
-//                if (currentSiteConfig == null) {
-//                    currentSiteConfig = new WpProductSiteConfigEntity();
-//                    currentSiteConfig.setProduct(product);
-//                    currentSiteConfig.setSite(site);
-//                    product.getSiteConfigs().add(currentSiteConfig);
-//                }
-//
-//// 3. ПРОВЕРКА И РЕМОНТ: Ако цената е 0 или null, взимаме тази от sateno.bg
-//                if (currentSiteConfig.getRegularPrice() == null || currentSiteConfig.getRegularPrice().compareTo(BigDecimal.ZERO) <= 0) {
-//                    log.info("SKU {}: Коригирам цена за {}, ползвам фалбек от sateno.bg: {}",
-//                            product.getSku(), site.getUrl(), fallbackRegular);
-//
-//                    currentSiteConfig.setRegularPrice(fallbackRegular);
-//                    currentSiteConfig.setPrice(fallbackSale);
-//                    // Благодарение на @Transactional, промяната ще се запише в БД автоматично в края
-//                }
-//
-//// 4. Попълваме updateBody за WooCommerce
-//                updateBody.put("regular_price", currentSiteConfig.getRegularPrice().toString());
-//
-//                String salePriceStr = (currentSiteConfig.getPrice() != null && currentSiteConfig.getPrice().compareTo(BigDecimal.ONE) >= 0)
-//                        ? currentSiteConfig.getPrice().toString()
-//                        : "";
-//                updateBody.put("sale_price", salePriceStr);
-//
-//// Основната цена в WP (price) трябва да е активната (промоционалната или редовната)
-//                updateBody.put("price", !salePriceStr.isEmpty() ? salePriceStr : currentSiteConfig.getRegularPrice().toString());
-
-
-
 //                BRAND
                 if(product.getBrand() != null) {
                     var searchResponseBrand = restClient.get()
@@ -290,32 +239,6 @@ public class WpProductAsyncService {
                 }
 
 //                CATEGORIES
-//                List<Map<String, Object>> categoriesList = new ArrayList<>();
-//                for (WpCategoryEntity category : product.getCategories()) {
-//                    var searchResponseCategory = restClient.get()
-//                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories?slug=" + category.getSlug())
-//                            .header("Authorization", "Basic " + auth)
-//                            .retrieve()
-//                            .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
-//
-//                    if (searchResponseCategory != null && !searchResponseCategory.isEmpty()) {
-//                        Long wpCategoryId = Long.valueOf(searchResponseCategory.get(0).get("id").toString());
-//
-//                        // 2. За всяка категория създаваме НОВ обект Map
-//                        Map<String, Object> categoryItem = new HashMap<>();
-//                        categoryItem.put("id", wpCategoryId);
-//
-//                        // 3. Добавяме го в списъка
-//                        categoriesList.add(categoryItem);
-//                    }
-//                }
-//                if (!categoriesList.isEmpty()) {
-//                    updateBody.put("categories", categoriesList);
-//                }
-
-//                IMAGES
-
-                //                CATEGORIES
                 List<Map<String, Object>> categoriesList = new ArrayList<>();
                 if (product.getCategories() != null) {
                     for (WpCategoryEntity category : product.getCategories()) {
@@ -412,9 +335,7 @@ public class WpProductAsyncService {
                         }
                     }
                 }
-//                                if(!imageList.isEmpty()) {
                     updateBody.put("images", imageList);
-//                }
 
 
                 CurrencyEntity currency = site.getCurrency();

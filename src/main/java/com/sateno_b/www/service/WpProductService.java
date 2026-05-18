@@ -724,6 +724,11 @@ public class WpProductService {
                             imageEntity.setProduct(entity);
                             imageEntity.setLocalSrc(finalPath);
                             imageEntity.setIsPrimary(imgDto.getIsPrimary() != null &&  imgDto.getIsPrimary());
+                            if(imgDto.isVideo()) {
+                                WpProductImageEntity imgE = wpProductImageRepository.getReferenceById(imgDto.getParent().getId());
+                                imageEntity.setParent(imgE);
+                                imageEntity.setVideo(imgDto.isVideo());
+                            }
                             wpProductImageRepository.save(imageEntity);
                             entity.getImages().add(imageEntity); // Добавяме към текущата сесия
                         }

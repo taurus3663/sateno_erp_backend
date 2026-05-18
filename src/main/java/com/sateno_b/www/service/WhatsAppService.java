@@ -74,4 +74,89 @@ public class WhatsAppService {
         log.info("WhatsApp Response: {}", response); // ← добави това
         return response;
     }
+
+    public String sendWhatsAppTemplate(String toPhone, String orderNumber) {
+        String cleanPhone = toPhone.replaceAll("[^0-9]", "");
+        if (cleanPhone.startsWith("0")) {
+            cleanPhone = "359" + cleanPhone.substring(1);
+        }
+
+        String credentials = Base64.getEncoder()
+                .encodeToString((systemId + ":" + password).getBytes());
+
+        // 1. Template обект
+        Map<String, Object> template = new HashMap<>();
+        template.put("name", "romania");
+        template.put("language", "ro");
+
+        // 2. Content обвива template-а
+        Map<String, Object> content = new HashMap<>();
+        content.put("template", template);  // ← ключовата разлика
+
+        // 3. messageData
+        Map<String, Object> messageData = new HashMap<>();
+        messageData.put("type", "template");
+        messageData.put("content", content);
+
+        // 4. whatsApp обект
+        Map<String, Object> whatsApp = new HashMap<>();
+        whatsApp.put("sender", senderId);
+        whatsApp.put("messageData", messageData);
+
+        // 5. Тяло на заявката
+        Map<String, Object> body = new HashMap<>();
+        body.put("channels", List.of("WHATSAPP"));
+        body.put("requestId", UUID.randomUUID().toString());
+        body.put("destinations", List.of(Map.of("phoneNumber", cleanPhone)));
+        body.put("whatsApp", whatsApp);
+
+        log.info("Sending WhatsApp template 'Romania' to: {}", cleanPhone);
+
+        String response = restClient.post()
+                .uri(apiUrl + "/v1/omni-channel/message")
+                .header("Authorization", "Basic " + credentials)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, resp) -> {
+                    String respBody = new String(resp.getBody().readAllBytes());
+                    log.error("WhatsApp API Error: {} - {}", resp.getStatusCode(), respBody);
+                    throw new RuntimeException("WhatsApp API Error: " + resp.getStatusCode() + " " + respBody);
+                })
+                .body(String.class);
+
+        log.info("WhatsApp Template Response: {}", response);
+        return response;
+    }
+
+    public String checkStatus(String messageId) {
+        String credentials = Base64.getEncoder()
+                .encodeToString((systemId + ":" + password).getBytes());
+
+        String response = restClient.get()
+                .uri(apiUrl + "/v1/omni-channel/message/" + messageId + "/status")
+                .header("Authorization", "Basic " + credentials)
+                .retrieve()
+                .body(String.class);
+
+        log.info("Status: {}", response);
+        return response;
+    }
+
+    public String listTemplates() {
+        String credentials = Base64.getEncoder()
+                .encodeToString((systemId + ":" + password).getBytes());
+
+        String response = restClient.get()
+                .uri(apiUrl + "/v1/omni-channel/whatsapp/senders/" + senderId + "/templates")
+                .header("Authorization", "Basic " + credentials)
+                .retrieve()
+                .body(String.class);
+
+        log.info("Templates: {}", response);
+        System.out.println(response);
+        return response;
+    }
+
+
 }

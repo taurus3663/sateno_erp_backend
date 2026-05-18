@@ -60,6 +60,16 @@ public class initDB implements CommandLineRunner {
 //        String msg = "Здравейте! Поръчка # е приета. Благодарим Ви!";
 //        String response = whatsAppService.sendWhatsApp("0894396766", msg);
 //        System.out.println(response);
+
+        try{
+//                    String response = whatsAppService.sendWhatsAppTemplate("0894396766", "12345");
+//        System.out.println(response);
+//            whatsAppService.checkMessageStatus("e6ec4653-b2a3-45ba-be07-9c935e5446cc");
+//            whatsAppService.checkStatus("acddc425-6bdb-4fc9-98ec-e9bf89d1d706");
+        } catch(Exception e){
+            e.printStackTrace();
+        }
+
 // response обикновено съдържа ID на съобщението или "OK"
     }
 
