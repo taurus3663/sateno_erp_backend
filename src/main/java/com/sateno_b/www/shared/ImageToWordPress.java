@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -70,6 +71,55 @@ public class ImageToWordPress {
             }
         }
         log.info("Изчистени {} медийни файла от WordPress.", mediaIds.size());
+    }
+
+    /**
+     * НОВ МЕТОД: Физическо качване на видео в WordPress Media Library.
+     * Връща Мап с 'id' и 'url' (source_url), които са ни нужни за WoodMart мета данните.
+     */
+    public Map<String, Object> uploadVideoToWordPress(SiteEntity site, String localPath) {
+        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+        // Използваме същия метод за четене на байтове.
+        // Ако видео файловете са много големи, се увери, че heap паметта на Java-та е достатъчна.
+        byte[] videoBytes = fileStorageService.getImageBytes(localPath);
+        String fileName = localPath.substring(localPath.lastIndexOf("/") + 1);
+
+        // ДИНАМИЧЕН CONTENT-TYPE: Важно за сървъра на WordPress при обработка на MKV/MP4
+        String contentType = "video/mp4";
+        if (fileName.toLowerCase().endsWith(".mkv")) {
+            contentType = "video/x-matroska";
+        }
+
+        try {
+            log.info("🚀 [API] Стартира качване на видео: {} ({}) към {}", fileName, contentType, site.getUrl());
+
+            var response = restClient.post()
+                    .uri(site.getUrlWithHttps() + "/wp-json/wp/v2/media")
+                    .header("Authorization", "Basic " + auth)
+                    .header("Content-Disposition", "attachment; filename=" + fileName)
+                    .header("Content-Type", contentType)
+                    .body(videoBytes)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+
+            if (response != null && response.containsKey("id")) {
+                Map<String, Object> result = new HashMap<>();
+                result.put("id", Long.valueOf(response.get("id").toString()));
+                result.put("url", response.get("source_url").toString());
+
+                log.info("✅ [API] Видеото е качено успешно в WP! ID: {}, URL: {}", result.get("id"), result.get("url"));
+                return result;
+            }
+        }
+        catch (org.springframework.web.client.RestClientResponseException e) {
+            String errorBody = e.getResponseBodyAsString();
+            log.error("❌ Грешка от WordPress API при видео (Status: {}): {}", e.getStatusCode(), errorBody);
+            // Ако лимитът на хостинга е малък, тук ще видиш грешка "413 Payload Too Large"
+        }
+        catch (Exception e) {
+            log.error("❌ Критична грешка при качване на видео в WP: {}", e.getMessage());
+        }
+        return null;
     }
 
 }

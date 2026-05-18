@@ -89,6 +89,10 @@ public class WpProductAsyncService {
                     log.warn("Продукт с SKU {} не е намерен в сайта {}", product.getSku(), site.getUrl());
                     isNewProduct = true;
                 }
+                List<Map<String, Object>> currentMeta = new ArrayList<>();
+                if(!isNewProduct) {
+                    currentMeta = (List<Map<String, Object>>) searchResponse.get(0).get("meta_data");
+                }
 
 //                List<Map<String, Object>> currentMeta = (List<Map<String, Object>>) searchResponse.get(0).get("meta_data");
 //                if (currentMeta == null) {
@@ -282,12 +286,25 @@ public class WpProductAsyncService {
                 // Винаги подаваме списъка (дори и празен, ако искаме да изчистим категориите в WP)
                 updateBody.put("categories", categoriesList);
 
+// 1. Издърпваме стария мап с видеа от мета данните на сайта, за да не ги изгубим
+                Map<String, Object> finalVideoGalleryMap = new HashMap<>();
+                for (Map<String, Object> meta : currentMeta) {
+                    if ("woodmart_wc_video_gallery".equals(meta.get("key")) && meta.get("value") instanceof Map) {
+                        finalVideoGalleryMap.putAll((Map<String, Object>) meta.get("value"));
+                        break;
+                    }
+                }
 
                 List<Map<String, Object>> imageList = new ArrayList<>();
                 if (product.getImages() != null) {
 
+                    List<WpProductImageEntity> erpVideos = product.getImages().stream()
+                            .filter(WpProductImageEntity::isVideo)
+                            .toList();
+
                     // СОРТИРАНЕ: Слагаме Primary снимката най-отпред
                     List<WpProductImageEntity> sortedImages = product.getImages().stream()
+                            .filter(e -> !e.isVideo())
                             .sorted((a, b) -> Boolean.compare(b.getIsPrimary(), a.getIsPrimary()))
                             .toList();
 
@@ -334,8 +351,88 @@ public class WpProductAsyncService {
                             }
                         }
                     }
+
+                    for (WpProductImageEntity video : erpVideos) {
+                        if (video.getParent() == null) continue; // Застраховка, че видеото има снимка-родител
+
+                        Optional<WpProductImageSiteMappingEntity> videoMappingOpt = wpProductImageSiteMappingRepository
+                                .findByProductImageIdAndSite(video.getId(), site);
+
+                        Long wpVideoId = null;
+                        String wpVideoUrl = null;
+
+                        if (videoMappingOpt.isPresent()) {
+                            // Видеото вече съществува в този сайт
+                            wpVideoId = videoMappingOpt.get().getWpMediaId();
+                            // Забележка: Тъй като WoodMart изисква и URL, ако уебсайтът не ни го връща в базата,
+                            // е най-добре да разчитаме, че ако finalVideoGalleryMap вече съдържа мета данните от уебсайта, няма да ги презаписваме.
+                        } else {
+                            // Качваме видеото САМО ако е чисто ново за системата (точно както при снимките)
+                            boolean isBrandNewVideo = video.getSiteMappings() == null || video.getSiteMappings().isEmpty();
+
+                            if (isBrandNewVideo) {
+                                log.info("🎬 Качване на НОВО видео към сайт {}: {}", site.getUrl(), video.getLocalSrc());
+                                Map<String, Object> uploadResult = imageToWordPress.uploadVideoToWordPress(site, video.getLocalSrc());
+
+                                if (uploadResult != null && uploadResult.containsKey("id")) {
+                                    wpVideoId = Long.valueOf(uploadResult.get("id").toString());
+                                    wpVideoUrl = uploadResult.get("url").toString();
+
+                                    // Записваме новия мапинг за видеото за този сайт
+                                    WpProductImageSiteMappingEntity newVideoMapping = new WpProductImageSiteMappingEntity();
+                                    newVideoMapping.setWpMediaId(wpVideoId);
+                                    newVideoMapping.setSite(site);
+                                    newVideoMapping.setProductImage(video);
+                                    wpProductImageSiteMappingRepository.save(newVideoMapping);
+                                }
+                            } else {
+                                log.info("Видео {} е локално за друг сайт. Пропускам качване в {}.", video.getId(), site.getUrl());
+                            }
+                        }
+
+                        // СЛЕД ПРОВЕРКАТА: Ако имаме успешно намерено или качено видео, го обвързваме с неговата снимка
+                        if (wpVideoId != null) {
+                            // Търсим WordPress ID-то на снимката-родител за ТОЗИ сайт
+                            Optional<WpProductImageSiteMappingEntity> imgMappingOpt = wpProductImageSiteMappingRepository
+                                    .findByProductImageIdAndSite(video.getParent().getId(), site);
+
+                            if (imgMappingOpt.isPresent()) {
+                                String parentWpMediaIdStr = imgMappingOpt.get().getWpMediaId().toString();
+
+                                // Ако видеото току-що е качено (имаме URL), или ако го няма изобщо в WoodMart мапа - го добавяме/обновяваме
+                                if (wpVideoUrl != null || !finalVideoGalleryMap.containsKey(parentWpMediaIdStr)) {
+                                    Map<String, Object> videoDetails = new HashMap<>();
+                                    videoDetails.put("video_type", "mp4");
+                                    videoDetails.put("upload_video_id", wpVideoId.toString());
+                                    if (wpVideoUrl != null) {
+                                        videoDetails.put("upload_video_url", wpVideoUrl);
+                                    }
+                                    videoDetails.put("autoplay", "0");
+                                    videoDetails.put("video_size", "contain");
+                                    videoDetails.put("video_control", "theme");
+                                    videoDetails.put("hide_gallery_img", "0");
+                                    videoDetails.put("hide_information", "0");
+                                    videoDetails.put("audio_status", "unmute");
+
+                                    finalVideoGalleryMap.put(parentWpMediaIdStr, videoDetails);
+                                }
+                            }
+                        }
+                    }
                 }
                     updateBody.put("images", imageList);
+
+                currentMeta.removeIf(meta -> "woodmart_wc_video_gallery".equals(meta.get("key")));
+
+// 2. Ако мапът не е празен, създаваме чист обект и го набиваме в мета данните
+                if (!finalVideoGalleryMap.isEmpty()) {
+                    Map<String, Object> videoMetaEntry = new HashMap<>();
+                    videoMetaEntry.put("key", "woodmart_wc_video_gallery");
+                    videoMetaEntry.put("value", finalVideoGalleryMap);
+                    currentMeta.add(videoMetaEntry);
+                }
+//                currentMeta.ge("woodmart_wc_video_gallery", finalVideoGalleryMap);
+                    updateBody.put("meta_data", currentMeta);
 
 
                 CurrencyEntity currency = site.getCurrency();
@@ -387,54 +484,8 @@ public class WpProductAsyncService {
                             log.info("Изтрити са {} излишни медийни файла от сайт {}", idsToDeleteFromMediaLibrary.size(), site.getUrl());
                         }
                     }
-
-
-//                    // Взимаме WordPress ID-то от първия намерен резултат
-//                    Integer wpId = (Integer) searchResponse.get(0).get("id");
-//
-//                    restClient.patch()
-//                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
-//                            .header("Authorization", "Basic " + auth)
-//                            .body(updateBody)
-//                            .retrieve()
-//                            .toBodilessEntity();
-////                System.out.println(wpId);
-////                System.out.println(authorization.getBody());
-//                    log.info("Успешно обновен sale_price за SKU {}", product.getSku());
-//
-//                    Map<String, Object> wpProduct = searchResponse.get(0);
-//                    List<Map<String, Object>> currentWpImages = (List<Map<String, Object>>) wpProduct.get("images");
-//                    imageToWordPress.deleteMediaOneByOne(
-//                            site,
-//                            currentWpImages.stream()
-//                                    .map(e -> Long.valueOf(e.get("id").toString())) // Безопасно конвертиране
-//                                    .collect(Collectors.toSet()),
-//                            auth
-//                    );
                 }
-//                if(currentWpImages != null && !currentWpImages.isEmpty()) {
-//                    for (Map<String, Object> image : currentWpImages) {
-//                        Integer mediaId = (Integer) image.get("id");
-//
-//                        if (mediaId != null && mediaId > 0) {
-//                            try {
-//                                // ФИЗИЧЕСКО ИЗТРИВАНЕ ОТ MEDIA LIBRARY (за да няма кеш и боклук)
-//                                // Използваме стандартното WordPress API (wp/v2/media)
-//                                restClient.delete()
-//                                        .uri(site.getUrlWithHttps() + "/wp-json/wp/v2/media/" + mediaId + "?force=true")
-//                                        .header("Authorization", "Basic " + auth)
-//                                        .retrieve()
-//                                        .toBodilessEntity();
-//
-//                                log.info("Изтрита медия ID {} от сайт {}", mediaId, site.getUrl());
-//                            } catch (Exception e) {
-//                                // Често се случва снимката вече да е изтрита ръчно или от друг процес
-//                                log.warn("Грешка при триене на медия {}: {}", mediaId, e.getMessage());
-//                            }
-//                        }
-//
-//                    }
-//                }
+
             } catch (Exception e) {
                 log.error("Грешка при обновяване на сайт {}: {}", site.getUrl(), e.getMessage());
             }
