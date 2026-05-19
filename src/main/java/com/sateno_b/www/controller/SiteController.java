@@ -149,4 +149,14 @@ public class SiteController {
 
         return ResponseEntity.ok(modelMapper.map(saved, SiteDto.class));
     }
+
+    @GetMapping("/default")
+    public ResponseEntity<SiteDto> getDefaultSite() {
+        SiteEntity byDefaultTrueAndActiveTrue = siteRepository.findByIsDefaultTrueAndActiveTrue();
+        if(byDefaultTrueAndActiveTrue != null) {
+            return ResponseEntity.ok(modelMapper.map(byDefaultTrueAndActiveTrue, SiteDto.class));
+        } else {
+            return ResponseEntity.ok(null);
+        }
+    }
 }
