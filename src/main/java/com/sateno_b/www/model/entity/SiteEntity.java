@@ -59,6 +59,9 @@ public class SiteEntity extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String thirdOrderMessage;
 
+    @Column(columnDefinition = "boolean default false")
+    private boolean isDefault = false;
+
 //    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 //    private List<CourierSettingsEntity> couriers;
 

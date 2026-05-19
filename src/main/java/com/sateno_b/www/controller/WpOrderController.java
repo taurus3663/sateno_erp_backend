@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
+import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.repository.*;
@@ -22,6 +23,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
@@ -191,81 +193,111 @@ public class WpOrderController {
     @PostMapping("/save")
     @Transactional
     public ResponseEntity<WpOrderDto> saveWpOrder(@RequestBody WpOrderDto wpOrderDto) {
-    Optional<WpOrderEntity> byId = wpOrderRepository.findById(wpOrderDto.getId());
-    if (byId.isPresent()) {
-        WpOrderEntity order = byId.get();
+        if(wpOrderDto.getId() != null) {
+            Optional<WpOrderEntity> byId = wpOrderRepository.findById(wpOrderDto.getId());
+            if (byId.isPresent()) {
+                WpOrderEntity order = byId.get();
 
-        // 1. Първо актуализираме базовите данни от DTO
-        order.setStatus(wpOrderDto.getStatus());
-        order.setComment(wpOrderDto.getComment());
+                // 1. Първо актуализираме базовите данни от DTO
+                order.setStatus(wpOrderDto.getStatus());
+                order.setComment(wpOrderDto.getComment());
 
-        // Важно: Проверяваме дали billing обекта съществува
-        if (order.getBilling() != null && wpOrderDto.getBilling() != null) {
-            order.getBilling().setFirstName(wpOrderDto.getBilling().getFirstName());
-            order.getBilling().setLastName(wpOrderDto.getBilling().getLastName());
-            order.getBilling().setEmail(wpOrderDto.getBilling().getEmail());
-            order.getBilling().setPhone(wpOrderDto.getBilling().getPhone());
-        }
-
-        order.setCustomShippingTotal(wpOrderDto.getCustomShippingTotal());
-        order.setPaymentMethod(wpOrderDto.getPaymentMethod());
-
-        // 2. Обновяваме продуктите от текущото DTO (преди мерджа!)
-        List<OrderLineItem> currentLinesFromDto = wpOrderDto.getOrderLine().stream().map(e -> {
-            OrderLineItem map = modelMapper.map(e, OrderLineItem.class);
-            // Тук подсигуряваме цените
-            map.setPrice(e.getPrice() != null ? e.getPrice() : BigDecimal.ZERO);
-            map.setTotalPrice(e.getTotalPrice() != null ? e.getTotalPrice() : BigDecimal.ZERO);
-            return map;
-        }).toList();
-
-        order.setOrderLine(new ArrayList<>(currentLinesFromDto));
-
-        // 3. СЕГА правим Мерджа (Добавяме продуктите от другите поръчки към вече обновения списък)
-        if (wpOrderDto.getOrdersToMerge() != null && !wpOrderDto.getOrdersToMerge().isEmpty()) {
-            List<OrderLineItem> mergedLines = new ArrayList<>(order.getOrderLine());
-            List<WpOrderEntity> ordersToMerge = wpOrderRepository.findAllById(wpOrderDto.getOrdersToMerge());
-
-            for (WpOrderEntity subOrder : ordersToMerge) {
-                if (subOrder.getStatus() == OrderStatus.JOINT) continue;
-
-                for (OrderLineItem oldItem : subOrder.getOrderLine()) {
-                    OrderLineItem newItem = modelMapper.map(oldItem, OrderLineItem.class);
-                    mergedLines.add(newItem);
-
-                    // Обновяваме тотала (ако е нужно ръчно, но по-долу имаш Atomic тотал)
+                // Важно: Проверяваме дали billing обекта съществува
+                if (order.getBilling() != null && wpOrderDto.getBilling() != null) {
+                    order.getBilling().setFirstName(wpOrderDto.getBilling().getFirstName());
+                    order.getBilling().setLastName(wpOrderDto.getBilling().getLastName());
+                    order.getBilling().setEmail(wpOrderDto.getBilling().getEmail());
+                    order.getBilling().setPhone(wpOrderDto.getBilling().getPhone());
                 }
-                subOrder.setStatus(OrderStatus.JOINT);
-                subOrder.setParentId(order.getId());
-                wpOrderRepository.save(subOrder);
-                wpOrderAsyncService.updateOrderOnSites(subOrder, null);
+
+                order.setCustomShippingTotal(wpOrderDto.getCustomShippingTotal());
+                order.setPaymentMethod(wpOrderDto.getPaymentMethod());
+
+                // 2. Обновяваме продуктите от текущото DTO (преди мерджа!)
+                List<OrderLineItem> currentLinesFromDto = wpOrderDto.getOrderLine().stream().map(e -> {
+                    OrderLineItem map = modelMapper.map(e, OrderLineItem.class);
+                    // Тук подсигуряваме цените
+                    map.setPrice(e.getPrice() != null ? e.getPrice() : BigDecimal.ZERO);
+                    map.setTotalPrice(e.getTotalPrice() != null ? e.getTotalPrice() : BigDecimal.ZERO);
+                    return map;
+                }).toList();
+
+                order.setOrderLine(new ArrayList<>(currentLinesFromDto));
+
+                // 3. СЕГА правим Мерджа (Добавяме продуктите от другите поръчки към вече обновения списък)
+                if (wpOrderDto.getOrdersToMerge() != null && !wpOrderDto.getOrdersToMerge().isEmpty()) {
+                    List<OrderLineItem> mergedLines = new ArrayList<>(order.getOrderLine());
+                    List<WpOrderEntity> ordersToMerge = wpOrderRepository.findAllById(wpOrderDto.getOrdersToMerge());
+
+                    for (WpOrderEntity subOrder : ordersToMerge) {
+                        if (subOrder.getStatus() == OrderStatus.JOINT) continue;
+
+                        for (OrderLineItem oldItem : subOrder.getOrderLine()) {
+                            OrderLineItem newItem = modelMapper.map(oldItem, OrderLineItem.class);
+                            mergedLines.add(newItem);
+
+                            // Обновяваме тотала (ако е нужно ръчно, но по-долу имаш Atomic тотал)
+                        }
+                        subOrder.setStatus(OrderStatus.JOINT);
+                        subOrder.setParentId(order.getId());
+                        wpOrderRepository.save(subOrder);
+                        wpOrderAsyncService.updateOrderOnSites(subOrder, null);
+                    }
+                    order.setOrderLine(mergedLines); // Сетваме финалния списък с всички продукти
+                }
+
+                // 4. Изчисляваме финалния тотал на база всички продукти (оригинални + мерднати)
+                BigDecimal totalAmount = order.getOrderLine().stream()
+                        .map(line -> line.getTotalPrice() != null ? line.getTotalPrice() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                order.setTotalPrice(totalAmount);
+                order.setTotalPriceFCoutier(totalAmount);
+
+                // 5. Проверка на сайта
+                if (wpOrderDto.getSite() != null && !Objects.equals(wpOrderDto.getSite().getId(), order.getSite().getId())) {
+                    SiteEntity site = siteRepository.getReferenceById(wpOrderDto.getSite().getId());
+                    order.setSite(site);
+                }
+
+                // Финален запис
+                WpOrderEntity savedOrder = wpOrderRepository.save(order);
+
+                if (savedOrder.getWpOrderId() != null) {
+                    wpOrderAsyncService.updateOrderOnSites(savedOrder, null);
+                }
+
+                return ResponseEntity.ok(wpOrderDto);
             }
-            order.setOrderLine(mergedLines); // Сетваме финалния списък с всички продукти
         }
+        else {
+            WpOrderEntity newOrder = new WpOrderEntity();
+            newOrder.setStatus(wpOrderDto.getStatus());
+            newOrder.setComment(wpOrderDto.getComment());
+            newOrder.setWpOrderTime(Instant.now());
 
-        // 4. Изчисляваме финалния тотал на база всички продукти (оригинални + мерднати)
-        BigDecimal totalAmount = order.getOrderLine().stream()
-                .map(line -> line.getTotalPrice() != null ? line.getTotalPrice() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if(wpOrderDto.getBilling() != null) {
+                OrderShippingAndBilling ordB = new OrderShippingAndBilling();
+                ordB.setFirstName(wpOrderDto.getBilling().getFirstName());
+                ordB.setLastName(wpOrderDto.getBilling().getLastName());
+                ordB.setEmail(wpOrderDto.getBilling().getEmail());
+                ordB.setPhone(wpOrderDto.getBilling().getPhone());
+                newOrder.setBilling(ordB);
+            }
 
-        order.setTotalPrice(totalAmount);
-        order.setTotalPriceFCoutier(totalAmount);
+            if(wpOrderDto.getSite() != null) {
+                SiteEntity site = siteRepository.getReferenceById(wpOrderDto.getSite().getId());
+                newOrder.setSite(site);
+            }
 
-        // 5. Проверка на сайта
-        if (wpOrderDto.getSite() != null && !Objects.equals(wpOrderDto.getSite().getId(), order.getSite().getId())) {
-            SiteEntity site = siteRepository.getReferenceById(wpOrderDto.getSite().getId());
-            order.setSite(site);
+            newOrder.setCustomShippingTotal(wpOrderDto.getCustomShippingTotal());
+            newOrder.setPaymentMethod(wpOrderDto.getPaymentMethod());
+
+
+           wpOrderRepository.save(newOrder);
+           modelMapper.map(newOrder, wpOrderDto);
+            return ResponseEntity.ok(wpOrderDto);
         }
-
-        // Финален запис
-        WpOrderEntity savedOrder = wpOrderRepository.save(order);
-
-        if (savedOrder.getWpOrderId() != null) {
-            wpOrderAsyncService.updateOrderOnSites(savedOrder, null);
-        }
-
-        return ResponseEntity.ok(wpOrderDto);
-    }
     return ResponseEntity.notFound().build();
 }
 
