@@ -4,10 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
-import com.sateno_b.www.model.entity.data.OrderLineItem;
-import com.sateno_b.www.model.entity.data.PaoIdValue;
-import com.sateno_b.www.model.entity.data.PaoIdValueValue;
-import com.sateno_b.www.model.entity.data.WpOrderCourierHistory;
+import com.sateno_b.www.model.entity.data.*;
 import com.sateno_b.www.model.enums.*;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
@@ -29,6 +26,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestClient;
@@ -1022,4 +1020,191 @@ public class WpOrderService {
 
         return tPrice.get();
     }
+
+    public WpOrderDto saveWpOrder(WpOrderDto wpOrderDto) {
+        if(wpOrderDto.getId() != null) {
+            Optional<WpOrderEntity> byId = wpOrderRepository.findById(wpOrderDto.getId());
+            if (byId.isPresent()) {
+                WpOrderEntity order = byId.get();
+
+                // === НОВО: Пазим копие на старите количества за сравнение на склада ===
+                Map<String, Integer> oldQuantities = new HashMap<>();
+                if (order.getOrderLine() != null) {
+                    order.getOrderLine().forEach(line -> {
+                        if (line.getSku() != null) {
+                            oldQuantities.put(line.getSku(), oldQuantities.getOrDefault(line.getSku(), 0) + line.getQuantity());
+                        }
+                    });
+                }
+
+                // 1. Първо актуализираме базовите данни от DTO
+                order.setStatus(wpOrderDto.getStatus());
+                order.setComment(wpOrderDto.getComment());
+
+                // Важно: Проверяваме дали billing обекта съществува
+                if (order.getBilling() != null && wpOrderDto.getBilling() != null) {
+                    order.getBilling().setFirstName(wpOrderDto.getBilling().getFirstName());
+                    order.getBilling().setLastName(wpOrderDto.getBilling().getLastName());
+                    order.getBilling().setEmail(wpOrderDto.getBilling().getEmail());
+                    order.getBilling().setPhone(wpOrderDto.getBilling().getPhone());
+                }
+
+                order.setCustomShippingTotal(wpOrderDto.getCustomShippingTotal());
+                order.setPaymentMethod(wpOrderDto.getPaymentMethod());
+
+                // 2. Обновяваме продуктите от текущото DTO (преди мерджа!)
+                List<OrderLineItem> currentLinesFromDto = wpOrderDto.getOrderLine().stream().map(e -> {
+                    OrderLineItem map = modelMapper.map(e, OrderLineItem.class);
+                    // Тук подсигуряваме цените
+                    map.setPrice(e.getPrice() != null ? e.getPrice() : BigDecimal.ZERO);
+                    map.setTotalPrice(e.getTotalPrice() != null ? e.getTotalPrice() : BigDecimal.ZERO);
+                    return map;
+                }).toList();
+
+                // === ТУК СЪБИРАМЕ НОВИТЕ КОЛИЧЕСТВА (Само от DTO-то на текущата поръчка) ===
+                Map<String, Integer> newQuantities = new HashMap<>();
+                currentLinesFromDto.forEach(line -> {
+                    if (line.getSku() != null) {
+                        newQuantities.put(line.getSku(), newQuantities.getOrDefault(line.getSku(), 0) + line.getQuantity());
+                    }
+                });
+
+// === ИЗВИКВАМЕ АКТУАЛИЗАЦИЯТА НА СКЛАДА ТУК ===
+// Сравняваме оригиналните продукти на тази поръчка с новата им версия от DTO-то
+                updateInventoryForOrderChanges(oldQuantities, newQuantities, order);
+
+                order.setOrderLine(new ArrayList<>(currentLinesFromDto));
+
+                // 3. СЕГА правим Мерджа (Добавяме продуктите от другите поръчки към вече обновения списък)
+                if (wpOrderDto.getOrdersToMerge() != null && !wpOrderDto.getOrdersToMerge().isEmpty()) {
+                    List<OrderLineItem> mergedLines = new ArrayList<>(order.getOrderLine());
+                    List<WpOrderEntity> ordersToMerge = wpOrderRepository.findAllById(wpOrderDto.getOrdersToMerge());
+
+                    for (WpOrderEntity subOrder : ordersToMerge) {
+                        if (subOrder.getStatus() == OrderStatus.JOINT) continue;
+
+                        for (OrderLineItem oldItem : subOrder.getOrderLine()) {
+                            OrderLineItem newItem = modelMapper.map(oldItem, OrderLineItem.class);
+                            mergedLines.add(newItem);
+
+                            // Обновяваме тотала (ако е нужно ръчно, но по-долу имаш Atomic тотал)
+                        }
+                        subOrder.setStatus(OrderStatus.JOINT);
+                        subOrder.setParentId(order.getId());
+                        wpOrderRepository.save(subOrder);
+                        wpOrderAsyncService.updateOrderOnSites(subOrder, null);
+                    }
+                    order.setOrderLine(mergedLines); // Сетваме финалния списък с всички продукти
+                }
+
+                // 4. Изчисляваме финалния тотал на база всички продукти (оригинални + мерднати)
+                BigDecimal totalAmount = order.getOrderLine().stream()
+                        .map(line -> line.getTotalPrice() != null ? line.getTotalPrice() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                order.setTotalPrice(totalAmount);
+                order.setTotalPriceFCoutier(totalAmount);
+
+                // 5. Проверка на сайта
+                if (wpOrderDto.getSite() != null && !Objects.equals(wpOrderDto.getSite().getId(), order.getSite().getId())) {
+                    SiteEntity site = siteRepository.getReferenceById(wpOrderDto.getSite().getId());
+                    order.setSite(site);
+                }
+
+                // Финален запис
+                WpOrderEntity savedOrder = wpOrderRepository.save(order);
+
+                if (savedOrder.getWpOrderId() != null) {
+                    wpOrderAsyncService.updateOrderOnSites(savedOrder, null);
+                }
+
+                return wpOrderDto;
+            }
+        }
+        else {
+            WpOrderEntity newOrder = new WpOrderEntity();
+            newOrder.setStatus(wpOrderDto.getStatus());
+            newOrder.setComment(wpOrderDto.getComment());
+            newOrder.setWpOrderTime(Instant.now());
+
+            if(wpOrderDto.getBilling() != null) {
+                OrderShippingAndBilling ordB = new OrderShippingAndBilling();
+                ordB.setFirstName(wpOrderDto.getBilling().getFirstName());
+                ordB.setLastName(wpOrderDto.getBilling().getLastName());
+                ordB.setEmail(wpOrderDto.getBilling().getEmail());
+                ordB.setPhone(wpOrderDto.getBilling().getPhone());
+                newOrder.setBilling(ordB);
+            }
+
+            if(wpOrderDto.getSite() != null) {
+                SiteEntity site = siteRepository.getReferenceById(wpOrderDto.getSite().getId());
+                newOrder.setSite(site);
+            }
+
+            newOrder.setCustomShippingTotal(wpOrderDto.getCustomShippingTotal());
+            newOrder.setPaymentMethod(wpOrderDto.getPaymentMethod());
+
+
+            wpOrderRepository.save(newOrder);
+            modelMapper.map(newOrder, wpOrderDto);
+            return wpOrderDto;
+        }
+        return null;
+    }
+
+    private void updateInventoryForOrderChanges(Map<String, Integer> oldQuantities, Map<String, Integer> newQuantities, WpOrderEntity order) {
+        // Обобщаваме всички SKU-та, които участват в старата или в новата редакция
+        Set<String> allSkus = new HashSet<>();
+        allSkus.addAll(oldQuantities.keySet());
+        allSkus.addAll(newQuantities.keySet());
+
+        for (String sku : allSkus) {
+            int oldQty = oldQuantities.getOrDefault(sku, 0);
+            int newQty = newQuantities.getOrDefault(sku, 0);
+
+            // Ако няма промяна в количеството за това SKU, пропускаме
+            if (oldQty == newQty) continue;
+
+            Optional<WpProductEntity> productOpt = wpProductRepository.findBySku(sku);
+            if (productOpt.isPresent()) {
+                WpProductEntity product = productOpt.get();
+                int oldStock = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
+
+                int diff = newQty - oldQty;
+                // Ако diff > 0 -> Потребителят е увеличил бройките или добавил нов продукт (Складът трябва да НАМАЛЕЕ)
+                // Ако diff < 0 -> Потребителят е намалил бройките или изтрил продукт (Складът трябва да СЕ УВЕЛИЧИ)
+
+                int newStock = oldStock - diff;
+                product.setStockQuantity(newStock);
+                wpProductRepository.save(product);
+
+                // Запис на история
+                WpProductHistoryEntity history = new WpProductHistoryEntity();
+                history.setProduct(product);
+                history.setOrder(order);
+                history.setOldQuantity((long) oldStock);
+                history.setNewQuantity((long) newStock);
+
+                if (diff > 0) {
+                    history.setQuantity(diff);
+                    history.setReason("Ръчна редакция на поръчка: Добавено количество");
+                } else {
+                    history.setQuantity(Math.abs(diff));
+                    history.setReason("Ръчна редакция на поръчка: Премахнато/Върнато количество");
+                }
+
+                wpProductHistoryRepository.save(history);
+
+                // Синхронизация със сайта асинхронно
+//                try {
+//                    wpProductAsyncService.updateProductOnSites(product, null);
+//                } catch (Exception e) {
+//                     Логване на грешката, за да не счупи транзакцията
+//                }
+            }
+        }
+    }
+
+
+
 }
