@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import lombok.*;
 
@@ -26,6 +27,8 @@ public class SiteDto {
     private String secondOrderMessage;
     private Long thirdOrderMessageTimer;
     private String thirdOrderMessage;
+    @JsonProperty("isDefault")
+    private boolean isDefault = false;
 
     private List<CourierSettingsDto> couriers = new ArrayList<>();
 

@@ -69,7 +69,8 @@ public class SiteController {
         if (siteDto.getId() == null || siteDto.getId() == 0) {
             // При нов запис ModelMapper е ОК
             siteEntity = modelMapper.map(siteDto, SiteEntity.class);
-        } else {
+        }
+        else {
             // ПРИ РЕДАКЦИЯ: Намираме оригиналния обект
             siteEntity = siteRepository.findById(siteDto.getId())
                     .orElseThrow(() -> new RuntimeException("Сайтът не е намерен"));
@@ -80,6 +81,7 @@ public class SiteController {
             siteEntity.setConsumerKey(siteDto.getConsumerKey());
             siteEntity.setConsumerSecret(siteDto.getConsumerSecret());
             siteEntity.setActive(siteDto.isActive());
+            siteEntity.setDefault(siteDto.isDefault());
             siteEntity.setOrderCreateApiKey(siteDto.getOrderCreateApiKey());
 
             siteEntity.setChangeStatusTimer(siteDto.getChangeStatusTimer());
@@ -134,6 +136,17 @@ public class SiteController {
         siteEntity.setNewOrderMessage(siteDto.getNewOrderMessage());
 
         SiteEntity saved = siteRepository.save(siteEntity);
+
+        for (SiteEntity site : siteRepository.findAll()) {
+            if (site.getId() != saved.getId()) {
+                if(site.isDefault()){
+                    site.setDefault(false);
+                    siteRepository.save(site);
+                }
+            }
+        }
+
+
         return ResponseEntity.ok(modelMapper.map(saved, SiteDto.class));
     }
 }
