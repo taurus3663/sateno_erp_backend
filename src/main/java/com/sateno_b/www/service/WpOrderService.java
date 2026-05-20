@@ -70,7 +70,7 @@ public class WpOrderService {
     private final BoxNowService boxnowService;
     private final CourierSettingsRepository courierSettingsRepository;
     private final WpOrderAsyncService wpOrderAsyncService;
-
+    private final DiscountPhoneService discountPhoneService;
 
 
     public void syncOrderToDB(Long siteId) {
@@ -574,6 +574,12 @@ public class WpOrderService {
            }
 
 
+        }
+
+        try {
+            discountPhoneService.saveNewPhoneByOrder(siteEntity, customer);
+        } catch (Exception e){
+            log.error(e.getMessage());
         }
 
     wpOrderRepository.save(wpOrderEntity);
@@ -1172,6 +1178,11 @@ public class WpOrderService {
             newOrder.setCustomShippingTotal(wpOrderDto.getCustomShippingTotal());
             newOrder.setPaymentMethod(wpOrderDto.getPaymentMethod());
 
+            try {
+                discountPhoneService.saveNewPhoneByOrder(newOrder.getSite(), newOrder.getCustomer());
+            } catch (Exception e){
+                log.error(e.getMessage());
+            }
 
             wpOrderRepository.save(newOrder);
             modelMapper.map(newOrder, wpOrderDto);

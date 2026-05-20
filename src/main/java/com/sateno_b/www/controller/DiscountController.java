@@ -9,6 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/discount")
@@ -39,7 +41,10 @@ public class DiscountController implements BaseController<DiscountPhoneDTO, Long
     }
 
     @Override
-    public boolean delete(Long aLong) {
-        return false;
+    public boolean deleteMultiple(List<Long> longs) {
+        for (Long aLong : longs) {
+            discountPhoneService.deleteById(aLong);
+        }
+        return true;
     }
 }

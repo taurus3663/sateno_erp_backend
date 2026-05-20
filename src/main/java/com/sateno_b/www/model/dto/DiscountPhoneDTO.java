@@ -9,4 +9,5 @@ public class DiscountPhoneDTO {
     private String site;
     private String phone;
     private String created;
+    private boolean hasOrder;
 }

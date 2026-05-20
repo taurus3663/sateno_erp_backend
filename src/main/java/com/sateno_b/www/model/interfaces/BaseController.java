@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 public interface BaseController<D, ID> {
@@ -25,5 +26,13 @@ public interface BaseController<D, ID> {
     @PostMapping("/save")
     ResponseEntity<D> save(@RequestBody D dto);
     @DeleteMapping("/{id}")
-    boolean delete(@PathVariable ID id);
+    default boolean delete(@PathVariable ID id) {
+        // Връща статус 200 OK с тяло false
+        return false;
+    }
+    @DeleteMapping("/delete")
+    default boolean deleteMultiple(@RequestBody List<ID> ids) {
+        // Преименуван на deleteMultiple, за да няма конфликт при компилация
+        return false;
+    }
 }

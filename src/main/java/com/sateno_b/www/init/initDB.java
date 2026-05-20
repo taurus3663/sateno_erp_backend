@@ -1,10 +1,11 @@
 package com.sateno_b.www.init;
 
 import com.sateno_b.www.model.dto.EmailSendRequest;
+import com.sateno_b.www.model.entity.CustomerEntity;
+import com.sateno_b.www.model.entity.DiscountPhone;
 import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.UserEntity;
-import com.sateno_b.www.model.repository.SiteRepository;
-import com.sateno_b.www.model.repository.UserRepository;
+import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
@@ -16,6 +17,8 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -28,6 +31,9 @@ public class initDB implements CommandLineRunner {
     private final CurrencyService currencyService;
     private final SpeedyService speedyService;
     private final WhatsAppService whatsAppService;
+    private final WpOrderRepository wpOrderRepository;
+    private final CustomerRepository customerRepository;
+    private final DiscountPhoneRepository discountPhoneRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -49,17 +55,19 @@ public class initDB implements CommandLineRunner {
 //        {"date":"2026-02-27 20:22:33","httpCode":200}}
 
 //        initCurrencyTest();
-        Map<String, Object> body = speedyService.createBaseBody("1908628", "SpidiAdmirali2558$");
-        Map<String, Object> parcel = new HashMap<>();
-        parcel.put("id", "63538814858"); // Номерът трябва да е в id
-        body.put("parcels", List.of(parcel));
-        var stringObjectMap = speedyService.postToSpeedy("track", body);
-        System.out.println(stringObjectMap);
+//        Map<String, Object> body = speedyService.createBaseBody("1908628", "SpidiAdmirali2558$");
+//        Map<String, Object> parcel = new HashMap<>();
+//        parcel.put("id", "63538814858"); // Номерът трябва да е в id
+//        body.put("parcels", List.of(parcel));
+//        var stringObjectMap = speedyService.postToSpeedy("track", body);
+//        System.out.println(stringObjectMap);
 
 
 //        String msg = "Здравейте! Поръчка # е приета. Благодарим Ви!";
 //        String response = whatsAppService.sendWhatsApp("0894396766", msg);
 //        System.out.println(response);
+
+//        populateDiscountPN();
 
         try{
 //                    String response = whatsAppService.sendWhatsAppTemplate("0894396766", "12345");
@@ -144,6 +152,53 @@ public class initDB implements CommandLineRunner {
 //        System.out.println(convert5);
 //        System.out.println(convert6);
 //        System.out.println(convert7);
+    }
 
+    private void populateDiscountPN() {
+        // 1. Взимаме всички записи за телефонни отстъпки
+        List<DiscountPhone> allDiscountPhones = discountPhoneRepository.findAll();
+
+        // 2. Групираме ги по телефонен номер, за да открием дубликатите
+        Map<String, List<DiscountPhone>> phonesGrouped = allDiscountPhones.stream()
+                .filter(p -> p.getPhoneNumber() != null)
+                .collect(Collectors.groupingBy(DiscountPhone::getPhoneNumber));
+
+        // 3. Обхождаме всяка група от телефони
+        for (Map.Entry<String, List<DiscountPhone>> entry : phonesGrouped.entrySet()) {
+            String phoneNumber = entry.getKey();
+            List<DiscountPhone> phonesList = entry.getValue();
+
+            // Ако има повече от 1 запис за този номер, значи имаме дубликати
+            if (phonesList.size() > 1) {
+                // Сортираме списъка така, че НАЙ-НОВИЯТ запис да бъде на индекс 0
+                // За целта сравняваме по ID (ако е генерирано последователно) или по дата (напр. getCreatedAt())
+                phonesList.sort((p1, p2) -> p2.getId().compareTo(p1.getId()));
+                // ^ Ако имаш дата, използвай: p2.getCreatedAt().compareTo(p1.getCreatedAt())
+
+                // Най-новият остава
+                DiscountPhone newestPhone = phonesList.get(0);
+
+                // Всички останали (от индекс 1 нататък) са по-стари и трябва да бъдат изтрити
+                List<DiscountPhone> olderDuplicates = phonesList.subList(1, phonesList.size());
+
+                // Изтриваме старите дубликати от базата данни
+                discountPhoneRepository.deleteAll(olderDuplicates);
+
+                // Продължаваме работа само с най-новия запис
+                processCustomerMapping(phoneNumber, newestPhone);
+            } else {
+                // Ако номерът е уникален, директно го прехвърляме към мапинга
+                processCustomerMapping(phoneNumber, phonesList.get(0));
+            }
+        }
+    }
+
+    // Спомагателен метод, който прави реалното свързване с клиента
+    private void processCustomerMapping(String phoneNumber, DiscountPhone phone) {
+        Optional<CustomerEntity> byPhone = customerRepository.findByPhone(phoneNumber);
+        if (byPhone.isPresent()) {
+            phone.setCustomer(byPhone.get());
+            discountPhoneRepository.save(phone);
+        }
     }
 }

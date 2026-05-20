@@ -17,4 +17,8 @@ public class DiscountPhone extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "site_id", referencedColumnName = "id")
     private SiteEntity site;
+
+    @OneToOne
+    @JoinColumn(name = "customer_id")
+    private CustomerEntity customer;
 }
