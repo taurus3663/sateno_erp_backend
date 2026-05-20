@@ -1069,8 +1069,8 @@ public class WpOrderService {
                     }
                 });
 
-// === ИЗВИКВАМЕ АКТУАЛИЗАЦИЯТА НА СКЛАДА ТУК ===
-// Сравняваме оригиналните продукти на тази поръчка с новата им версия от DTO-то
+                // === ИЗВИКВАМЕ АКТУАЛИЗАЦИЯТА НА СКЛАДА ТУК ===
+                // Сравняваме оригиналните продукти на тази поръчка с новата им версия от DTO-то
                 updateInventoryForOrderChanges(oldQuantities, newQuantities, order);
 
                 order.setOrderLine(new ArrayList<>(currentLinesFromDto));
@@ -1111,6 +1111,21 @@ public class WpOrderService {
                     order.setSite(site);
                 }
 
+                if(order.getCustomer() == null) {
+                    Optional<CustomerEntity> byPhone = customerRepository.findByPhone(wpOrderDto.getBilling().getPhone());
+                    if(byPhone.isPresent()) {
+                        order.setCustomer(byPhone.get());
+                    } else {
+                        CustomerEntity customer = new CustomerEntity();
+                        customer.setFirstName(wpOrderDto.getBilling().getFirstName());
+                        customer.setLastName(wpOrderDto.getBilling().getLastName());
+                        customer.setPhone(wpOrderDto.getBilling().getPhone());
+                        customer.setEmail(wpOrderDto.getBilling().getEmail());
+                        CustomerEntity save = customerRepository.save(customer);
+                        order.setCustomer(save);
+                    }
+                }
+
                 // Финален запис
                 WpOrderEntity savedOrder = wpOrderRepository.save(order);
 
@@ -1134,6 +1149,19 @@ public class WpOrderService {
                 ordB.setEmail(wpOrderDto.getBilling().getEmail());
                 ordB.setPhone(wpOrderDto.getBilling().getPhone());
                 newOrder.setBilling(ordB);
+
+                Optional<CustomerEntity> byPhone = customerRepository.findByPhone(wpOrderDto.getBilling().getPhone());
+                if(byPhone.isPresent()) {
+                    newOrder.setCustomer(byPhone.get());
+                } else {
+                    CustomerEntity customer = new CustomerEntity();
+                    customer.setFirstName(wpOrderDto.getBilling().getFirstName());
+                    customer.setLastName(wpOrderDto.getBilling().getLastName());
+                    customer.setPhone(wpOrderDto.getBilling().getPhone());
+                    customer.setEmail(wpOrderDto.getBilling().getEmail());
+                    CustomerEntity save = customerRepository.save(customer);
+                    newOrder.setCustomer(save);
+                }
             }
 
             if(wpOrderDto.getSite() != null) {
