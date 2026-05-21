@@ -8,17 +8,18 @@ import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.WpBrandRepository;
 import com.sateno_b.www.model.repository.WpBrandWpIdRepository;
 import com.sateno_b.www.shared.SlugTool;
+import lombok.extern.slf4j.Slf4j;
+import org.modelmapper.ModelMapper;
+import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WpBrandService {
@@ -27,6 +28,8 @@ public class WpBrandService {
     private final RestClient restClient;
     private final WpBrandRepository wpBrandRepository;
     private final WpBrandWpIdRepository wpBrandWpIdRepository;
+    private final ModelMapper modelMapper;
+    private final WpBrandAsyncService wpBrandAsyncService;
 
     private static final String BRANDS_URL = "/wp-json/wc/v3/products/brands";
 
@@ -104,5 +107,29 @@ public class WpBrandService {
         } while(currentPage <= totalPages);
 
         return allBrands;
+    }
+
+    public WpBrandDto saveBrand(WpBrandDto wpBrandDto) {
+
+        if(wpBrandDto.getId() == null || wpBrandDto.getId()==0){
+            WpBrandEntity wpBrandEntity = modelMapper.map(wpBrandDto, WpBrandEntity.class);
+            wpBrandEntity.setSlug(SlugTool.generateSlug(wpBrandEntity.getName()));
+            WpBrandEntity save = wpBrandRepository.save(wpBrandEntity);
+            try {
+                wpBrandAsyncService.updateBrandOnSites(save);
+            } catch (Exception e) {
+                log.error(e.getMessage());
+            }
+            return modelMapper.map(save, WpBrandDto.class);
+        }
+
+       return Objects.requireNonNull(wpBrandRepository.findById(wpBrandDto.getId())
+               .map(entity -> {
+                   modelMapper.map(wpBrandDto, entity);
+                   return ResponseEntity.ok(modelMapper.map(wpBrandRepository.save(entity), WpBrandDto.class));
+               }).orElse(null)).getBody();
+
+
+
     }
 }

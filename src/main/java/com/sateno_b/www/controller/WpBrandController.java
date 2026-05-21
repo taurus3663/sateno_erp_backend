@@ -42,18 +42,23 @@ public class WpBrandController {
 
     @PostMapping("/save")
     public ResponseEntity<WpBrandDto> saveWpBrand(@RequestBody WpBrandDto wpBrandDto){
-        if(wpBrandDto.getId() == null || wpBrandDto.getId()==0){
-            WpBrandEntity wpBrandEntity = modelMapper.map(wpBrandDto, WpBrandEntity.class);
-            wpBrandEntity.setSlug(SlugTool.generateSlug(wpBrandEntity.getName()));
-            WpBrandEntity save = wpBrandRepository.save(wpBrandEntity);
-            return ResponseEntity.ok(modelMapper.map(save, WpBrandDto.class));
-        }
 
-        return wpBrandRepository.findById(wpBrandDto.getId())
-                .map(entity -> {
-                    modelMapper.map(wpBrandDto, entity);
-                    return ResponseEntity.ok(modelMapper.map(wpBrandRepository.save(entity), WpBrandDto.class));
-                }).orElse(ResponseEntity.notFound().build());
+        WpBrandDto wpBrandDto1 = wpBrandService.saveBrand(wpBrandDto);
+        if(wpBrandDto1 == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(wpBrandDto1);
+
+//        if(wpBrandDto.getId() == null || wpBrandDto.getId()==0){
+//            WpBrandEntity wpBrandEntity = modelMapper.map(wpBrandDto, WpBrandEntity.class);
+//            wpBrandEntity.setSlug(SlugTool.generateSlug(wpBrandEntity.getName()));
+//            WpBrandEntity save = wpBrandRepository.save(wpBrandEntity);
+//            return ResponseEntity.ok(modelMapper.map(save, WpBrandDto.class));
+//        }
+//
+//        return wpBrandRepository.findById(wpBrandDto.getId())
+//                .map(entity -> {
+//                    modelMapper.map(wpBrandDto, entity);
+//                    return ResponseEntity.ok(modelMapper.map(wpBrandRepository.save(entity), WpBrandDto.class));
+//                }).orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/sync/{siteId}")
