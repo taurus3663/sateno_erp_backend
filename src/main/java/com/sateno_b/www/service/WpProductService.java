@@ -8,6 +8,7 @@ import com.sateno_b.www.model.dto.*;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.interfaces.WpProductMinified;
+import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.enums.ProductSaleType;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
@@ -713,6 +714,8 @@ public class WpProductService {
 
         // 4. ДОБАВЯНЕ НА НОВИ (TEMP) СНИМКИ
         if (!dto.getImages().isEmpty()) {
+            int currentOrder = 0;
+
             for (WpProductImageDto imgDto : dto.getImages()) {
                 if (imgDto.isTemp()) {
                     String finalPath = fileStorageService.moveTempImageToProductDir(imgDto.getTempName(), entity.getId());
@@ -884,30 +887,126 @@ public class WpProductService {
     }
 
 //    @Transactional(Transactional.TxType.REQUIRES_NEW)
+//    @Transactional(propagation = Propagation.REQUIRES_NEW)
+//    public void restoreQuantity(WpOrderEntity wpOrderEntity) {
+//        wpOrderEntity = wpOrderRepository.findById(wpOrderEntity.getId()).orElse(null);
+//        for (OrderLineItem orderLineItem : wpOrderEntity.getOrderLine()) {
+//            String pSku = orderLineItem.getSku();
+//
+//            Optional<WpProductHistoryEntity> byProductSku = wpProductHistoryRepository.findFirstByProductSkuAndOrder(pSku, wpOrderEntity);
+//            if (byProductSku.isPresent()) {
+//               WpProductHistoryEntity pHistory = byProductSku.get();
+//
+//                Optional<WpProductEntity> byId = wpProductRepository.findById(pHistory.getProduct().getId());
+//                if (byId.isPresent()) {
+//                    WpProductEntity wpProductEntity = byId.get();
+//                    wpProductEntity.setStockQuantity(wpProductEntity.getStockQuantity() + pHistory.getQuantity());
+//                    wpProductRepository.save(wpProductEntity);
+//                    try{
+//                        wpProductAsyncService.updateProductOnSites(wpProductEntity, null);
+//                    } catch (Exception e) {
+//                        e.printStackTrace();
+//                        throw new RuntimeException(e.getMessage());
+//                    }
+//                }
+//
+//                wpProductHistoryRepository.delete(pHistory);
+//            }
+//        }
+//    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void restoreQuantity(WpOrderEntity wpOrderEntity) {
         wpOrderEntity = wpOrderRepository.findById(wpOrderEntity.getId()).orElse(null);
+        if (wpOrderEntity == null) return;
+
         for (OrderLineItem orderLineItem : wpOrderEntity.getOrderLine()) {
             String pSku = orderLineItem.getSku();
+            int qtyToRestore = orderLineItem.getQuantity();
 
-            Optional<WpProductHistoryEntity> byProductSku = wpProductHistoryRepository.findFirstByProductSkuAndOrder(pSku, wpOrderEntity);
-            if (byProductSku.isPresent()) {
-               WpProductHistoryEntity pHistory = byProductSku.get();
+            if (qtyToRestore <= 0) continue;
 
-                Optional<WpProductEntity> byId = wpProductRepository.findById(pHistory.getProduct().getId());
-                if (byId.isPresent()) {
-                    WpProductEntity wpProductEntity = byId.get();
-                    wpProductEntity.setStockQuantity(wpProductEntity.getStockQuantity() + pHistory.getQuantity());
-                    wpProductRepository.save(wpProductEntity);
-                    try{
-                        wpProductAsyncService.updateProductOnSites(wpProductEntity, null);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        throw new RuntimeException(e.getMessage());
-                    }
+            Optional<WpProductEntity> productOpt = wpProductRepository.findBySku(pSku);
+            if (productOpt.isPresent()) {
+                WpProductEntity wpProductEntity = productOpt.get();
+
+                int oldStock = wpProductEntity.getStockQuantity() != null ? wpProductEntity.getStockQuantity() : 0;
+                int newStock = oldStock + qtyToRestore; // Връщаме стоката обратно
+
+                // 1. Обновяваме склада
+                wpProductEntity.setStockQuantity(newStock);
+                wpProductRepository.save(wpProductEntity);
+
+                // 2. СЪЗДАВАМЕ НОВ ЗАПИС (Вместо да трием стария)
+                WpProductHistoryEntity historyEntity = new WpProductHistoryEntity();
+                historyEntity.setProduct(wpProductEntity);
+                historyEntity.setOrder(wpOrderEntity);
+//                historyEntity.setProductSku(pSku);
+                historyEntity.setOldQuantity((long) oldStock);
+                historyEntity.setNewQuantity((long) newStock);
+                historyEntity.setQuantity(qtyToRestore);
+                historyEntity.setReason("Възстановяване на бройки (Анулирана/Върната поръчка)");
+
+                wpProductHistoryRepository.save(historyEntity);
+
+                // 3. Синхронизация със сайтовете
+                try {
+                    wpProductAsyncService.updateProductOnSites(wpProductEntity, null);
+                } catch (Exception e) {
+                    throw new RuntimeException("Грешка при синхронизация: " + e.getMessage());
                 }
+            }
+        }
+    }
 
-                wpProductHistoryRepository.delete(pHistory);
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void getFromQuantity(WpOrderEntity wpOrderEntity) {
+        // 1. Презареждаме поръчката от базата, за да сме сигурни, че работим с актуалните данни в новата транзакция
+        wpOrderEntity = wpOrderRepository.findById(wpOrderEntity.getId()).orElse(null);
+        if (wpOrderEntity == null) return;
+
+        // 2. Обхождаме всеки продукт от поръчката
+        for (OrderLineItem orderLineItem : wpOrderEntity.getOrderLine()) {
+            String pSku = orderLineItem.getSku();
+            int qtyToTake = orderLineItem.getQuantity();
+
+            // Пропускаме, ако количеството е 0 или отрицателно
+//            if (qtyToTake <= 0) continue;
+
+            // 3. Намираме продукта в склада по неговото SKU
+            Optional<WpProductEntity> productOpt = wpProductRepository.findBySku(pSku);
+            if (productOpt.isPresent()) {
+                WpProductEntity wpProductEntity = productOpt.get();
+
+                int oldStock = wpProductEntity.getStockQuantity() != null ? wpProductEntity.getStockQuantity() : 0;
+                int newStock = oldStock - qtyToTake; // Намаляваме наличността в склада
+
+                // Обновяваме продукта в склада
+                wpProductEntity.setStockQuantity(newStock);
+                wpProductRepository.save(wpProductEntity);
+
+                // 4. Създаваме нов запис в историята на продукта (за да може restoreQuantity да знае какво да върне, ако се наложи)
+                WpProductHistoryEntity historyEntity = new WpProductHistoryEntity();
+                historyEntity.setProduct(wpProductEntity);
+                historyEntity.setOrder(wpOrderEntity); // Свързваме историята с конкретната поръчка
+//                historyEntity.setProductSku(pSku);
+                historyEntity.setOldQuantity((long) oldStock);
+                historyEntity.setNewQuantity((long) newStock);
+                historyEntity.setQuantity(qtyToTake);
+                historyEntity.setReason("Вземане на бройки при пускане/възобновяване на поръчка");
+
+                // Ако имаш текущ потребител в сесията, можеш да го сетнеш тук (по желание)
+                // historyEntity.setChangerName("System/User");
+
+                wpProductHistoryRepository.save(historyEntity);
+
+                // 5. Синхронизираме промяната в склада асинхронно с WooCommerce сайтовете
+                try {
+                    wpProductAsyncService.updateProductOnSites(wpProductEntity, null);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException("Грешка при синхронизация на продукта: " + e.getMessage());
+                }
             }
         }
     }

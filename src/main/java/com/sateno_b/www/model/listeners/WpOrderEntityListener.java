@@ -36,7 +36,6 @@ public class WpOrderEntityListener {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        System.out.println("11");
         WpOrderEntity old = wpOrderEntity.getSnapshot();
 
         // Проверка за статус CANCELLED
@@ -46,6 +45,10 @@ public class WpOrderEntityListener {
 
             // Извикваме сервиза само при нужда през Provider-а
             wpProductServiceProvider.ifAvailable(service -> service.restoreQuantity(wpOrderEntity));
+        }
+        else if(old != null && old.getStatus() == OrderStatus.CANCELLED && wpOrderEntity.getStatus() != null
+                && wpOrderEntity.getStatus() == OrderStatus.PROCESSING) {
+            wpProductServiceProvider.ifAvailable(service -> service.getFromQuantity(wpOrderEntity));
         }
 
 //        // Изпращаме WebSocket нотификация

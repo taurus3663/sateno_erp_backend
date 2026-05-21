@@ -25,4 +25,7 @@ public class WpProductImageSiteMappingEntity extends BaseEntity {
 
     @Column
     private String wpUrl;
+
+    @Column
+    private Integer orderIndex;
 }
