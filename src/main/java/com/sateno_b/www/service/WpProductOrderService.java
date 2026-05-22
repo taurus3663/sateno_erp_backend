@@ -2,10 +2,7 @@ package com.sateno_b.www.service;
 
 import com.sateno_b.www.model.dto.WpProductDto;
 import com.sateno_b.www.model.dto.WpProductOrderDTO;
-import com.sateno_b.www.model.entity.WpCategoryEntity;
-import com.sateno_b.www.model.entity.WpProductEntity;
-import com.sateno_b.www.model.entity.WpProductOrderEntity;
-import com.sateno_b.www.model.entity.WpProductTranslationEntity;
+import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.repository.WpCategoryRepository;
 import com.sateno_b.www.model.repository.WpProductOrderRepository;
 import com.sateno_b.www.model.repository.WpProductRepository;
@@ -80,6 +77,23 @@ public class WpProductOrderService {
         dto.setNames(names);
         dto.setSku(entity.getSku());
         dto.setStockQuantity(entity.getStockQuantity());
+        List<WpProductImageEntity> pImages = entity.getImages();
+        WpProductImageEntity pImage = null;
+
+// Първо се уверяваме, че списъкът със снимки изобщо съществува и не е празен
+        if (pImages != null && !pImages.isEmpty()) {
+            pImage = pImages.stream()
+                    // Boolean.TRUE.equals е по-безопасно от == true, защото пази от грешки, ако getIsPrimary() върне null
+                    .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
+                    .findFirst()
+                    .orElse(pImages.get(0)); // Тук вече е абсолютно безопасно да поискаме индекс 0
+        }
+
+// Записваме картинката в DTO-то, само ако реално сме намерили такава
+        if (pImage != null) {
+            dto.setM_image(pImage.getLocalSrc());
+        }
+
 
         return dto;
     }
