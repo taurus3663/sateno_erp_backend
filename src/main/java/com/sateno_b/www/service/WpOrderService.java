@@ -9,6 +9,7 @@ import com.sateno_b.www.model.enums.*;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.CourierParser;
+import com.sateno_b.www.shared.Shared;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.Expression;
@@ -365,18 +366,14 @@ public class WpOrderService {
             return;
         }
 
-        String rawPhone = dto.getBilling().getPhone().replaceAll("[^0-9]", "");
-        String phoneSuffix = rawPhone.length() >= 9
-                ? rawPhone.substring(rawPhone.length() - 9)
-                : rawPhone;
+        String rawPhone = Shared.fixBGNumber(dto.getBilling().getPhone());
 
-
-        CustomerEntity customer = customerRepository.findByPhoneSuffix(phoneSuffix)
+        CustomerEntity customer = customerRepository.findByPhone(rawPhone)
                 .stream()
                 .findFirst()
                 .orElseGet(CustomerEntity::new);
 
-        customer.setPhone(dto.getBilling().getPhone());
+        customer.setPhone(rawPhone);
         customer.setFirstName(dto.getBilling().getFirstName());
         customer.setLastName(dto.getBilling().getLastName());
         customer.setEmail(dto.getBilling().getEmail());

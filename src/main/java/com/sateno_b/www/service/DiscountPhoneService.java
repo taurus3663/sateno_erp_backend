@@ -30,6 +30,7 @@ public class DiscountPhoneService {
 
     public boolean saveNewPhone(DiscountPhoneDTO discountPhoneDTO) {
 
+
         List<DiscountPhone> byPhoneNumber = discountPhoneRepository.findByPhoneNumber(discountPhoneDTO.getPhone());
         if(!byPhoneNumber.isEmpty()) {
             return false;
@@ -54,6 +55,10 @@ public class DiscountPhoneService {
             DiscountPhone discountPhone = new DiscountPhone();
             discountPhone.setPhoneNumber(customer.getPhone());
             discountPhone.setSite(site);
+            discountPhone.setCustomer(customer);
+            discountPhoneRepository.save(discountPhone);
+        } else {
+            DiscountPhone discountPhone = byPhone.get(0);
             discountPhone.setCustomer(customer);
             discountPhoneRepository.save(discountPhone);
         }

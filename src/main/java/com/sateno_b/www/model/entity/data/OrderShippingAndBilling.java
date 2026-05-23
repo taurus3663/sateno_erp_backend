@@ -1,6 +1,7 @@
 package com.sateno_b.www.model.entity.data;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.sateno_b.www.shared.Shared;
 import lombok.Data;
 
 @Data
@@ -23,4 +24,8 @@ public class OrderShippingAndBilling {
     private String country;
     private String email;
     private String phone;
+
+    public String getPhone() {
+        return Shared.fixBGNumber(phone);
+    }
 }

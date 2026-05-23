@@ -7,11 +7,15 @@ import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.entity.UserEntity;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.service.*;
+import com.sateno_b.www.shared.Shared;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -67,6 +71,7 @@ public class initDB implements CommandLineRunner {
 //        String response = whatsAppService.sendWhatsApp("0894396766", msg);
 //        System.out.println(response);
 
+//        fixCustomerNumbers();
 //        populateDiscountPN();
 
         try{
@@ -161,7 +166,7 @@ public class initDB implements CommandLineRunner {
         // 2. Групираме ги по телефонен номер, за да открием дубликатите
         Map<String, List<DiscountPhone>> phonesGrouped = allDiscountPhones.stream()
                 .filter(p -> p.getPhoneNumber() != null)
-                .collect(Collectors.groupingBy(DiscountPhone::getPhoneNumber));
+                .collect(Collectors.groupingBy(p -> Shared.fixBGNumber(p.getPhoneNumber())));
 
         // 3. Обхождаме всяка група от телефони
         for (Map.Entry<String, List<DiscountPhone>> entry : phonesGrouped.entrySet()) {
@@ -195,10 +200,30 @@ public class initDB implements CommandLineRunner {
 
     // Спомагателен метод, който прави реалното свързване с клиента
     private void processCustomerMapping(String phoneNumber, DiscountPhone phone) {
-        Optional<CustomerEntity> byPhone = customerRepository.findByPhone(phoneNumber);
+        Optional<CustomerEntity> byPhone = customerRepository.findByPhone(Shared.fixBGNumber(phoneNumber));
         if (byPhone.isPresent()) {
             phone.setCustomer(byPhone.get());
             discountPhoneRepository.save(phone);
         }
+    }
+
+    private void fixCustomerNumbers() {
+        int pageSize = 100;
+        int pageNumber = 0;
+        Page<CustomerEntity> page;
+
+        do {
+            page = customerRepository.findAll(PageRequest.of(pageNumber, pageSize));
+            List<CustomerEntity> customers = page.getContent();
+
+            for (CustomerEntity customer : customers) {
+                if (customer.getPhone() != null) {
+                    customer.setPhone(Shared.fixBGNumber(customer.getPhone()));
+                }
+            }
+            customerRepository.saveAll(customers);
+
+            pageNumber++;
+        } while (page.hasNext());
     }
 }
