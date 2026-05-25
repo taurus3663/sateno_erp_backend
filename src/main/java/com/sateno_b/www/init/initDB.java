@@ -38,6 +38,7 @@ public class initDB implements CommandLineRunner {
     private final WpOrderRepository wpOrderRepository;
     private final CustomerRepository customerRepository;
     private final DiscountPhoneRepository discountPhoneRepository;
+    private final MetaAdsService metaAdsService;
 
     @Override
     public void run(String... args) throws Exception {
@@ -74,16 +75,34 @@ public class initDB implements CommandLineRunner {
 //        fixCustomerNumbers();
 //        populateDiscountPN();
 
-        try{
-//                    String response = whatsAppService.sendWhatsAppTemplate("0894396766", "12345");
-//        System.out.println(response);
-//            whatsAppService.checkMessageStatus("e6ec4653-b2a3-45ba-be07-9c935e5446cc");
-//            whatsAppService.checkStatus("acddc425-6bdb-4fc9-98ec-e9bf89d1d706");
-        } catch(Exception e){
-            e.printStackTrace();
+//        try{
+////                    String response = whatsAppService.sendWhatsAppTemplate("0894396766", "12345");
+////        System.out.println(response);
+////            whatsAppService.checkMessageStatus("e6ec4653-b2a3-45ba-be07-9c935e5446cc");
+////            whatsAppService.checkStatus("acddc425-6bdb-4fc9-98ec-e9bf89d1d706");
+//        } catch(Exception e){
+//            e.printStackTrace();
+
+
+
+        try {
+            meta();
+        } catch (Exception e) {
+            System.err.println("Meta API инициализацията се провали: " + e.getMessage());
+            // НЕ хвърляй RuntimeException тук, за да продължи стартът на приложението!
         }
 
+
+    }
+
 // response обикновено съдържа ID на съобщението или "OK"
+    private void meta() {
+        String accessToken = "EAAOeqLFcsikBRlWoAqar2WZAmuBd9mumOS1giQGkomzTkgv1BgColKdXlFYhQupR2HZAGsNBEn49ljQzZCTa6xaJ6O1xT9hQDfbVgkFp2OeAEnW7cwyax9UpZCPxuejQCMlVUVOukBcAp7BMS3cEv52PgxgcmpEswV97LlPZBvXlsZBUVMWreHPAshOxE0nQjh3qodNZAkCorZB6lcT8ZAczQlGGDrVsJ3rIAt5NU5PfRXBGjvJCfbSYv6ZAb7K6G6IDRspvzBI4hi7M55Eu0ZD";
+        String adAccountId = "act_636762158736104";
+        Map<String, Object> myAdAccounts = metaAdsService.getMyAdAccounts(accessToken);
+        System.out.println(myAdAccounts);
+        Map<String, Object> body = metaAdsService.getCampaignInsights(adAccountId, accessToken);
+        System.out.println(body);
     }
 
     private void initAdmin() {
