@@ -682,7 +682,8 @@ public class WpProductService {
                     log.info("Изтрит локален мапинг за снимка {} от сайт {}", img.getId(), currentSite.getName());
                 }
             }
-        } else {
+        }
+        else {
             // Глобално - за ВСИЧКИ сайтове (няма избран сайт)
             for (WpProductImageEntity img : entity.getImages()) {
                 if (!incomingIds.contains(img.getId())) {
@@ -754,7 +755,7 @@ public class WpProductService {
 
         // Асинхронна синхронизация
         try {
-            wpProductAsyncService.updateProductOnSites(entity, dto.getLastEditedSiteId());
+            wpProductAsyncService.updateProductOnSites(entity, dto.getLastEditedSiteId(), dto.getImages());
         } catch (Exception e) {
             log.error("Async sync error: {}", e.getMessage());
         }

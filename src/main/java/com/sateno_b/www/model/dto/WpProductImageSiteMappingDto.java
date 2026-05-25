@@ -9,4 +9,5 @@ public class WpProductImageSiteMappingDto {
     private Long wpMediaId;
     private String wpUrl;
     private Long siteId;
+    private Integer orderIndex;
 }

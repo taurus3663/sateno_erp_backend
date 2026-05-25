@@ -154,6 +154,7 @@ public class WpProductController {
                         WpProductImageSiteMappingDto mappingDto = new WpProductImageSiteMappingDto();
                         mappingDto.setId(mapping.getId());
                         mappingDto.setWpMediaId(mapping.getWpMediaId());
+                        mappingDto.setOrderIndex(mapping.getOrderIndex());
 
                         // ВАЖНО: Трябва ни siteId, за да работи филтърът в Angular
                         if (mapping.getSite() != null) {
