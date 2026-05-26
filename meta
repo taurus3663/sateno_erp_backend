@@ -1,3 +1,58 @@
-EAAOeqLFcsikBRqFEicCU0gCKMXvH6pYXZBiFkUEVmySScNAvFXnfcboHXKuZCagcGHwI1iI40YVAgTWcDgZBKZBF3rQkb9jgU0uD84N9NnMgUFtu5ZARPfKlNnvQaaW8X6Kbeal8nlpqE4QiTs1ZCwcFMDZBp2dn2wtxnD7TpQOkC8tvgHEANkLxb5ksZCLYDqpFG5Lre0awafEf1iAhCPPnE13FTc4ZCVQFFMjHrBD9YYr9rjSpuXT9kxpCxhYRyYEFZCuxcsnpuygO1pih4ZD
+   String accessToken = "EAANZAKuM0VOoBRtdwe5z7eRTtT49voey2jEWopUd4qnDOF4iwNpGcuX6Sdje62p5rPIVnNc21jAGUktYYhWyjyuI69HwAK2xc3h5wqlv23Ch1IZAntFRPlZCLzejoTdT3RTsQ3B7YxGD9KbdcLRBZCCcbjfJDRYaPCS0UrCmAwC5t4v0ZBsA0Hwz4jP3vXRus7QZDZD";
+        String adAccountId = "act_636762158736104";
+        Map<String, Object> myAdAccounts = metaAdsService.getMyAdAccounts(accessToken);
+        System.out.println(myAdAccounts);
+        Map<String, Object> body = metaAdsService.getCampaignInsights(adAccountId, accessToken);
+        System.out.println(body);
 
-27153492157633778
+      {data=[{campaign_name=[mm] Prospecting | Image & Video Testing | ABO,
+       spend=401.26,
+        clicks=1186,
+         impressions=35671,
+          cpc=0.338331,
+           cpm=11.248914,
+            ctr=3.32483,
+             date_start=2026-04-26,
+              date_stop=2026-05-25},
+
+               {campaign_name=[mm] Prospecting | Banners | CBO - Test Audiences,
+                spend=266.34,
+                 clicks=860,
+                  impressions=28197,
+                   cpc=0.309698,
+                    cpm=9.445686,
+                     ctr=3.04997,
+                      date_start=2026-04-26,
+                       date_stop=2026-05-25},
+
+                        {campaign_name=[mm] Easter Campaign | DPA,
+                         spend=37.11,
+                          clicks=94,
+                           impressions=4167,
+                            cpc=0.394787,
+                             cpm=8.905688,
+                              ctr=2.25582,
+                               date_start=2026-04-26,
+                                date_stop=2026-05-25},
+
+                                 {campaign_name=Prospecting-DPA-ABO-[mm],
+                                  spend=751.05,
+                                   clicks=2299,
+                                    impressions=116878,
+                                     cpc=0.326686,
+                                     cpm=6.425931,
+                                      ctr=1.967008,
+                                       date_start=2026-04-26,
+                                        date_stop=2026-05-25},
+
+                                         {campaign_name=Remarketing-DPA-ABO-[mm],
+                                          spend=193.56,
+                                          clicks=554,
+                                          impressions=28505,
+                                           cpc=0.349386,
+                                            cpm=6.790388,
+                                             ctr=1.943519,
+                                              date_start=2026-04-26,
+                                               date_stop=2026-05-25}],
+
+                                               paging={cursors={before=MAZDZD, after=NAZDZD}}}

@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 @Data
 public class MetaAdsRecordEntity extends BaseEntity {
 
-    private String campaignName;
     private Double spend;
     private Integer clicks;
     private Integer impressions;
@@ -23,5 +22,10 @@ public class MetaAdsRecordEntity extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ad_id")
     private MetaAdsEntity ad;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "campaign_name_id")
+    private MetaAdsCampaignName campaignName;
+
 
 }
