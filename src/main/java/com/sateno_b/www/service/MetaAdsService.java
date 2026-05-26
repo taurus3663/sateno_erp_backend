@@ -30,8 +30,8 @@ public class MetaAdsService {
         String accountId = adAccountId.startsWith("act_") ? adAccountId : "act_" + adAccountId;
         String dateRangeJson = "{\"since\":\"2026-05-01\",\"until\":\"2026-05-25\"}";
         String encodedDateRange = UriUtils.encode(dateRangeJson, StandardCharsets.UTF_8);
-        String endpoint = accountId + "/insights?level=campaign&fields=campaign_name,spend,clicks,impressions,cpc,cpm,ctr" +
-                "&time_range=" + encodedDateRange;
+        String endpoint = accountId + "/insights?level=campaign&fields=campaign_name,spend,clicks,impressions,cpc,cpm,ctr";
+//                "&time_range=" + encodedDateRange;
         return fetchFromMeta(endpoint, accessToken);
     }
 

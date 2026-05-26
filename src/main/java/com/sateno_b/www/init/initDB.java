@@ -97,7 +97,8 @@ public class initDB implements CommandLineRunner {
 
 // response обикновено съдържа ID на съобщението или "OK"
     private void meta() {
-        String accessToken = "EAAOeqLFcsikBRlWoAqar2WZAmuBd9mumOS1giQGkomzTkgv1BgColKdXlFYhQupR2HZAGsNBEn49ljQzZCTa6xaJ6O1xT9hQDfbVgkFp2OeAEnW7cwyax9UpZCPxuejQCMlVUVOukBcAp7BMS3cEv52PgxgcmpEswV97LlPZBvXlsZBUVMWreHPAshOxE0nQjh3qodNZAkCorZB6lcT8ZAczQlGGDrVsJ3rIAt5NU5PfRXBGjvJCfbSYv6ZAb7K6G6IDRspvzBI4hi7M55Eu0ZD";
+//        String accessToken = "EAAOeqLFcsikBRonwIxB1GsCL0QCMgiPY7hWsOwkdPE5cYc2xfEuZBrIZB3z8I1Tfe1ALxocUgGUj9jWqb2ldagab4lM8wdZCcpKmDL3FYWutmaFy5KwwlHFKVKJB89tDP7i9dWHKbAj1w6M2ZCDXFkzPG8BR65Avm2g79mQYImEAuJWfD5jOiTMtRuigogEigbQcy0RhmbO7jvDvDrmYjM2h2ZAt3ZBmbodKTR";
+        String accessToken = "EAANZAKuM0VOoBRtdwe5z7eRTtT49voey2jEWopUd4qnDOF4iwNpGcuX6Sdje62p5rPIVnNc21jAGUktYYhWyjyuI69HwAK2xc3h5wqlv23Ch1IZAntFRPlZCLzejoTdT3RTsQ3B7YxGD9KbdcLRBZCCcbjfJDRYaPCS0UrCmAwC5t4v0ZBsA0Hwz4jP3vXRus7QZDZD";
         String adAccountId = "act_636762158736104";
         Map<String, Object> myAdAccounts = metaAdsService.getMyAdAccounts(accessToken);
         System.out.println(myAdAccounts);
