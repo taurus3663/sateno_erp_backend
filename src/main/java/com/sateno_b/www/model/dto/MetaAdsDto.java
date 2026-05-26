@@ -9,4 +9,5 @@ public class MetaAdsDto {
     private String adAccountId;
     private String accessToken;
     private String name;
+    private boolean active;
 }

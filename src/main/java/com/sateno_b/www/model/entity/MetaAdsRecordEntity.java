@@ -12,11 +12,17 @@ import lombok.RequiredArgsConstructor;
 @Data
 public class MetaAdsRecordEntity extends BaseEntity {
 
+    @Column
     private Double spend;
+    @Column
     private Integer clicks;
+    @Column
     private Integer impressions;
+    @Column
     private Double cpc;
+    @Column
     private Double cpm;
+    @Column
     private Double ctr;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -1,15 +1,20 @@
 package com.sateno_b.www.service;
 
+import com.sateno_b.www.model.entity.MetaAdsEntity;
+import com.sateno_b.www.model.repository.MetaAdsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +24,7 @@ public class MetaAdsService {
     private final RestClient restClient;
     private static final String API_VERSION = "v25.0";
     private static final String BASE_URL = "https://graph.facebook.com/" + API_VERSION + "/";
+    private final MetaAdsRepository metaAdsRepository;
 
     // А) Списък с всички рекламни акаунти, до които имаш достъп
     public Map<String, Object> getMyAdAccounts(String accessToken) {
@@ -45,5 +51,23 @@ public class MetaAdsService {
                 })
                 .retrieve()
                 .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+    }
+
+
+    @Scheduled(fixedRate = 1, timeUnit = TimeUnit.HOURS)
+    private void checkAds() {
+        List<MetaAdsEntity> list = metaAdsRepository.findAllByActiveTrue(true);
+
+        for (MetaAdsEntity metaAdsEntity : list) {
+
+            Map<String, Object> campaignInsights = getCampaignInsights(metaAdsEntity.getAdAccountId(), metaAdsEntity.getAccessToken());
+
+
+
+        }
+
+
+
+
     }
 }

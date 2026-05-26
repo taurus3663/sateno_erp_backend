@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Data;
@@ -13,8 +14,13 @@ import lombok.RequiredArgsConstructor;
 @Data
 public class MetaAdsEntity extends BaseEntity {
 
+    @Column
     private String adAccountId;
+    @Column
     private String accessToken;
+    @Column
     private String name;
+    @Column(columnDefinition = "boolean default true")
+    private boolean active;
 
 }

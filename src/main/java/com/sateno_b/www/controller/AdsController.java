@@ -63,6 +63,7 @@ public class AdsController {
             metaAdsEntity.setAccessToken(dto.getAccessToken());
             metaAdsEntity.setAdAccountId(dto.getAdAccountId());
             metaAdsEntity.setName(dto.getName());
+            metaAdsEntity.setActive(dto.isActive());
         }
 
         MetaAdsEntity saved = metaAdsRepository.save(metaAdsEntity);
