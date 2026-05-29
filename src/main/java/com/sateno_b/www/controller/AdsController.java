@@ -1,7 +1,10 @@
 package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.MetaAdsDto;
+import com.sateno_b.www.model.entity.MetaAdsCampaignName;
 import com.sateno_b.www.model.entity.MetaAdsEntity;
+import com.sateno_b.www.model.repository.MetaAdsCampaignNameRepository;
+import com.sateno_b.www.model.repository.MetaAdsRecordRepository;
 import com.sateno_b.www.model.repository.MetaAdsRepository;
 import com.sateno_b.www.service.MetaAdsService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +16,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -23,6 +27,8 @@ public class AdsController {
     private final MetaAdsService metaAdsService;
     private final ModelMapper modelMapper;
     private final MetaAdsRepository metaAdsRepository;
+    private final MetaAdsCampaignNameRepository metaAdsCampaignNameRepository;
+    private final MetaAdsRecordRepository metaAdsRecordRepository;
 
 
     @GetMapping("/meta/list")
@@ -68,6 +74,23 @@ public class AdsController {
 
         MetaAdsEntity saved = metaAdsRepository.save(metaAdsEntity);
         return ResponseEntity.ok(modelMapper.map(saved, MetaAdsDto.class));
+    }
+
+    @GetMapping("/meta/campaign/{id}")
+    public ResponseEntity<Object> getCampaign(@PathVariable Long id) {
+        MetaAdsEntity referenceById = metaAdsRepository.getReferenceById(id);
+
+        List<MetaAdsCampaignName> distinctCampaignsByAd = metaAdsRecordRepository.findDistinctCampaignsByAd(referenceById);
+
+
+        return ResponseEntity.ok(distinctCampaignsByAd);
+    }
+
+    @GetMapping("/meta/campaign/adsrecords/{id}")
+    public ResponseEntity<Object> getAdsRecords(@PathVariable Long id) {
+        MetaAdsCampaignName referenceById = metaAdsCampaignNameRepository.getReferenceById(id);
+
+        return null;
     }
 
 

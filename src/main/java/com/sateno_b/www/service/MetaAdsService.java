@@ -170,7 +170,7 @@ public class MetaAdsService {
     // ВСЕКИ ЧАС — тегли предишния час
     // в 13:00 тегли 12:00-12:59
     // ===================================================
-    @Scheduled(cron = "0 0 * * * *")
+    @Scheduled(cron = "0 5 * * * *")
     public void syncPreviousHour() {
         Instant previousHour = Instant.now()
                 .truncatedTo(ChronoUnit.HOURS)
@@ -186,6 +186,12 @@ public class MetaAdsService {
                 log.error("[{}] Грешка: {}", account.getName(), e.getMessage());
             }
         }
+    }
+
+    // "Чистач" на пропуски (на всеки 30 минути)
+    @Scheduled(cron = "0 0 0/3 * * *")
+    public void runRecoverySync() {
+        syncMissingHours();
     }
 
     // ===================================================
@@ -299,5 +305,40 @@ public class MetaAdsService {
         if (val instanceof Number n) return n.intValue();
         try { return Integer.parseInt(val.toString()); }
         catch (Exception e) { return 0; }
+    }
+
+
+    // Този метод извикваш в @Scheduled вместо или заедно със syncPreviousHour
+    @Transactional
+    public void syncMissingHours() {
+        List<MetaAdsEntity> activeAccounts = metaAdsRepository.findAllByActiveTrue();
+        // Предишният завършен час — не текущия
+        Instant now = Instant.now().truncatedTo(ChronoUnit.HOURS)
+                .minus(1, ChronoUnit.HOURS);
+
+        for (MetaAdsEntity account : activeAccounts) {
+            Instant lastRecorded = metaAdsRecordRepository.findLatestRecordedAt(account)
+                    .orElse(now.minus(24, ChronoUnit.HOURS));
+
+            // Ако lastRecorded е много назад (backfill още върви) — пропускаме
+            // Recovery-ят се грижи само за последните 24 часа
+            Instant recoveryFrom = now.minus(24, ChronoUnit.HOURS);
+            Instant cursor = lastRecorded.isBefore(recoveryFrom)
+                    ? recoveryFrom
+                    : lastRecorded.plus(1, ChronoUnit.HOURS);
+
+            while (!cursor.isAfter(now)) {
+                log.info("[{}] Наваксване на пропуснат час: {}", account.getName(), cursor);
+                try {
+                    syncInstant(account, cursor);
+                    TimeUnit.MILLISECONDS.sleep(500);
+                } catch (Exception e) {
+                    log.error("[{}] Грешка при наваксване на {}: {}",
+                            account.getName(), cursor, e.getMessage());
+                    break;
+                }
+                cursor = cursor.plus(1, ChronoUnit.HOURS);
+            }
+        }
     }
 }

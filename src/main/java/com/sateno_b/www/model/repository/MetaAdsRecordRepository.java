@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -25,4 +26,10 @@ public interface MetaAdsRecordRepository extends JpaRepository<MetaAdsRecordEnti
     boolean existsByAdAndRecordedAtAndCampaignName(
             MetaAdsEntity ad, Instant recordedAt, MetaAdsCampaignName campaignName
     );
+
+    // В MetaAdsRecordRepository.java
+    @Query("SELECT DISTINCT r.campaignName FROM MetaAdsRecordEntity r WHERE r.ad = :ad")
+    List<MetaAdsCampaignName> findDistinctCampaignsByAd(@Param("ad") MetaAdsEntity ad);
 }
+
+
