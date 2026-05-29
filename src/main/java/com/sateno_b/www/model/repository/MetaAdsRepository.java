@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface MetaAdsRepository extends JpaRepository<MetaAdsEntity, Long> {
-    List<MetaAdsEntity> findAllByActiveTrue(boolean active);
+    List<MetaAdsEntity> findAllByActiveTrue();
 }

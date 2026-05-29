@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,7 +87,7 @@ public class initDB implements CommandLineRunner {
 
 
         try {
-            meta();
+//            meta();
         } catch (Exception e) {
             System.err.println("Meta API инициализацията се провали: " + e.getMessage());
             // НЕ хвърляй RuntimeException тук, за да продължи стартът на приложението!
@@ -98,12 +99,12 @@ public class initDB implements CommandLineRunner {
 // response обикновено съдържа ID на съобщението или "OK"
     private void meta() {
 //        String accessToken = "EAAOeqLFcsikBRonwIxB1GsCL0QCMgiPY7hWsOwkdPE5cYc2xfEuZBrIZB3z8I1Tfe1ALxocUgGUj9jWqb2ldagab4lM8wdZCcpKmDL3FYWutmaFy5KwwlHFKVKJB89tDP7i9dWHKbAj1w6M2ZCDXFkzPG8BR65Avm2g79mQYImEAuJWfD5jOiTMtRuigogEigbQcy0RhmbO7jvDvDrmYjM2h2ZAt3ZBmbodKTR";
-        String accessToken = "EAANZAKuM0VOoBRtdwe5z7eRTtT49voey2jEWopUd4qnDOF4iwNpGcuX6Sdje62p5rPIVnNc21jAGUktYYhWyjyuI69HwAK2xc3h5wqlv23Ch1IZAntFRPlZCLzejoTdT3RTsQ3B7YxGD9KbdcLRBZCCcbjfJDRYaPCS0UrCmAwC5t4v0ZBsA0Hwz4jP3vXRus7QZDZD";
-        String adAccountId = "act_636762158736104";
-        Map<String, Object> myAdAccounts = metaAdsService.getMyAdAccounts(accessToken);
-        System.out.println(myAdAccounts);
-        Map<String, Object> body = metaAdsService.getCampaignInsights(adAccountId, accessToken);
-        System.out.println(body);
+//        String accessToken = "EAANZAKuM0VOoBRtdwe5z7eRTtT49voey2jEWopUd4qnDOF4iwNpGcuX6Sdje62p5rPIVnNc21jAGUktYYhWyjyuI69HwAK2xc3h5wqlv23Ch1IZAntFRPlZCLzejoTdT3RTsQ3B7YxGD9KbdcLRBZCCcbjfJDRYaPCS0UrCmAwC5t4v0ZBsA0Hwz4jP3vXRus7QZDZD";
+//        String adAccountId = "act_636762158736104";
+//        Map<String, Object> myAdAccounts = metaAdsService.getMyAdAccounts(accessToken);
+//        System.out.println(myAdAccounts);
+//        Map<String, Object> body = metaAdsService.getCampaignInsights(adAccountId, accessToken );
+//        System.out.println(body);
     }
 
     private void initAdmin() {

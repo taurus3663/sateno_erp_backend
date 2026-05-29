@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 
+import java.time.Instant;
+
 @EqualsAndHashCode(callSuper = true)
 @RequiredArgsConstructor
 @Table(name = "meta_ads_record")
@@ -32,6 +34,9 @@ public class MetaAdsRecordEntity extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "campaign_name_id")
     private MetaAdsCampaignName campaignName;
+
+    @Column(nullable = false)
+    private Instant recordedAt; // конкретният час: 2026-05-29T12:00:00Z
 
 
 }

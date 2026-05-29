@@ -1,7 +1,9 @@
 package com.sateno_b.www.model.entity;
 
+import com.sateno_b.www.model.listeners.MetaAdsEntityListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -12,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 @Table(name = "meta_ads")
 @Entity
 @Data
+@EntityListeners(MetaAdsEntityListener.class)
 public class MetaAdsEntity extends BaseEntity {
 
     @Column
