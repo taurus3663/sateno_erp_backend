@@ -3,6 +3,7 @@ package com.sateno_b.www.controller;
 import com.sateno_b.www.model.dto.MetaAdsDto;
 import com.sateno_b.www.model.entity.MetaAdsCampaignName;
 import com.sateno_b.www.model.entity.MetaAdsEntity;
+import com.sateno_b.www.model.entity.MetaAdsRecordEntity;
 import com.sateno_b.www.model.repository.MetaAdsCampaignNameRepository;
 import com.sateno_b.www.model.repository.MetaAdsRecordRepository;
 import com.sateno_b.www.model.repository.MetaAdsRepository;
@@ -16,8 +17,15 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/ads")
@@ -86,11 +94,29 @@ public class AdsController {
         return ResponseEntity.ok(distinctCampaignsByAd);
     }
 
-    @GetMapping("/meta/campaign/adsrecords/{id}")
-    public ResponseEntity<Object> getAdsRecords(@PathVariable Long id) {
-        MetaAdsCampaignName referenceById = metaAdsCampaignNameRepository.getReferenceById(id);
+    @GetMapping("/meta/campaign/adsrecords")
+    public ResponseEntity<Object> getAdsRecords(
+            @RequestParam(required = true) Long id,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to
+    ) {
+        MetaAdsCampaignName campaign = metaAdsCampaignNameRepository.findById(id).orElseThrow();
+        List<MetaAdsRecordEntity> records = metaAdsRecordRepository.findByCampaignAndDateRange(
+                campaign, Instant.parse(from), Instant.parse(to));
 
-        return null;
+        boolean isSameDay = LocalDate.ofInstant(Instant.parse(from), ZoneId.of("UTC"))
+                .equals(LocalDate.ofInstant(Instant.parse(to), ZoneId.of("UTC")));
+
+        // Групиране без DTO (използваме Map)
+        Map<String, List<MetaAdsRecordEntity>> grouped = records.stream()
+                .collect(Collectors.groupingBy(r -> {
+                    DateTimeFormatter formatter = isSameDay
+                            ? DateTimeFormatter.ofPattern("HH:mm")
+                            : DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                    return r.getRecordedAt().atZone(ZoneId.of("UTC")).format(formatter);
+                }));
+
+        return ResponseEntity.ok(grouped);
     }
 
 

@@ -30,6 +30,17 @@ public interface MetaAdsRecordRepository extends JpaRepository<MetaAdsRecordEnti
     // В MetaAdsRecordRepository.java
     @Query("SELECT DISTINCT r.campaignName FROM MetaAdsRecordEntity r WHERE r.ad = :ad")
     List<MetaAdsCampaignName> findDistinctCampaignsByAd(@Param("ad") MetaAdsEntity ad);
+
+
+    @Query("SELECT r FROM MetaAdsRecordEntity r " +
+            "WHERE r.campaignName = :campaign " +
+            "AND r.recordedAt >= :start AND r.recordedAt <= :end " +
+            "ORDER BY r.recordedAt ASC")
+    List<MetaAdsRecordEntity> findByCampaignAndDateRange(
+            @Param("campaign") MetaAdsCampaignName campaign,
+            @Param("start") Instant start,
+            @Param("end") Instant end
+    );
 }
 
 
