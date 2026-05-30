@@ -1,6 +1,7 @@
 package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.MetaAdsDto;
+import com.sateno_b.www.model.dto.MetaAdsRecordEntityDto;
 import com.sateno_b.www.model.entity.MetaAdsCampaignName;
 import com.sateno_b.www.model.entity.MetaAdsEntity;
 import com.sateno_b.www.model.entity.MetaAdsRecordEntity;
@@ -20,11 +21,13 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @RestController
@@ -96,26 +99,52 @@ public class AdsController {
 
     @GetMapping("/meta/campaign/adsrecords")
     public ResponseEntity<Object> getAdsRecords(
-            @RequestParam(required = true) Long id,
+            @RequestParam Long id,
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to
     ) {
-        MetaAdsCampaignName campaign = metaAdsCampaignNameRepository.findById(id).orElseThrow();
-        List<MetaAdsRecordEntity> records = metaAdsRecordRepository.findByCampaignAndDateRange(
-                campaign, Instant.parse(from), Instant.parse(to));
+        MetaAdsCampaignName campaign = metaAdsCampaignNameRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Campaign not found"));
 
-        boolean isSameDay = LocalDate.ofInstant(Instant.parse(from), ZoneId.of("UTC"))
-                .equals(LocalDate.ofInstant(Instant.parse(to), ZoneId.of("UTC")));
+        // Дефолт: Цялата текуща година
+        int year = LocalDate.now().getYear();
+        Instant start = (from != null && !from.isEmpty()) ? Instant.parse(from) : LocalDate.of(year, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant end = (to != null && !to.isEmpty()) ? Instant.parse(to) : LocalDate.of(year, 12, 31).atTime(23, 59, 59).toInstant(ZoneOffset.UTC);
 
-        // Групиране без DTO (използваме Map)
-        Map<String, List<MetaAdsRecordEntity>> grouped = records.stream()
+        List<MetaAdsRecordEntity> records = metaAdsRecordRepository.findByCampaignAndDateRange(campaign, start, end);
+
+        // Логика за избор на формат:
+        // 1. Ако е един ден -> "HH:mm"
+        // 2. Ако е един месец или повече -> "yyyy-MM" (за месечно групиране)
+        // 3. Иначе -> "yyyy-MM-dd"
+        Map<String, List<MetaAdsRecordEntityDto>> grouped = records.stream()
                 .collect(Collectors.groupingBy(r -> {
-                    DateTimeFormatter formatter = isSameDay
-                            ? DateTimeFormatter.ofPattern("HH:mm")
-                            : DateTimeFormatter.ofPattern("yyyy-MM-dd");
-                    return r.getRecordedAt().atZone(ZoneId.of("UTC")).format(formatter);
-                }));
+                    LocalDate date = r.getRecordedAt().atZone(ZoneOffset.UTC).toLocalDate();
 
+                    // Проверка за един и същ ден
+                    if (start.equals(end) || LocalDate.ofInstant(start, ZoneOffset.UTC).equals(LocalDate.ofInstant(end, ZoneOffset.UTC))) {
+                        return r.getRecordedAt().atZone(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("HH:mm"));
+                    }
+
+                    // Ако периодът обхваща повече от 31 дни, групирай по месец
+                    if (ChronoUnit.DAYS.between(LocalDate.ofInstant(start, ZoneOffset.UTC), LocalDate.ofInstant(end, ZoneOffset.UTC)) > 31) {
+                        return date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+                    }
+
+                    return date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                }, TreeMap::new, Collectors.mapping(r -> {
+                    MetaAdsRecordEntityDto dto = new MetaAdsRecordEntityDto();
+                    dto.setSpend(r.getSpend());
+                    dto.setClicks(r.getClicks());
+                    dto.setImpressions(r.getImpressions());
+                    dto.setCpc(r.getCpc());
+                    dto.setCpm(r.getCpm());
+                    dto.setCtr(r.getCtr());
+                    dto.setRecordedAt(r.getRecordedAt());
+                    return dto;
+                }, Collectors.toList())));
+
+        System.out.println(grouped.toString());
         return ResponseEntity.ok(grouped);
     }
 
