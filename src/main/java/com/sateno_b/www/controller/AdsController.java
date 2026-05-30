@@ -18,10 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -106,10 +103,17 @@ public class AdsController {
         MetaAdsCampaignName campaign = metaAdsCampaignNameRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Campaign not found"));
 
-        // Дефолт: Цялата текуща година
-        int year = LocalDate.now().getYear();
-        Instant start = (from != null && !from.isEmpty()) ? Instant.parse(from) : LocalDate.of(year, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant end = (to != null && !to.isEmpty()) ? Instant.parse(to) : LocalDate.of(year, 12, 31).atTime(23, 59, 59).toInstant(ZoneOffset.UTC);
+        LocalDate startLocal = (from != null && !from.isEmpty())
+                ? LocalDate.parse(from)
+                : LocalDate.now().withDayOfYear(1);
+
+        LocalDate endLocal = (to != null && !to.isEmpty())
+                ? LocalDate.parse(to)
+                : LocalDate.now();
+
+        // 2. Превръщане в Instant, за да работи със заявката ти
+        Instant start = startLocal.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant end = endLocal.atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC);
 
         List<MetaAdsRecordEntity> records = metaAdsRecordRepository.findByCampaignAndDateRange(campaign, start, end);
 

@@ -34,7 +34,8 @@ public interface MetaAdsRecordRepository extends JpaRepository<MetaAdsRecordEnti
 
     @Query("SELECT r FROM MetaAdsRecordEntity r " +
             "WHERE r.campaignName = :campaign " +
-            "AND r.recordedAt >= :start AND r.recordedAt <= :end " +
+            "AND FUNCTION('DATE', r.recordedAt) >= :start " +
+            "AND FUNCTION('DATE', r.recordedAt) <= :end " +
             "ORDER BY r.recordedAt ASC")
     List<MetaAdsRecordEntity> findByCampaignAndDateRange(
             @Param("campaign") MetaAdsCampaignName campaign,
