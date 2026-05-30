@@ -11,6 +11,7 @@ import java.util.Optional;
 
 @Repository
 public interface CustomerRepository extends JpaRepository<CustomerEntity, Long> {
+    @Query(value = "SELECT * FROM customer c WHERE c.phone = :phone ORDER BY c.create_time DESC LIMIT 1", nativeQuery = true)
     Optional<CustomerEntity> findByPhone(String phone);
 
     @Query("SELECT c FROM CustomerEntity c WHERE c.phone LIKE %:suffix ORDER BY c.id DESC")
