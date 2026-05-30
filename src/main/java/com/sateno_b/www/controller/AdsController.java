@@ -21,10 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -96,12 +93,21 @@ public class AdsController {
 
     @GetMapping("/meta/campaign/adsrecords")
     public ResponseEntity<Object> getAdsRecords(
-            @RequestParam Long id,
+            @RequestParam List<Long> ids,
             @RequestParam(required = false) String from,
-            @RequestParam(required = false) String to
+            @RequestParam(required = false) String to,
+            @RequestParam String timeZone
     ) {
-        MetaAdsCampaignName campaign = metaAdsCampaignNameRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Campaign not found"));
+//        System.out.println(timeZone);
+
+        ZoneId userZone = ZoneId.of(timeZone);
+
+        List<MetaAdsCampaignName> campaigns;
+        if(ids.isEmpty()) {
+            return ResponseEntity.ok(Collections.emptyMap());
+        } else {
+            campaigns = metaAdsCampaignNameRepository.findAllById(ids);
+        }
 
         LocalDate startLocal = (from != null && !from.isEmpty())
                 ? LocalDate.parse(from)
@@ -112,10 +118,12 @@ public class AdsController {
                 : LocalDate.now();
 
         // 2. Превръщане в Instant, за да работи със заявката ти
-        Instant start = startLocal.atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant end = endLocal.atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC);
+//        Instant start = startLocal.atStartOfDay(ZoneOffset.UTC).toInstant();
+//        Instant end = endLocal.atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC);
+        Instant start = startLocal.atStartOfDay(userZone).toInstant();
+        Instant end = endLocal.atTime(LocalTime.MAX).atZone(userZone).toInstant();
 
-        List<MetaAdsRecordEntity> records = metaAdsRecordRepository.findByCampaignAndDateRange(campaign, start, end);
+        List<MetaAdsRecordEntity> records = metaAdsRecordRepository.findByCampaignAndDateRange(campaigns, start, end);
 
         // Логика за избор на формат:
         // 1. Ако е един ден -> "HH:mm"
@@ -123,19 +131,25 @@ public class AdsController {
         // 3. Иначе -> "yyyy-MM-dd"
         Map<String, List<MetaAdsRecordEntityDto>> grouped = records.stream()
                 .collect(Collectors.groupingBy(r -> {
-                    LocalDate date = r.getRecordedAt().atZone(ZoneOffset.UTC).toLocalDate();
+                    ZonedDateTime zonedDateTime = r.getRecordedAt().atZone(userZone);
+                    LocalDate localDate = zonedDateTime.toLocalDate();
 
-                    // Проверка за един и същ ден
-                    if (start.equals(end) || LocalDate.ofInstant(start, ZoneOffset.UTC).equals(LocalDate.ofInstant(end, ZoneOffset.UTC))) {
-                        return r.getRecordedAt().atZone(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("HH:mm"));
+                    // Превърни Instant-ите в LocalDate за сравнение
+                    LocalDate startDate = start.atZone(userZone).toLocalDate();
+                    LocalDate endDate = end.atZone(userZone).toLocalDate();
+
+                    // 1. Ако началната и крайната дата са еднакви -> HH:mm
+                    if (startDate.equals(endDate)) {
+                        return zonedDateTime.format(DateTimeFormatter.ofPattern("HH:mm"));
                     }
 
-                    // Ако периодът обхваща повече от 31 дни, групирай по месец
-                    if (ChronoUnit.DAYS.between(LocalDate.ofInstant(start, ZoneOffset.UTC), LocalDate.ofInstant(end, ZoneOffset.UTC)) > 31) {
-                        return date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+                    // 2. Ако периодът обхваща повече от 31 дни -> yyyy-MM
+                    if (ChronoUnit.DAYS.between(startDate, endDate) > 31) {
+                        return zonedDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM"));
                     }
 
-                    return date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                    // 3. Иначе -> yyyy-MM-dd
+                    return zonedDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
                 }, TreeMap::new, Collectors.mapping(r -> {
                     MetaAdsRecordEntityDto dto = new MetaAdsRecordEntityDto();
                     dto.setSpend(r.getSpend());
@@ -148,7 +162,6 @@ public class AdsController {
                     return dto;
                 }, Collectors.toList())));
 
-        System.out.println(grouped.toString());
         return ResponseEntity.ok(grouped);
     }
 
