@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
@@ -40,6 +41,7 @@ public class initDB implements CommandLineRunner {
     private final CustomerRepository customerRepository;
     private final DiscountPhoneRepository discountPhoneRepository;
     private final MetaAdsService metaAdsService;
+    private final GoogleAdsService googleAdsService;
 
     @Override
     public void run(String... args) throws Exception {
@@ -88,11 +90,12 @@ public class initDB implements CommandLineRunner {
 
         try {
 //            meta();
+//            googleApi();
         } catch (Exception e) {
             System.err.println("Meta API инициализацията се провали: " + e.getMessage());
             // НЕ хвърляй RuntimeException тук, за да продължи стартът на приложението!
         }
-
+        googleApi();
 
     }
 
@@ -246,5 +249,19 @@ public class initDB implements CommandLineRunner {
 
             pageNumber++;
         } while (page.hasNext());
+    }
+
+    private void googleApi() {
+        try {
+            System.out.println("T2");
+            List<String> campaignNames = googleAdsService.getCampaignNames(7532974920L);
+            System.out.println("T");
+//            System.out.println(campaignNames);
+//            System.out.println(campaignNames.size());
+//            googleAdsService.gen();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 }
