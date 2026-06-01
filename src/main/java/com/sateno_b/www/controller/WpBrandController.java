@@ -61,8 +61,8 @@ public class WpBrandController {
 //                }).orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping("/sync/{siteId}")
-    public void syncWpBrand(@PathVariable Long siteId){
-        wpBrandService.syncBrandsToDB(siteId);
-    }
+//    @PostMapping("/sync/{siteId}")
+//    public void syncWpBrand(@PathVariable Long siteId){
+//        wpBrandService.syncBrandsToDB(siteId);
+//    }
 }

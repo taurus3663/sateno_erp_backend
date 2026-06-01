@@ -16,6 +16,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @Component
 @RequiredArgsConstructor
@@ -232,9 +233,11 @@ public class WpCategoryAsyncService {
         return translated;
     }
 
-    public boolean syncWpCategoryToSite(Long siteId) {
+    @Async
+    public CompletableFuture<Boolean> syncWpCategoryToSite(Long siteId) {
         List<WpCategoryEntity> all = wpCategoryRepository.findAll();
 
+        // Сортираме, за да се създадат първо главните категории (без родител)
         all.sort((a, b) -> {
             if (a.getParent() == null && b.getParent() != null) return -1;
             if (a.getParent() != null && b.getParent() == null) return 1;
@@ -242,90 +245,125 @@ public class WpCategoryAsyncService {
         });
 
         SiteEntity site = siteRepository.findById(siteId).orElse(null);
-        if(site == null) return false;
+        if(site == null) return CompletableFuture.completedFuture(false);
 
         for (WpCategoryEntity wpCategoryEntity : all) {
+            try {
+                // 1. Търсим съществуващ мапинг
+                WpCategorySiteMappingEntity mapping = wpCategorySiteMappingRepository
+                        .findByWpCategoryAndSite(wpCategoryEntity, site)
+                        .orElse(null);
 
-            WpCategoryTranslationEntity baseTranslation = wpCategoryEntity.getTranslations().get(0);
-            LanguageEntity baseLanguage = baseTranslation.getLanguage();
+                // --- 2. ЛОГИКА ЗА ПРЕВОД С CHATGPT ---
+                WpCategoryTranslationEntity translation = wpCategoryEntity.getTranslations().stream()
+                        .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
+                        .findFirst()
+                        .orElse(null);
 
-//            List<SiteEntity> siteList = siteRepository.findAll();
-//            for (SiteEntity site : siteList) {
+                String targetName = "";
 
-                try {
-                    // 1. Търсим съществуващ мапинг
-                    WpCategorySiteMappingEntity mapping = wpCategorySiteMappingRepository
-                            .findByWpCategoryAndSite(wpCategoryEntity, site)
-                            .orElse(null);
+                if (translation == null || translation.getName() == null || translation.getName().isEmpty()) {
+                    log.info("Преводът липсва за категория ID {} на език {}. Стартиране на ChatGPT превод...",
+                            wpCategoryEntity.getId(), site.getLanguage().getName());
 
-                    // 2. Логика за името (превод) - същата като досега
-                    LanguageEntity siteLanguage = site.getLanguage();
-                    String targetName = getOrTranslateName(wpCategoryEntity, baseTranslation, baseLanguage, siteLanguage);
+                    // Вземаме базата (Български, ID 1) от sateno.bg
+                    WpCategoryTranslationEntity base = wpCategoryEntity.getTranslations().stream()
+                            .filter(t -> t.getLanguage().getId() == 1L)
+                            .findFirst()
+                            .orElse(wpCategoryEntity.getTranslations().get(0)); // Фалбек към първия наличен
 
-                    // 3. Логика за родителя (Parent)
-                    Long wpParentId = 0L;
-                    if (wpCategoryEntity.getParent() != null) {
-                        // ВЗЕМАМЕ РОДИТЕЛЯ ОТ БАЗАТА, ЗА ДА СМЕ СИГУРНИ, ЧЕ Е ТАМ
-                        WpCategoryEntity parentEntity = wpCategoryEntity.getParent();
+                    String targetLang = site.getLanguage().getName();
+                    String sourceLang = base.getLanguage().getName();
 
-                        // Търсим мапинга на родителя
-                        wpParentId = wpCategorySiteMappingRepository
-                                .findByWpCategoryAndSite(parentEntity, site)
-                                .map(WpCategorySiteMappingEntity::getWpId)
-                                .orElse(0L);
+                    String namePrompt = String.format(
+                            "Translate this e-commerce category name from %s to %s: '%s'. " +
+                                    "IMPORTANT: Return ONLY the translated string. Do not include any quotes, explanations, or introductory text.",
+                            sourceLang, targetLang, base.getName()
+                    );
 
-                        if (wpParentId == 0) {
-                            log.warn("Родителят на категория {} все още няма WP_ID за сайт {}. Категорията ще бъде създадена като главна.",
-                                    wpCategoryEntity.getId(), site.getUrl());
-                        }
+                    targetName = chatGptService.translateText(base.getName(), namePrompt);
+
+                    // Записваме новия превод в базата данни
+                    if (translation == null) {
+                        translation = new WpCategoryTranslationEntity();
+                        translation.setWpCategory(wpCategoryEntity); // Увери се, че сетърът се казва setWpCategory (или setCategory)
+                        translation.setLanguage(site.getLanguage());
                     }
+                    translation.setName(targetName);
 
-                    // 4. Подготовка на Auth и Body
-                    String auth = Base64.getEncoder().encodeToString(
-                            (site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+                    // ЗАБЕЛЕЖКА: Трябва да имаш wpCategoryTranslationRepository инжектирано в сървиса
+                    wpCategoryTranslationRepository.save(translation);
 
-                    Map<String, Object> body = new HashMap<>();
-                    body.put("name", targetName);
-                    body.put("parent", wpParentId);
+                    // Добавяме го и в паметта
+                    wpCategoryEntity.getTranslations().add(translation);
 
-                    if (mapping != null) {
-                        // --- UPDATE ---
-                        restClient.put()
-                                .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories/" + mapping.getWpId())
-                                .header("Authorization", "Basic " + auth)
-                                .body(body)
-                                .retrieve()
-                                .toBodilessEntity();
-                        log.info("Успешно обновен сайт {}: WP_ID {}", site.getUrlWithHttps(), mapping.getWpId());
-
-                    } else {
-                        // --- CREATE (Ако мапингът липсва) ---
-                        Map<String, Object> response = restClient.post()
-                                .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories")
-                                .header("Authorization", "Basic " + auth)
-                                .body(body)
-                                .retrieve()
-                                .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
-
-                        if (response != null && response.containsKey("id")) {
-                            WpCategorySiteMappingEntity newMapping = new WpCategorySiteMappingEntity();
-                            newMapping.setWpCategory(wpCategoryEntity);
-                            newMapping.setSite(site);
-                            newMapping.setWpId(Long.valueOf(response.get("id").toString()));
-                            newMapping.setSlug(response.get("slug").toString());
-
-                            wpCategorySiteMappingRepository.save(newMapping);
-                            log.info("Създадена липсваща категория в сайт {}: WP_ID {}", site.getUrlWithHttps(), newMapping.getWpId());
-                        }
-                    }
-
-                } catch (Exception e) {
-                    log.error("Грешка при обработка на сайт {}: {}", site.getUrlWithHttps(), e.getMessage());
+                    log.info("Успешен превод за категория ID {}: {}", wpCategoryEntity.getId(), targetName);
+                } else {
+                    targetName = translation.getName();
                 }
-//            }
+                // --- КРАЙ НА ЛОГИКАТА ЗА ПРЕВОД ---
+
+                // 3. Логика за родителя (Parent)
+                Long wpParentId = 0L;
+                if (wpCategoryEntity.getParent() != null) {
+                    WpCategoryEntity parentEntity = wpCategoryEntity.getParent();
+
+                    wpParentId = wpCategorySiteMappingRepository
+                            .findByWpCategoryAndSite(parentEntity, site)
+                            .map(WpCategorySiteMappingEntity::getWpId)
+                            .orElse(0L);
+
+                    if (wpParentId == 0) {
+                        log.warn("Родителят на категория {} все още няма WP_ID за сайт {}. Категорията ще бъде създадена като главна.",
+                                wpCategoryEntity.getId(), site.getUrl());
+                    }
+                }
+
+                // 4. Подготовка на Auth и Body
+                String auth = Base64.getEncoder().encodeToString(
+                        (site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+
+                Map<String, Object> body = new HashMap<>();
+                body.put("name", targetName);
+                body.put("parent", wpParentId);
+
+                if (mapping != null) {
+                    // --- UPDATE ---
+                    restClient.put()
+                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories/" + mapping.getWpId())
+                            .header("Authorization", "Basic " + auth)
+                            .body(body)
+                            .retrieve()
+                            .toBodilessEntity();
+                    log.info("Успешно обновен сайт {}: WP_ID {}", site.getUrlWithHttps(), mapping.getWpId());
+
+                } else {
+                    // --- CREATE (Ако мапингът липсва) ---
+                    Map<String, Object> response = restClient.post()
+                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories")
+                            .header("Authorization", "Basic " + auth)
+                            .body(body)
+                            .retrieve()
+                            .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
+
+                    if (response != null && response.containsKey("id")) {
+                        WpCategorySiteMappingEntity newMapping = new WpCategorySiteMappingEntity();
+                        newMapping.setWpCategory(wpCategoryEntity);
+                        newMapping.setSite(site);
+                        newMapping.setWpId(Long.valueOf(response.get("id").toString()));
+                        newMapping.setSlug(response.get("slug").toString());
+
+                        wpCategorySiteMappingRepository.save(newMapping);
+                        log.info("Създадена липсваща категория в сайт {}: WP_ID {}", site.getUrlWithHttps(), newMapping.getWpId());
+                    }
+                }
+
+            } catch (Exception e) {
+                log.error("Грешка при обработка на сайт {}: {}", site.getUrlWithHttps(), e.getMessage());
+            }
         }
 
-        return true;
+        return CompletableFuture.completedFuture(true);
     }
 
 }

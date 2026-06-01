@@ -16,6 +16,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @Component
 @RequiredArgsConstructor
@@ -25,6 +26,7 @@ public class WpBrandAsyncService {
     private final SiteRepository siteRepository;
     private final RestClient restClient;
     private final WpBrandRepository wpBrandRepository;
+
 
     @Transactional(readOnly = true)
     @Async
@@ -94,6 +96,61 @@ public class WpBrandAsyncService {
             log.error("Синхронизацията беше прекъсната: {}", ie.getMessage());
         } catch (Exception e) {
             log.error("Грешка в асинхронния процес за брандове: {}", e.getMessage());
+        }
+    }
+
+    @Async
+    @Transactional(readOnly = true)
+    public CompletableFuture<Boolean> syncAllBrandsToSite(Long siteId) {
+        try {
+            SiteEntity site = siteRepository.findById(siteId).orElse(null);
+            if (site == null) return CompletableFuture.completedFuture(false);
+
+            List<WpBrandEntity> all = wpBrandRepository.findAll();
+            String auth = "Basic " + Base64.getEncoder().encodeToString(
+                    (site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+            String baseUrl = site.getUrlWithHttps() + "/wp-json/wc/v3/products/brands";
+
+            for (WpBrandEntity brand : all) {
+                try {
+                    List<Map<String, Object>> existing = restClient.get()
+                            .uri(baseUrl + "?slug=" + brand.getSlug())
+                            .header("Authorization", auth)
+                            .retrieve()
+                            .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+
+                    Map<String, Object> body = new HashMap<>();
+                    body.put("name", brand.getName());
+                    body.put("slug", brand.getSlug());
+
+                    if (existing != null && !existing.isEmpty()) {
+                        Object wpId = existing.get(0).get("id");
+                        restClient.put()
+                                .uri(baseUrl + "/" + wpId)
+                                .header("Authorization", auth)
+                                .body(body)
+                                .retrieve()
+                                .toBodilessEntity();
+                        log.info("Обновен бранд {} в сайт {}", brand.getName(), site.getUrl());
+                    } else {
+                        restClient.post()
+                                .uri(baseUrl)
+                                .header("Authorization", auth)
+                                .body(body)
+                                .retrieve()
+                                .toBodilessEntity();
+                        log.info("Създаден бранд {} в сайт {}", brand.getName(), site.getUrl());
+                    }
+                } catch (Exception e) {
+                    log.error("Грешка при бранд {} в сайт {}: {}", brand.getName(), site.getUrl(), e.getMessage());
+                }
+            }
+
+            return CompletableFuture.completedFuture(true);
+
+        } catch (Exception e) {
+            log.error("Критична грешка при syncAllBrandsToSite: {}", e.getMessage());
+            return CompletableFuture.completedFuture(false);
         }
     }
 }

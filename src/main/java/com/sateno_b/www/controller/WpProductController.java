@@ -299,11 +299,11 @@ public class WpProductController {
 //        return true;
 //    }
 
-//    @PostMapping("/sync/to/{siteId}")
-//    public boolean syncWpProductsToSite(@PathVariable Long siteId) {
-//        wpProductService.syncProductsToSite(siteId);
-//        return true;
-//    }
+    @PostMapping("/sync/to/{siteId}")
+    public boolean syncWpProductsToSite(@PathVariable Long siteId) {
+        wpProductService.syncProductsToSite(siteId);
+        return true;
+    }
 
 //    @PostMapping("/sync/products/web/{siteId}")
 //    public boolean syncWpProductsToWeb(@PathVariable Long siteId) {

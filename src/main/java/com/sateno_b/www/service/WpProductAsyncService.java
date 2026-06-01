@@ -1184,14 +1184,11 @@ public class WpProductAsyncService {
 
 
         // --- КРИТИЧНА ЧАСТ: FORCE INITIALIZATION ---
-        // Форсираме зареждането на адоните и ВСИЧКИ техни преводи за ВСИЧКИ езици
         if (product.getAddonConfig() != null) {
             product.getAddonConfig().forEach(config -> {
-                // Инициализираме стойността на адона
                 WpAddonValueEntity val = config.getAddonValue();
-                val.getTranslations().size(); // Зарежда преводите на стойността (напр. "Червен")
+                val.getTranslations().size();
 
-                // Инициализираме групата и нейните преводи (напр. "Цвят")
                 if (val.getGroups() != null && !val.getGroups().isEmpty()) {
                     val.getGroups().forEach(group -> group.getTranslations().size());
                 }
@@ -1200,26 +1197,21 @@ public class WpProductAsyncService {
         // --- КРАЙ НА ИНИЦИАЛИЗАЦИЯТА ---
 
 
-//        List<SiteEntity> siteList = siteRepository.findAll();
         List<SiteEntity> siteList;
 
-        // Ако lastEditedSiteId е null (т.е. нов продукт или глобална промяна), вземаме всички сайтове
-        if (lastEditedSiteId == null) {
-            siteList = siteRepository.findAll();
-//            log.info("Стартиране на глобална синхронизация за SKU: {}", product.getSku());
-        } else {
-            // Ако е подаден конкретен сайт, обновяваме само него
+//        if (lastEditedSiteId == null) {
+//            siteList = siteRepository.findAll();
+//        }
+//        else {
             siteList = siteRepository.findById(lastEditedSiteId)
-                    .map(List::of) // Превръщаме в списък с един елемент
+                    .map(List::of)
                     .orElse(Collections.emptyList());
-//            log.info("Стартиране на локална синхронизация за SKU: {} само за сайт ID: {}", product.getSku(), lastEditedSiteId);
-        }
-
-
-//        System.out.println(lastEditedSiteId);
+//        }
+            if(siteList.isEmpty() || siteList.get(0).getUrl().contains("sateno.bg")) {
+                log.error("ERROR because there is selected sateno.bg");
+                return;
+            }
         for (SiteEntity site : siteList) {
-//            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
-//            System.out.println(site.toString());
             try {
                 String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
 
@@ -1234,10 +1226,9 @@ public class WpProductAsyncService {
                     log.warn("Продукт с SKU {} не е намерен в сайта {}", product.getSku(), site.getUrl());
                     isNewProduct = true;
                 }
-
+                List<Map<String, Object>> currentMeta = new ArrayList<>();
                 if(!isNewProduct) {
-                    log.info("continue because already has");
-                    continue;
+                    currentMeta = (List<Map<String, Object>>) searchResponse.get(0).get("meta_data");
                 }
 
                 Map<String, Object> updateBody = new HashMap<>();
@@ -1252,16 +1243,6 @@ public class WpProductAsyncService {
                     updateBody.put("stock_status", "instock");
                 }
 
-//                DESCRIPTION
-//                for (WpProductTranslationEntity translation : product.getTranslations()) {
-//                    if(translation.getLanguage() == site.getLanguage()) {
-//                        updateBody.put("short_description", translation.getShortDescription());
-//                        updateBody.put("description", translation.getDescription());
-//                        updateBody.put("name", translation.getName());
-//                        break;
-//                    }
-//                }
-
                 // 1. Опит за намиране на съществуващ превод за езика на сайта
                 WpProductTranslationEntity translation = product.getTranslations().stream()
                         .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
@@ -1272,17 +1253,14 @@ public class WpProductAsyncService {
                     log.info("Преводът липсва за SKU {} на език {}. Стартиране на ChatGPT превод...",
                             product.getSku(), site.getLanguage().getName());
 
-                    // Вземаме изходния текст (обикновено първия наличен превод, напр. Български)
-                    // НАМИРАМЕ БЪЛГАРСКИЯ ПРЕВОД (id: 1) КАТО ИЗТОЧНИК
                     WpProductTranslationEntity base = product.getTranslations().stream()
-                            .filter(t -> t.getLanguage().getId() == 1L) // Тук приемаме, че BG ID е 1
+                            .filter(t -> t.getLanguage().getId() == 1L)
                             .findFirst()
                             .orElse(null);
 
                     String targetLang = site.getLanguage().getName();
                     String sourceLang = base.getLanguage().getName();
 
-                    // Превод на Името
                     String namePrompt = String.format(
                             "Translate this e-commerce product name from %s to %s: '%s'. " +
                                     "IMPORTANT: Return ONLY the translated string. Do not include any quotes, explanations, or introductory text.",
@@ -1290,7 +1268,6 @@ public class WpProductAsyncService {
                     );
                     String translatedName = chatGptService.translateText(base.getName(), namePrompt);
 
-                    // Превод на Краткото описание
                     String translatedShort = "";
                     if (base.getShortDescription() != null && !base.getShortDescription().isEmpty()) {
                         String shortPrompt = String.format("Translate this product short description from %s to %s. Keep it concise: '%s'",
@@ -1298,7 +1275,6 @@ public class WpProductAsyncService {
                         translatedShort = chatGptService.translateText(base.getShortDescription(), shortPrompt);
                     }
 
-                    // Превод на Дългото описание (с внимание към HTML)
                     String translatedDesc = "";
                     if (base.getDescription() != null && !base.getDescription().isEmpty()) {
                         String descPrompt = String.format("Translate this product description from %s to %s. IMPORTANT: Preserve all HTML tags and structure exactly as they are.",
@@ -1306,7 +1282,6 @@ public class WpProductAsyncService {
                         translatedDesc = chatGptService.translateText(base.getDescription(), descPrompt);
                     }
 
-                    // 2. Запис в базата данни, за да не се превежда отново при следващ синк
                     if(translation == null) {
                         translation = new WpProductTranslationEntity();
                     }
@@ -1317,107 +1292,75 @@ public class WpProductAsyncService {
                     translation.setDescription(translatedDesc);
 
                     wpProductTranslationRepository.save(translation);
-
-                    // Добавяме го в списъка на обекта в паметта, за да го ползваме веднага
                     product.getTranslations().add(translation);
 
                     log.info("Успешен превод за SKU {} на език {}", product.getSku(), targetLang);
                 }
 
-// 3. Попълваме тялото на заявката към WooCommerce
                 updateBody.put("name", translation.getName());
                 updateBody.put("short_description", cleanHtml(translation.getShortDescription()));
                 updateBody.put("description", cleanHtml(translation.getDescription()));
 
 
-
-// --- PRICE LOGIC ---
-// 1. Намираме базовата конфигурация (винаги от sateno.bg)
+                // PRICE
                 WpProductSiteConfigEntity baseConfig = product.getSiteConfigs().stream()
                         .filter(c -> c.getSite().getUrl().contains("sateno.bg"))
                         .findFirst()
                         .orElse(null);
 
-                if (baseConfig != null) {
-                    BigDecimal baseRegularPrice = baseConfig.getRegularPrice();
-                    BigDecimal baseSalePrice = baseConfig.getPrice();
+                BigDecimal regularPrice = BigDecimal.ZERO;
+                BigDecimal salePrice = null;
 
-                    String sourceCurrency = baseConfig.getSite().getCurrency().getCode();
-                    // 2. Вземаме валутата на ТЕКУЩИЯ сайт в цикъла (напр. RON или EUR)
-                    String targetCurrency = site.getCurrency().getCode();
+                if (baseConfig != null && baseConfig.getRegularPrice() != null && baseConfig.getRegularPrice().compareTo(BigDecimal.ZERO) > 0) {
+                    // 1. Взимаме валутите
+                    String sourceCurrency = baseConfig.getSite().getCurrency().getCode(); // Валутата на sateno.bg
+                    String targetCurrency = site.getCurrency().getCode(); // Валутата на новия сайт
 
-                    // 3. ПРЕВАЛУТИРАНЕ (Винаги приемаме източника за EUR)
-                    BigDecimal convertedRegular = currencyService.convert(baseRegularPrice, sourceCurrency, targetCurrency);
-                    BigDecimal convertedSale = (baseSalePrice != null && baseSalePrice.compareTo(BigDecimal.ONE) >= 0)
-                            ? currencyService.convert(baseSalePrice, sourceCurrency, targetCurrency)
-                            : null;
+                    // 2. Превалутираме, ако са различни
+                    if (!sourceCurrency.equals(targetCurrency)) {
+                        regularPrice = currencyService.convert(baseConfig.getRegularPrice(), sourceCurrency, targetCurrency);
+                        salePrice = (baseConfig.getPrice() != null && baseConfig.getPrice().compareTo(BigDecimal.ZERO) > 0)
+                                ? currencyService.convert(baseConfig.getPrice(), sourceCurrency, targetCurrency)
+                                : null;
+                    } else {
+                        // Ако случайно са еднакви, просто ги прехвърляме
+                        regularPrice = baseConfig.getRegularPrice();
+                        salePrice = baseConfig.getPrice();
+                    }
+                } else {
+                    log.warn("SKU {}: Липсва цена в базовата конфигурация (sateno.bg)! Продуктът ще се качи с цена 0.", product.getSku());
+                }
 
-                    // 4. Попълваме тялото за WooCommerce
-                    updateBody.put("regular_price", convertedRegular.toString());
+                // 3. Попълваме в заявката към WooCommerce
+                if (regularPrice.compareTo(BigDecimal.ZERO) >= 0) {
+                    updateBody.put("regular_price", regularPrice.toString());
 
-                    if (convertedSale != null) {
-                        updateBody.put("sale_price", convertedSale.toString());
-                        updateBody.put("price", convertedSale.toString());
+                    if (salePrice != null && salePrice.compareTo(BigDecimal.ZERO) > 0) {
+                        updateBody.put("sale_price", salePrice.toString());
+                        updateBody.put("price", salePrice.toString()); // Основната цена става промоционалната
                     } else {
                         updateBody.put("sale_price", "");
-                        updateBody.put("price", convertedRegular.toString());
+                        updateBody.put("price", regularPrice.toString()); // Основната цена става редовната
                     }
-
-                    log.info("SKU {}: Превалутирана цена за сайт {} ({}): {} EUR -> {} {}",
-                            product.getSku(), site.getUrl(), targetCurrency, baseRegularPrice, convertedRegular, targetCurrency);
-                } else {
-                    log.error("Критична грешка: Липсва базова конфигурация (sateno.bg) за SKU {}", product.getSku());
-                    // Тук можеш да решиш дали да спреш (return) или да продължиш с цена 0
                 }
-// --- ОБНОВЕНА ЛОГИКА ЗА ЦЕНИ ---
 
-// 1. Намираме базовата конфигурация от sateno.bg (за справка)
-//                WpProductSiteConfigEntity bgConfig = product.getSiteConfigs().stream()
-//                        .filter(c -> c.getSite().getUrl().contains("sateno.bg"))
-//                        .findFirst()
-//                        .orElse(null);
+
+
+
+
+//                for (WpProductSiteConfigEntity siteConfig : product.getSiteConfigs()) {
+//                    if(Objects.equals(siteConfig.getSite().getId(), site.getId())) {
+//                        updateBody.put("price", siteConfig.getRegularPrice().toString());
+//                        updateBody.put("regular_price", siteConfig.getRegularPrice().toString());
+//                        String salePriceStr = (siteConfig.getPrice() != null && siteConfig.getPrice().compareTo(BigDecimal.ONE) >= 0)
+//                                ? siteConfig.getPrice().toString()
+//                                : "";
 //
-//                BigDecimal fallbackRegular = (bgConfig != null) ? bgConfig.getRegularPrice() : BigDecimal.ZERO;
-//                BigDecimal fallbackSale = (bgConfig != null) ? bgConfig.getPrice() : null;
-//
-//// 2. Намираме конфигурацията за текущия сайт в цикъла
-//                WpProductSiteConfigEntity currentSiteConfig = product.getSiteConfigs().stream()
-//                        .filter(sc -> sc.getSite().getId().equals(site.getId()))
-//                        .findFirst()
-//                        .orElse(null);
-//
-//// Ако за текущия сайт изобщо липсва конфигурация в базата, създаваме я
-//                if (currentSiteConfig == null) {
-//                    currentSiteConfig = new WpProductSiteConfigEntity();
-//                    currentSiteConfig.setProduct(product);
-//                    currentSiteConfig.setSite(site);
-//                    product.getSiteConfigs().add(currentSiteConfig);
+//                        updateBody.put("sale_price", salePriceStr);
+//                    }
 //                }
-//
-//// 3. ПРОВЕРКА И РЕМОНТ: Ако цената е 0 или null, взимаме тази от sateno.bg
-//                if (currentSiteConfig.getRegularPrice() == null || currentSiteConfig.getRegularPrice().compareTo(BigDecimal.ZERO) <= 0) {
-//                    log.info("SKU {}: Коригирам цена за {}, ползвам фалбек от sateno.bg: {}",
-//                            product.getSku(), site.getUrl(), fallbackRegular);
-//
-//                    currentSiteConfig.setRegularPrice(fallbackRegular);
-//                    currentSiteConfig.setPrice(fallbackSale);
-//                    // Благодарение на @Transactional, промяната ще се запише в БД автоматично в края
-//                }
-//
-//// 4. Попълваме updateBody за WooCommerce
-//                updateBody.put("regular_price", currentSiteConfig.getRegularPrice().toString());
-//
-//                String salePriceStr = (currentSiteConfig.getPrice() != null && currentSiteConfig.getPrice().compareTo(BigDecimal.ONE) >= 0)
-//                        ? currentSiteConfig.getPrice().toString()
-//                        : "";
-//                updateBody.put("sale_price", salePriceStr);
-//
-//// Основната цена в WP (price) трябва да е активната (промоционалната или редовната)
-//                updateBody.put("price", !salePriceStr.isEmpty() ? salePriceStr : currentSiteConfig.getRegularPrice().toString());
 
-
-
-//                BRAND
+                // BRAND
                 if(product.getBrand() != null) {
                     var searchResponseBrand = restClient.get()
                             .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/brands?slug=" + product.getBrand().getSlug())
@@ -1431,61 +1374,27 @@ public class WpProductAsyncService {
                     }
 
                     if(wpBrandId != null) {
-
                         Map<String, Object> brandObject = new HashMap<>();
                         brandObject.put("id", wpBrandId);
-
                         updateBody.put("brands", List.of(brandObject));
                     }
                 }
 
-//                CATEGORIES
-//                List<Map<String, Object>> categoriesList = new ArrayList<>();
-//                for (WpCategoryEntity category : product.getCategories()) {
-//                    var searchResponseCategory = restClient.get()
-//                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories?slug=" + category.getSlug())
-//                            .header("Authorization", "Basic " + auth)
-//                            .retrieve()
-//                            .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
-//
-//                    if (searchResponseCategory != null && !searchResponseCategory.isEmpty()) {
-//                        Long wpCategoryId = Long.valueOf(searchResponseCategory.get(0).get("id").toString());
-//
-//                        // 2. За всяка категория създаваме НОВ обект Map
-//                        Map<String, Object> categoryItem = new HashMap<>();
-//                        categoryItem.put("id", wpCategoryId);
-//
-//                        // 3. Добавяме го в списъка
-//                        categoriesList.add(categoryItem);
-//                    }
-//                }
-//                if (!categoriesList.isEmpty()) {
-//                    updateBody.put("categories", categoriesList);
-//                }
-
-//                IMAGES
-
-                //                CATEGORIES
+                // CATEGORIES
                 List<Map<String, Object>> categoriesList = new ArrayList<>();
                 if (product.getCategories() != null) {
                     for (WpCategoryEntity category : product.getCategories()) {
 
-                        // 1. Търсим мапинга в нашата база данни за този конкретен сайт
-                        // Използваме репозиторито, което вече трябва да имаш инжектирано
                         Optional<WpCategorySiteMappingEntity> mappingOpt =
                                 wpCategorySiteMappingRepository
                                         .findByWpCategoryAndSite(category, site);
 
                         if (mappingOpt.isPresent()) {
-                            // Ако имаме запис, вземаме директно wpId
                             Long wpCategoryId = mappingOpt.get().getWpId();
-
                             Map<String, Object> categoryItem = new HashMap<>();
                             categoryItem.put("id", wpCategoryId);
                             categoriesList.add(categoryItem);
                         } else {
-                            // 2. ФАЛБЕК: Ако по някаква причина нямаме мапинг, търсим по slug в API-то
-                            // (Това е твоята стара логика, но като резервен вариант)
                             log.warn("Няма мапинг за категория {} в сайт {}. Търсене чрез API...", category.getSlug(), site.getUrl());
 
                             var searchResponseCategory = restClient.get()
@@ -1499,71 +1408,186 @@ public class WpProductAsyncService {
                                 Map<String, Object> categoryItem = new HashMap<>();
                                 categoryItem.put("id", wpCategoryId);
                                 categoriesList.add(categoryItem);
-
-                                // Опционално: Създай мапинг тук, за да не търсиш следващия път
                             }
                         }
                     }
                 }
 
-                // Винаги подаваме списъка (дори и празен, ако искаме да изчистим категориите в WP)
                 updateBody.put("categories", categoriesList);
 
-
+                // --- ЛОГИКА ЗА СНИМКИТЕ ---
                 List<Map<String, Object>> imageList = new ArrayList<>();
+                Map<String, Object> finalVideoGalleryMap = new HashMap<>();
+
                 if (product.getImages() != null) {
 
-                    // 1. СОРТИРАНЕ: Основната снимка отива първа
-                    List<WpProductImageEntity> sortedImages = product.getImages().stream()
-                            .sorted((a, b) -> Boolean.compare(b.getIsPrimary(), a.getIsPrimary()))
+                    List<WpProductImageEntity> erpVideos = product.getImages().stream()
+                            .filter(WpProductImageEntity::isVideo)
                             .toList();
 
+                    // 1. Оптимизация: Превръщаме DTO масива в Map за много бързо търсене на индекси
+                    Map<Long, Integer> orderMap = new HashMap<>();
+//                    if (order != null) {
+//                        for (int i = 0; i < order.size(); i++) {
+//                            if (order.get(i).getId() != null) {
+//                                orderMap.put(order.get(i).getId(), i);
+//                            }
+//                        }
+//                    }
+
+                    // 2. СОРТИРАНЕ: isPrimary ВИНАГИ първо, след това по orderIndex
+                    List<WpProductImageEntity> sortedImages = product.getImages().stream()
+                            .filter(e -> !e.isVideo())
+                            .sorted((a, b) -> {
+                                // 1. Абсолютен приоритет за Primary (Винаги най-отпред)
+                                boolean aIsPrimary = Boolean.TRUE.equals(a.getIsPrimary());
+                                boolean bIsPrimary = Boolean.TRUE.equals(b.getIsPrimary());
+
+                                if (aIsPrimary && !bIsPrimary) return -1;
+                                if (!aIsPrimary && bIsPrimary) return 1;
+
+                                // 2. Ако нито една не е Primary (или и двете са), сортираме по масива order
+                                if (!orderMap.isEmpty()) {
+                                    int indexA = orderMap.getOrDefault(a.getId(), Integer.MAX_VALUE);
+                                    int indexB = orderMap.getOrDefault(b.getId(), Integer.MAX_VALUE);
+
+                                    if (indexA != indexB) {
+                                        return Integer.compare(indexA, indexB);
+                                    }
+                                }
+
+                                return 0;
+                            })
+                            .toList();
+
+                    // 3. ОБРАБОТКА И ЗАПИС НА orderIndex В БАЗАТА
+                    int currentOrderIndex = 0;
                     for (WpProductImageEntity imgEntity : sortedImages) {
-                        // 2. Проверка дали снимката вече е качена в ТЕКУЩИЯ сайт
+
                         Optional<WpProductImageSiteMappingEntity> mappingOpt = wpProductImageSiteMappingRepository
                                 .findByProductImageIdAndSite(imgEntity.getId(), site);
 
-                        Long wpMediaId;
+                        WpProductImageSiteMappingEntity mappingToSave = null;
 
                         if (mappingOpt.isPresent()) {
-                            // Снимката вече я има в този сайт - вземаме съществуващото ID
-                            wpMediaId = mappingOpt.get().getWpMediaId();
-                            log.info("Снимка {} вече съществува в сайт {} с ID {}", imgEntity.getId(), site.getUrl(), wpMediaId);
+                            // Снимката вече я има в този сайт
+                            mappingToSave = mappingOpt.get();
+                            if (mappingToSave.getWpMediaId() != null) {
+                                Map<String, Object> imgMap = new HashMap<>();
+                                imgMap.put("id", mappingToSave.getWpMediaId());
+                                imageList.add(imgMap);
+                            }
                         } else {
-                            // Снимката ЛИПСВА в този сайт - КАЧВАМЕ Я
-                            log.info("Качване на снимка {} към сайт {}: {}", imgEntity.getId(), site.getUrl(), imgEntity.getLocalSrc());
-                            wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
+                            boolean isBrandNewImage = imgEntity.getSiteMappings() == null || imgEntity.getSiteMappings().isEmpty();
 
-                            if (wpMediaId != null) {
-                                // Записваме мапинга, за да не я качваме втори път за този сайт
-                                WpProductImageSiteMappingEntity newMapping = new WpProductImageSiteMappingEntity();
-                                newMapping.setWpMediaId(wpMediaId);
-                                newMapping.setSite(site);
-                                newMapping.setProductImage(imgEntity);
-                                wpProductImageSiteMappingRepository.save(newMapping);
+                            if (isBrandNewImage) {
+                                log.info("Качване на НОВА снимка към сайт {}: {}", site.getUrl(), imgEntity.getLocalSrc());
+                                Long wpMediaId = imageToWordPress.uploadImageToWordPress(site, imgEntity.getLocalSrc());
+
+                                if (wpMediaId != null) {
+                                    mappingToSave = new WpProductImageSiteMappingEntity();
+                                    mappingToSave.setWpMediaId(wpMediaId);
+                                    mappingToSave.setSite(site);
+                                    mappingToSave.setProductImage(imgEntity);
+
+                                    Map<String, Object> imgMap = new HashMap<>();
+                                    imgMap.put("id", wpMediaId);
+                                    imageList.add(imgMap);
+                                }
+                            } else {
+                                log.info("Снимка {} е локална за друг сайт. Пропускам качване в {}.",
+                                        imgEntity.getId(), site.getUrl());
                             }
                         }
 
-                        // 3. ПРИКАЧВАНЕ: Добавяме ID-то към списъка за WooCommerce (ако качването е успешно)
-                        if (wpMediaId != null) {
-                            Map<String, Object> imgMap = new HashMap<>();
-                            imgMap.put("id", wpMediaId);
-                            imageList.add(imgMap);
+                        // ОБНОВЯВАМЕ orderIndex В МАСИВА
+                        if (mappingToSave != null) {
+                            mappingToSave.setOrderIndex(currentOrderIndex);
+                            wpProductImageSiteMappingRepository.save(mappingToSave);
+                        }
+
+                        currentOrderIndex++;
+                    }
+
+                    // ВИДЕА (остават непроменени)
+                    for (WpProductImageEntity video : erpVideos) {
+                        if (video.getParent() == null) continue;
+
+                        Optional<WpProductImageSiteMappingEntity> videoMappingOpt = wpProductImageSiteMappingRepository
+                                .findByProductImageIdAndSite(video.getId(), site);
+
+                        Long wpVideoId = null;
+                        String wpVideoUrl = null;
+
+                        if (videoMappingOpt.isPresent()) {
+                            wpVideoId = videoMappingOpt.get().getWpMediaId();
+                            wpVideoUrl = videoMappingOpt.get().getWpUrl();
+                        } else {
+                            boolean isBrandNewVideo = video.getSiteMappings() == null || video.getSiteMappings().isEmpty();
+
+                            if (isBrandNewVideo) {
+                                log.info("🎬 Качване на НОВО видео към сайт {}: {}", site.getUrl(), video.getLocalSrc());
+                                Map<String, Object> uploadResult = imageToWordPress.uploadVideoToWordPress(site, video.getLocalSrc());
+
+                                if (uploadResult != null && uploadResult.containsKey("id")) {
+                                    wpVideoId = Long.valueOf(uploadResult.get("id").toString());
+                                    wpVideoUrl = uploadResult.get("url").toString();
+
+                                    WpProductImageSiteMappingEntity newVideoMapping = new WpProductImageSiteMappingEntity();
+                                    newVideoMapping.setWpMediaId(wpVideoId);
+                                    newVideoMapping.setSite(site);
+                                    newVideoMapping.setProductImage(video);
+                                    newVideoMapping.setWpUrl(wpVideoUrl);
+                                    wpProductImageSiteMappingRepository.save(newVideoMapping);
+                                }
+                            } else {
+                                log.info("Видео {} е локално за друг сайт. Пропускам качване в {}.", video.getId(), site.getUrl());
+                            }
+                        }
+
+                        if (wpVideoId != null) {
+                            Optional<WpProductImageSiteMappingEntity> imgMappingOpt = wpProductImageSiteMappingRepository
+                                    .findByProductImageIdAndSite(video.getParent().getId(), site);
+
+                            if (imgMappingOpt.isPresent()) {
+                                String parentWpMediaIdStr = imgMappingOpt.get().getWpMediaId().toString();
+
+                                if (wpVideoUrl != null || !finalVideoGalleryMap.containsKey(parentWpMediaIdStr)) {
+                                    Map<String, Object> videoDetails = new HashMap<>();
+                                    videoDetails.put("video_type", "mp4");
+                                    videoDetails.put("upload_video_id", wpVideoId.toString());
+                                    if (wpVideoUrl != null) {
+                                        videoDetails.put("upload_video_url", wpVideoUrl);
+                                    }
+                                    videoDetails.put("autoplay", "0");
+                                    videoDetails.put("video_size", "contain");
+                                    videoDetails.put("video_control", "theme");
+                                    videoDetails.put("hide_gallery_img", "0");
+                                    videoDetails.put("hide_information", "0");
+                                    videoDetails.put("audio_status", "unmute");
+
+                                    finalVideoGalleryMap.put(parentWpMediaIdStr, videoDetails);
+                                }
+                            }
                         }
                     }
                 }
-// Подаваме финалния списък към тялото на заявката
+
                 updateBody.put("images", imageList);
-//                }
+
+                currentMeta.removeIf(meta -> "woodmart_wc_video_gallery".equals(meta.get("key")));
+                Map<String, Object> videoMetaEntry = new HashMap<>();
+                videoMetaEntry.put("key", "woodmart_wc_video_gallery");
+                videoMetaEntry.put("value", finalVideoGalleryMap);
+                currentMeta.add(videoMetaEntry);
+                updateBody.put("meta_data", currentMeta);
 
 
                 CurrencyEntity currency = site.getCurrency();
 
-                // 7. ADDONS (FORCE GENERATION)
+                // 7. ADDONS
                 List<Map<String, Object>> wooAddons = generateWooAddons(product, site, currency);
                 updateBody.put("addons", wooAddons);
-
-
 
 
                 if(isNewProduct) {
@@ -1586,7 +1610,6 @@ public class WpProductAsyncService {
                             .retrieve()
                             .toBodilessEntity();
 
-
                     Set<Long> erpWpMediaIds = imageList.stream()
                             .map(img -> Long.valueOf(img.get("id").toString()))
                             .collect(Collectors.toSet());
@@ -1594,74 +1617,22 @@ public class WpProductAsyncService {
                     List<Map<String, Object>> wpImagesFromSearch = (List<Map<String, Object>>) searchResponse.get(0).get("images");
 
                     if (wpImagesFromSearch != null) {
-                        // Намираме кои ID-та съществуват в WP, но ги няма в нашия нов списък от ERP
                         Set<Long> idsToDeleteFromMediaLibrary = wpImagesFromSearch.stream()
                                 .map(img -> Long.valueOf(img.get("id").toString()))
-                                .filter(id -> !erpWpMediaIds.contains(id)) // Ако го няма в ERP списъка -> за триене
+                                .filter(id -> !erpWpMediaIds.contains(id))
                                 .collect(Collectors.toSet());
 
-                        // 3. Физическо триене от Media Library
                         if (!idsToDeleteFromMediaLibrary.isEmpty()) {
                             imageToWordPress.deleteMediaOneByOne(site, idsToDeleteFromMediaLibrary, auth);
                             log.info("Изтрити са {} излишни медийни файла от сайт {}", idsToDeleteFromMediaLibrary.size(), site.getUrl());
                         }
                     }
-
-
-//                    // Взимаме WordPress ID-то от първия намерен резултат
-//                    Integer wpId = (Integer) searchResponse.get(0).get("id");
-//
-//                    restClient.patch()
-//                            .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
-//                            .header("Authorization", "Basic " + auth)
-//                            .body(updateBody)
-//                            .retrieve()
-//                            .toBodilessEntity();
-////                System.out.println(wpId);
-////                System.out.println(authorization.getBody());
-//                    log.info("Успешно обновен sale_price за SKU {}", product.getSku());
-//
-//                    Map<String, Object> wpProduct = searchResponse.get(0);
-//                    List<Map<String, Object>> currentWpImages = (List<Map<String, Object>>) wpProduct.get("images");
-//                    imageToWordPress.deleteMediaOneByOne(
-//                            site,
-//                            currentWpImages.stream()
-//                                    .map(e -> Long.valueOf(e.get("id").toString())) // Безопасно конвертиране
-//                                    .collect(Collectors.toSet()),
-//                            auth
-//                    );
                 }
-//                if(currentWpImages != null && !currentWpImages.isEmpty()) {
-//                    for (Map<String, Object> image : currentWpImages) {
-//                        Integer mediaId = (Integer) image.get("id");
-//
-//                        if (mediaId != null && mediaId > 0) {
-//                            try {
-//                                // ФИЗИЧЕСКО ИЗТРИВАНЕ ОТ MEDIA LIBRARY (за да няма кеш и боклук)
-//                                // Използваме стандартното WordPress API (wp/v2/media)
-//                                restClient.delete()
-//                                        .uri(site.getUrlWithHttps() + "/wp-json/wp/v2/media/" + mediaId + "?force=true")
-//                                        .header("Authorization", "Basic " + auth)
-//                                        .retrieve()
-//                                        .toBodilessEntity();
-//
-//                                log.info("Изтрита медия ID {} от сайт {}", mediaId, site.getUrl());
-//                            } catch (Exception e) {
-//                                // Често се случва снимката вече да е изтрита ръчно или от друг процес
-//                                log.warn("Грешка при триене на медия {}: {}", mediaId, e.getMessage());
-//                            }
-//                        }
-//
-//                    }
-//                }
+
             } catch (Exception e) {
                 log.error("Грешка при обновяване на сайт {}: {}", site.getUrl(), e.getMessage());
             }
-
-
-
         }
-
 
     }
 }

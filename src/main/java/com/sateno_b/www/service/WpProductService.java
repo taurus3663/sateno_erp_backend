@@ -39,8 +39,10 @@ import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -78,6 +80,8 @@ public class WpProductService {
     private final CurrencyService currencyService;
     private final SchemeWpProductRepository schemeWpProductRepository;
     private final UserRepository userRepository;
+    private final WpCategoryAsyncService wpCategoryAsyncService;
+    private final WpBrandAsyncService wpBrandAsyncService;
 
 
     @Transactional
@@ -120,6 +124,27 @@ public class WpProductService {
          throw new RuntimeException("sateno.bg");
         }
 
+        try { clearAllProductsFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на продукти: {}", e.getMessage()); return; }
+        try { clearAllCategoriesFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на категории: {}", e.getMessage()); return; }
+        try { clearAllBrandsFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на брандове: {}", e.getMessage()); return; }
+
+//        populate Categories
+       try {
+           CompletableFuture<Boolean> categoryCompletableFuture = wpCategoryAsyncService.syncWpCategoryToSite(siteId);
+           CompletableFuture<Boolean> brandCompletableFuture = wpBrandAsyncService.syncAllBrandsToSite(siteId);
+
+           CompletableFuture.allOf(categoryCompletableFuture, brandCompletableFuture).join();
+
+           if (!categoryCompletableFuture.get() || !brandCompletableFuture.get()) {
+               return;
+           }
+       } catch (Exception e) {
+           log.error("Грешка при синхронизация на категории и брандове: {}", e.getMessage());
+           return;
+       }
+
+
+
         List<WpProductEntity> productList = wpProductRepository.findAll();
 //        ExecutorService executor = Executors.newFixedThreadPool(10);
         AtomicInteger count = new AtomicInteger();
@@ -130,7 +155,6 @@ public class WpProductService {
 //                    return;
 //                }
                try {
-//                    clearAllProductsFromSite(site);
                    wpProductAsyncService.updateProductOnSitesOnlyNewSiteUpload(product, siteId);
 //                   wpProductAsyncService.updateProductOnSitesOnlyPrices(product, siteId);
 //                   log.info("Успешно създаден нов продукт с SKU {} в сайт {}", product.getSku(), site.getUrl());
@@ -1020,12 +1044,16 @@ public class WpProductService {
 //            throw new RuntimeException("sateno.bg");
 //        }
 //
-////        try { clearAllProductsFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на продукти: {}", e.getMessage()); }
-////        try { clearAllCategoriesFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на категории: {}", e.getMessage()); }
-////        try { clearAllBrandsFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на брандове: {}", e.getMessage()); }
+//        try { clearAllProductsFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на продукти: {}", e.getMessage()); }
+//        try { clearAllCategoriesFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на категории: {}", e.getMessage()); }
+//        try { clearAllBrandsFromSite(site); } catch (Exception e) { log.error("Грешка при чистене на брандове: {}", e.getMessage()); }
 //
-//        // Взимаме тестовия продукт
-////        WpProductEntity product = wpProductRepository.findById(533L).orElseThrow();
+//        CompletableFuture<Boolean> categoryCompletableFuture = wpCategoryAsyncService.syncWpCategoryToSite(siteId);
+//        CompletableFuture<Boolean> brandCompletableFuture = wpBrandAsyncService.syncAllBrandsToSite(siteId);
+//
+//        CompletableFuture.allOf(categoryCompletableFuture, brandCompletableFuture).join();
+//
+//
 //        AtomicInteger count = new AtomicInteger(1);
 //        List<WpProductEntity> allWithAddons = wpProductRepository.findAll();
 //        ExecutorService executor = Executors.newFixedThreadPool(10);

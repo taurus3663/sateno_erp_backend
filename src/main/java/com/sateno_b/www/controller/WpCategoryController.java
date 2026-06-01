@@ -34,11 +34,11 @@ public class WpCategoryController {
     private final WpCategoryService wpCategoryService;
     private final WpCategoryAsyncService  wpCategoryAsyncService;
 
-    @PostMapping("/sync/{siteId}")
-    public boolean syncWpCategory(@PathVariable Long siteId) {
-                wpCategoryService.syncCategoriesToDatabase(siteId);
-                return true;
-    }
+//    @PostMapping("/sync/{siteId}")
+//    public boolean syncWpCategory(@PathVariable Long siteId) {
+//                wpCategoryService.syncCategoriesToDatabase(siteId);
+//                return true;
+//    }
 
 
     @GetMapping("/list")
