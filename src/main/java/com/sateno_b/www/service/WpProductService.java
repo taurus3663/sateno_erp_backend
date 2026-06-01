@@ -1667,10 +1667,10 @@ protected void clearAllProductsFromSite(SiteEntity site) {
             // Филтрираме ID 18 (обикновено Uncategorized), защото не може да се трие
             List<Long> idsToDelete = response.stream()
                     .map(m -> Long.valueOf(m.get("id").toString()))
-                    .filter(id -> id != 18) // Замени 18 с ID-то на твоята default категория ако е различно
+//                    .filter(id -> id != 18) // Замени 18 с ID-то на твоята default категория ако е различно
                     .toList();
 
-            if (idsToDelete.isEmpty()) break;
+            if (idsToDelete.isEmpty() || idsToDelete.size() == 1) break;
 
             Map<String, Object> deleteBody = Map.of("delete", idsToDelete);
 

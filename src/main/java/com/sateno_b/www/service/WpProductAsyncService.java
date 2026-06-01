@@ -1303,32 +1303,53 @@ public class WpProductAsyncService {
 
 
                 // PRICE
+                WpProductSiteConfigEntity currentSiteConfig = product.getSiteConfigs().stream()
+                        .filter(c -> c.getSite().getId().equals(site.getId()))
+                        .findFirst()
+                        .orElse(null);
+                // Ако нямаме конфигурация за този сайт, създаваме я
+                boolean isNewConfig = false;
+                if (currentSiteConfig == null) {
+                    currentSiteConfig = new WpProductSiteConfigEntity();
+                    currentSiteConfig.setProduct(product);
+                    currentSiteConfig.setSite(site);
+                    isNewConfig = true;
+                }
+
                 WpProductSiteConfigEntity baseConfig = product.getSiteConfigs().stream()
                         .filter(c -> c.getSite().getUrl().contains("sateno.bg"))
                         .findFirst()
                         .orElse(null);
 
+
                 BigDecimal regularPrice = BigDecimal.ZERO;
                 BigDecimal salePrice = null;
 
                 if (baseConfig != null && baseConfig.getRegularPrice() != null && baseConfig.getRegularPrice().compareTo(BigDecimal.ZERO) > 0) {
-                    // 1. Взимаме валутите
-                    String sourceCurrency = baseConfig.getSite().getCurrency().getCode(); // Валутата на sateno.bg
-                    String targetCurrency = site.getCurrency().getCode(); // Валутата на новия сайт
+                    String sourceCurrency = baseConfig.getSite().getCurrency().getCode();
+                    String targetCurrency = site.getCurrency().getCode();
 
-                    // 2. Превалутираме, ако са различни
                     if (!sourceCurrency.equals(targetCurrency)) {
                         regularPrice = currencyService.convert(baseConfig.getRegularPrice(), sourceCurrency, targetCurrency);
                         salePrice = (baseConfig.getPrice() != null && baseConfig.getPrice().compareTo(BigDecimal.ZERO) > 0)
                                 ? currencyService.convert(baseConfig.getPrice(), sourceCurrency, targetCurrency)
                                 : null;
                     } else {
-                        // Ако случайно са еднакви, просто ги прехвърляме
                         regularPrice = baseConfig.getRegularPrice();
                         salePrice = baseConfig.getPrice();
                     }
                 } else {
                     log.warn("SKU {}: Липсва цена в базовата конфигурация (sateno.bg)! Продуктът ще се качи с цена 0.", product.getSku());
+                }
+
+                // ЗАПИСВАМЕ в нашата база данни
+                currentSiteConfig.setRegularPrice(regularPrice);
+                currentSiteConfig.setPrice(salePrice);
+
+                if (isNewConfig) {
+                    // Ако имаш wpProductSiteConfigRepository го ползвай тук:
+                    // wpProductSiteConfigRepository.save(currentSiteConfig);
+                    product.getSiteConfigs().add(currentSiteConfig);
                 }
 
                 // 3. Попълваме в заявката към WooCommerce
@@ -1337,10 +1358,10 @@ public class WpProductAsyncService {
 
                     if (salePrice != null && salePrice.compareTo(BigDecimal.ZERO) > 0) {
                         updateBody.put("sale_price", salePrice.toString());
-                        updateBody.put("price", salePrice.toString()); // Основната цена става промоционалната
+                        updateBody.put("price", salePrice.toString());
                     } else {
                         updateBody.put("sale_price", "");
-                        updateBody.put("price", regularPrice.toString()); // Основната цена става редовната
+                        updateBody.put("price", regularPrice.toString());
                     }
                 }
 
@@ -1408,6 +1429,13 @@ public class WpProductAsyncService {
                                 Map<String, Object> categoryItem = new HashMap<>();
                                 categoryItem.put("id", wpCategoryId);
                                 categoriesList.add(categoryItem);
+
+                                WpCategorySiteMappingEntity fallbackMapping = new WpCategorySiteMappingEntity();
+                                fallbackMapping.setWpCategory(category);
+                                fallbackMapping.setSite(site);
+                                fallbackMapping.setWpId(wpCategoryId);
+                                wpCategorySiteMappingRepository.save(fallbackMapping);
+                                log.info("Запазен е липсващ мапинг за категория {} с WP_ID {}", category.getSlug(), wpCategoryId);
                             }
                         }
                     }

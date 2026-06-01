@@ -42,10 +42,12 @@ public class initDB implements CommandLineRunner {
     private final DiscountPhoneRepository discountPhoneRepository;
     private final MetaAdsService metaAdsService;
     private final GoogleAdsService googleAdsService;
+    private final WpProductService wpProductService;
 
     @Override
     public void run(String... args) throws Exception {
         initAdmin();
+//        wpProductService.syncProductsToSite(1L);
 //        sendEmailTest();
 //        callAi();
 //        nekorektenService.checkPhone("0888182076");
