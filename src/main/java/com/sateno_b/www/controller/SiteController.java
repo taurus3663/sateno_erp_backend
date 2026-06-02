@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @RestController
@@ -137,14 +138,17 @@ public class SiteController {
 
         SiteEntity saved = siteRepository.save(siteEntity);
 
-        for (SiteEntity site : siteRepository.findAll()) {
-            if (site.getId() != saved.getId()) {
-                if(site.isDefault()){
-                    site.setDefault(false);
-                    siteRepository.save(site);
+        if(siteEntity.isDefault()) {
+            for (SiteEntity site : siteRepository.findAll()) {
+                if (!Objects.equals(site.getId(), saved.getId())) {
+                    if(site.isDefault()){
+                        site.setDefault(false);
+                        siteRepository.save(site);
+                    }
                 }
             }
         }
+
 
 
         return ResponseEntity.ok(modelMapper.map(saved, SiteDto.class));
