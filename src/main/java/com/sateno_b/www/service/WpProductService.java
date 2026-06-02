@@ -82,6 +82,7 @@ public class WpProductService {
     private final UserRepository userRepository;
     private final WpCategoryAsyncService wpCategoryAsyncService;
     private final WpBrandAsyncService wpBrandAsyncService;
+    private final WpCategorySiteMappingRepository wpCategorySiteMappingRepository;
 
 
     @Transactional
@@ -1617,6 +1618,13 @@ protected void clearAllProductsFromSite(SiteEntity site) {
         // 3. ИЗТРИВАМЕ СНИМКИТЕ (Една по една, защото WP Media API няма Batch Delete по подразбиране)
 //        deleteMediaOneByOne(site, mediaIdsToDelete, auth);
     }
+
+    try {
+        wpProductImageSiteMappingRepository.deleteAllBySite(site);
+        log.info("Успешно изтрити локалните мапинги на СНИМКИТЕ за сайт: {}", site.getUrl());
+    } catch (Exception e) {
+        log.error("Грешка при триене на мапингите за снимки за сайт {}: {}", site.getUrl(), e.getMessage());
+    }
 }
 
     private void deleteProductsBatch(SiteEntity site, List<Long> ids, String auth) {
@@ -1633,23 +1641,6 @@ protected void clearAllProductsFromSite(SiteEntity site) {
             log.error("Грешка при batch изтриване на продукти: {}", e.getMessage());
         }
     }
-
-//    private void deleteMediaOneByOne(SiteEntity site, Set<Long> mediaIds, String auth) {
-//        for (Long mediaId : mediaIds) {
-//            try {
-//                // force=true е задължително за медия, за да не отиде в Trash, а да се изтрие физически файлът
-//                restClient.delete()
-//                        .uri(site.getUrlWithHttps() + "/wp-json/wp/v2/media/" + mediaId + "?force=true")
-//                        .header("Authorization", "Basic " + auth)
-//                        .retrieve()
-//                        .toBodilessEntity();
-//            } catch (Exception e) {
-//                // Често една снимка е свързана с няколко продукта, затова ако вече е изтрита, просто игнорираме
-//                log.warn("Медия ID {} вече не съществува или не може да бъде изтрита.", mediaId);
-//            }
-//        }
-//        log.info("Изчистени {} медийни файла от WordPress.", mediaIds.size());
-//    }
 
     @Transactional
     protected void clearAllCategoriesFromSite(SiteEntity site) {
@@ -1682,6 +1673,13 @@ protected void clearAllProductsFromSite(SiteEntity site) {
                     .toBodilessEntity();
 
             log.info("Изтрити {} категории.", idsToDelete.size());
+        }
+
+        try {
+            wpCategorySiteMappingRepository.deleteAllBySite(site);
+            log.info("Успешно изтрити локалните мапинги на категориите за сайт: {}", site.getUrl());
+        } catch (Exception e) {
+            log.error("Грешка при триене на локалните мапинги за сайт {}: {}", site.getUrl(), e.getMessage());
         }
     }
 

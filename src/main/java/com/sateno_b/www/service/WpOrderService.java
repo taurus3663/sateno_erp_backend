@@ -573,11 +573,11 @@ public class WpOrderService {
 
         }
 
-        try {
-            discountPhoneService.saveNewPhoneByOrder(siteEntity, customer);
-        } catch (Exception e){
-            log.error(e.getMessage());
-        }
+//        try {
+//            discountPhoneService.saveNewPhoneByOrder(siteEntity, customer);
+//        } catch (Exception e){
+//            log.error(e.getMessage());
+//        }
 
     wpOrderRepository.save(wpOrderEntity);
 

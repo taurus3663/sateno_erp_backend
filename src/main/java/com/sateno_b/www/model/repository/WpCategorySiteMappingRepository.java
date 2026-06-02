@@ -16,4 +16,6 @@ public interface WpCategorySiteMappingRepository extends JpaRepository<WpCategor
     Optional<WpCategorySiteMappingEntity> findByWpCategoryAndSiteId(WpCategoryEntity wpCategory, Long siteId);
     // Проверка дали категорията вече е свързана с този сайт
     boolean existsByWpCategoryAndSite(WpCategoryEntity category, SiteEntity site);
+
+    void deleteAllBySite(SiteEntity site);
 }

@@ -233,6 +233,7 @@ public class WpCategoryAsyncService {
         return translated;
     }
 
+    @Transactional
     @Async
     public CompletableFuture<Boolean> syncWpCategoryToSite(Long siteId) {
         List<WpCategoryEntity> all = wpCategoryRepository.findAll();
