@@ -3,8 +3,11 @@ package com.sateno_b.www.service;
 import com.google.ads.googleads.lib.GoogleAdsClient;
 //import com.google.ads.googleads.v19.services.GoogleAdsServiceClient;
 //import com.google.ads.googleads.v19.services.SearchGoogleAdsRequest;
-import com.google.ads.googleads.v16.services.GoogleAdsServiceClient;
-import com.google.ads.googleads.v16.services.SearchGoogleAdsRequest;
+import com.google.ads.googleads.v24.services.ListAccessibleCustomersRequest;
+import com.google.ads.googleads.v24.services.CustomerServiceClient;
+import com.google.ads.googleads.v24.services.GoogleAdsServiceClient;
+import com.google.ads.googleads.v24.services.ListAccessibleCustomersResponse;
+import com.google.ads.googleads.v24.services.SearchGoogleAdsRequest;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -45,7 +48,7 @@ public class GoogleAdsService {
             String query = "SELECT campaign.id, campaign.name FROM campaign WHERE campaign.status = 'ENABLED'";
 
             SearchGoogleAdsRequest request = SearchGoogleAdsRequest.newBuilder()
-                    .setCustomerId(String.valueOf(customerId))
+                    .setCustomerId("3458720615")
                     .setQuery(query)
                     .build();
 
@@ -89,6 +92,21 @@ public class GoogleAdsService {
         Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
 
         System.out.println("REFRESH TOKEN: " + credential.getRefreshToken());
+    }
+
+    public void listAccessible() throws IOException {
+        ClassPathResource resource = new ClassPathResource("google-ads.properties");
+        GoogleAdsClient client = GoogleAdsClient.newBuilder()
+                .fromPropertiesFile(resource.getFile())
+                .build();
+        try (CustomerServiceClient svc =
+                     client.getLatestVersion().createCustomerServiceClient()) {
+            ListAccessibleCustomersResponse response =
+                    svc.listAccessibleCustomers(
+                            ListAccessibleCustomersRequest.newBuilder().build());
+            response.getResourceNamesList()
+                    .forEach(name -> System.out.println("Достъпен: " + name));
+        }
     }
 
 }

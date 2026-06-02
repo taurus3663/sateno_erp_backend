@@ -158,7 +158,8 @@
         <dependency>
             <groupId>com.google.api-ads</groupId>
             <artifactId>google-ads</artifactId>
-            <version>30.0.0</version> </dependency>
+            <version>43.1.0</version>
+        </dependency>
 
         <dependency>
             <groupId>com.google.oauth-client</groupId>
