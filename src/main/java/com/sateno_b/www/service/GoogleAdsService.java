@@ -24,6 +24,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -135,10 +137,26 @@ public class GoogleAdsService {
 //                    "metrics.impressions, metrics.cost_micros " +
 //                    "FROM campaign WHERE campaign.status = 'ENABLED'";
             // Промени заявката си така:
-            String query = "SELECT campaign.id, campaign.name, segments.date, segments.hour, metrics.clicks, metrics.impressions, metrics.cost_micros " +
-                    "FROM campaign " +
-                    "WHERE segments.date DURING LAST_30_DAYS " + // Тук дефинираш периода
-                    "AND campaign.status = 'ENABLED'";
+//            String query = "SELECT campaign.id, campaign.name, segments.date, segments.hour, metrics.clicks, metrics.impressions, metrics.cost_micros " +
+//                    "FROM campaign " +
+//                    "WHERE segments.date DURING LAST_30_DAYS " + // Тук дефинираш периода
+//                    "AND campaign.status = 'ENABLED'";
+
+            // Логика за предходния час
+            LocalDateTime lastHour = LocalDateTime.now().minusHours(1);
+            String date = lastHour.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            int hour = lastHour.getHour();
+
+            String query = String.format(
+                    "SELECT campaign.id, campaign.name, " +
+                            "segments.date, " +
+                            "segments.hour, " + // ТОВА Е ТИ ЛИПСВАШЕ
+                            "metrics.clicks, " +
+                            "metrics.impressions, " +
+                            "metrics.cost_micros " +
+                            "FROM campaign " +
+                            "WHERE segments.date = '%s' AND segments.hour = %d " +
+                            "AND campaign.status = 'ENABLED'", date, hour);
 
             SearchGoogleAdsRequest request = SearchGoogleAdsRequest.newBuilder()
                     .setCustomerId(String.valueOf(customerId)) // Използвай параметъра

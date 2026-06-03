@@ -47,7 +47,7 @@ public class initDB implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         initAdmin();
-//        wpProductService.syncProductsToSite(7L);
+//        wpProductService.syncProductsToSite(3L);
 //        sendEmailTest();
 //        callAi();
 //        nekorektenService.checkPhone("0888182076");
@@ -90,13 +90,13 @@ public class initDB implements CommandLineRunner {
 
 
 
-        try {
-//            meta();
-//            googleApi();
-        } catch (Exception e) {
-            System.err.println("Meta API инициализацията се провали: " + e.getMessage());
-            // НЕ хвърляй RuntimeException тук, за да продължи стартът на приложението!
-        }
+//        try {
+////            meta();
+////            googleApi();
+//        } catch (Exception e) {
+//            System.err.println("Meta API инициализацията се провали: " + e.getMessage());
+//            // НЕ хвърляй RuntimeException тук, за да продължи стартът на приложението!
+//        }
 //        googleApi();
 
     }
@@ -256,11 +256,14 @@ public class initDB implements CommandLineRunner {
     private void googleApi() {
         try {
             System.out.println("T2");
-            List<String> campaignNames = googleAdsService.getCampaignNames(7532974920L);
+//            List<String> campaignNames = googleAdsService.getCampaignNames(7532974920L);
             System.out.println("T");
+//            googleAdsService.listAccessible();
 //            System.out.println(campaignNames);
 //            System.out.println(campaignNames.size());
 //            googleAdsService.gen();
+            List<GoogleAdsService.CampaignDetailsDTO> campaignDetails = googleAdsService.getCampaignDetails(3458720615L);
+            System.out.println(campaignDetails);
         } catch (IOException e) {
             e.printStackTrace();
         }
