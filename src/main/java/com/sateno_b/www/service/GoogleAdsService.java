@@ -16,6 +16,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+import com.google.protobuf.TextFormat;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -149,11 +150,17 @@ public class GoogleAdsService {
 
             String query = String.format(
                     "SELECT campaign.id, campaign.name, " +
+                            "customer.id, " +
+                            "customer.time_zone, " +
                             "segments.date, " +
                             "segments.hour, " + // ТОВА Е ТИ ЛИПСВАШЕ
                             "metrics.clicks, " +
                             "metrics.impressions, " +
-                            "metrics.cost_micros " +
+                            "metrics.cost_micros, " +
+                            "metrics.conversions, " +
+                            "metrics.ctr, " +
+                            "metrics.average_cpc, " +
+                            "metrics.average_cpm " +
                             "FROM campaign " +
                             "WHERE segments.date = '%s' AND segments.hour = %d " +
                             "AND campaign.status = 'ENABLED'", date, hour);
@@ -168,13 +175,17 @@ public class GoogleAdsService {
                 dto.setId(String.valueOf(row.getCampaign().getId()));
                 dto.setName(row.getCampaign().getName());
                 dto.setStatus(row.getCampaign().getStatus().name());
-                dto.setChannelType(row.getCampaign().getAdvertisingChannelType().name());
                 dto.setClicks(row.getMetrics().getClicks());
                 dto.setImpressions(row.getMetrics().getImpressions());
                 dto.setDate(row.getSegments().getDate()); // Ново поле за дата
                 dto.setHour(String.valueOf(row.getSegments().getHour())); // Ново поле за час (0-23)
                 // Превръщаме микросите в нормална валута
-                dto.setCost(row.getMetrics().getCostMicros() / 1_000_000.0);
+                dto.setSpend(row.getMetrics().getCostMicros() / 1_000_000.0);
+                dto.setCpc(row.getMetrics().getAverageCpc());
+                dto.setCtr(row.getMetrics().getAverageCpm());
+                dto.setCpm(row.getMetrics().getCtr());
+
+                System.out.println(TextFormat.printer().printToString(row));
 
                 campaigns.add(dto);
             });
@@ -186,10 +197,13 @@ public class GoogleAdsService {
         private String id;
         private String name;
         private String status;
-        private String channelType;
+//        private String channelType;
+        private Double cpc;
+        private Double cpm;
+        private Double ctr;
         private long clicks;
         private long impressions;
-        private double cost; // в реални пари
+        private Double spend; // в реални пари
         private String date;
         private String hour;
     }

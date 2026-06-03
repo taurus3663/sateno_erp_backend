@@ -1,13 +1,10 @@
 package com.sateno_b.www.controller;
 
+import com.sateno_b.www.model.dto.GoogleAdsDto;
 import com.sateno_b.www.model.dto.MetaAdsDto;
 import com.sateno_b.www.model.dto.MetaAdsRecordEntityDto;
-import com.sateno_b.www.model.entity.MetaAdsCampaignName;
-import com.sateno_b.www.model.entity.MetaAdsEntity;
-import com.sateno_b.www.model.entity.MetaAdsRecordEntity;
-import com.sateno_b.www.model.repository.MetaAdsCampaignNameRepository;
-import com.sateno_b.www.model.repository.MetaAdsRecordRepository;
-import com.sateno_b.www.model.repository.MetaAdsRepository;
+import com.sateno_b.www.model.entity.*;
+import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.service.MetaAdsService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -34,6 +31,9 @@ public class AdsController {
     private final MetaAdsRepository metaAdsRepository;
     private final MetaAdsCampaignNameRepository metaAdsCampaignNameRepository;
     private final MetaAdsRecordRepository metaAdsRecordRepository;
+    private final GoogleAdsRepository googleAdsRepository;
+    private final GoogleAdsCampaignNameRepository googleAdsCampaignNameRepository;
+    private final GoogleAdsRecordRepository googleAdsRecordRepository;
 
 
     @GetMapping("/meta/list")
@@ -163,6 +163,61 @@ public class AdsController {
                 }, Collectors.toList())));
 
         return ResponseEntity.ok(grouped);
+    }
+
+    @GetMapping("/google/list")
+    public ResponseEntity<Page<GoogleAdsDto>> getAll2(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+        Page<GoogleAdsDto> list = googleAdsRepository.findAll(pageable)
+                .map(s -> modelMapper.map(s, GoogleAdsDto.class));
+
+        return  ResponseEntity.ok(list);
+    }
+
+    @GetMapping("/google/{id}")
+    public ResponseEntity<GoogleAdsDto> get2(@PathVariable Long id) {
+        Optional<GoogleAdsEntity> byId = googleAdsRepository.findById(id);
+        if(byId.isPresent()) {
+            GoogleAdsDto dto = modelMapper.map(byId.get(), GoogleAdsDto.class);
+            return ResponseEntity.ok(dto);
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @PostMapping("/google/save2")
+    public ResponseEntity<GoogleAdsDto> save2(@RequestBody GoogleAdsDto dto) {
+        GoogleAdsEntity googleAdsEntity;
+
+        if(dto.getId() == null || dto.getId() == 0) {
+            googleAdsEntity = modelMapper.map(dto, GoogleAdsEntity.class);
+        }
+        else {
+            googleAdsEntity = googleAdsRepository.findById(dto.getId())
+                    .orElseThrow(() -> new RuntimeException("Google ads не е намерен"));
+
+            googleAdsEntity.setActive(dto.isActive());
+            googleAdsEntity.setClientId(dto.getClientId());
+            googleAdsEntity.setClientSecret(dto.getClientSecret());
+            googleAdsEntity.setLoginCustomerId(dto.getLoginCustomerId());
+            googleAdsEntity.setName(dto.getName());
+//            googleAdsEntity.setRefreshToken(dto.getRefreshToken());
+        }
+
+        GoogleAdsEntity saved = googleAdsRepository.save(googleAdsEntity);
+        return ResponseEntity.ok(modelMapper.map(saved, GoogleAdsDto.class));
+    }
+
+    @GetMapping("/google/campaign/{id}")
+    public ResponseEntity<Object> getCampaign2(@PathVariable Long id) {
+        GoogleAdsEntity referenceById = googleAdsRepository.getReferenceById(id);
+
+        List<GoogleAdsCampaignName> distinctCampaignsByAd = googleAdsRecordRepository.findDistinctCampaignsByAd(referenceById);
+
+        return ResponseEntity.ok(distinctCampaignsByAd);
     }
 
 

@@ -97,7 +97,7 @@ public class initDB implements CommandLineRunner {
 //            System.err.println("Meta API инициализацията се провали: " + e.getMessage());
 //            // НЕ хвърляй RuntimeException тук, за да продължи стартът на приложението!
 //        }
-//        googleApi();
+        googleApi();
 
     }
 

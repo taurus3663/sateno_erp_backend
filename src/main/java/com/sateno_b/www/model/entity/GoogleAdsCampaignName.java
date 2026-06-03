@@ -9,10 +9,10 @@ import lombok.RequiredArgsConstructor;
 
 @EqualsAndHashCode(callSuper = true)
 @RequiredArgsConstructor
-@Table(name = "meta_ads_campaign_name")
+@Table(name = "google_ads_campaign_name")
 @Entity
 @Data
-public class MetaAdsCampaignName extends BaseEntity {
+public class GoogleAdsCampaignName extends BaseEntity {
 
     @Column
     private String name;
