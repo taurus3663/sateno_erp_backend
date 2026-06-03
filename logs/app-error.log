@@ -471,3 +471,4 @@ Caused by: java.lang.ClassNotFoundException: com.sateno_b.www.service.GoogleAdsS
 	at org.springframework.boot.devtools.restart.classloader.RestartClassLoader.loadClass(RestartClassLoader.java:121)
 	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:521)
 	... 27 common frames omitted
+2026-06-03 20:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: 401 Unauthorized: "{"error":{"message":"Invalid OAuth access token - Cannot parse access token","type":"OAuthException","code":190,"fbtrace_id":"AjP8CyEnrQPh4dlrbcLr_Ox"}}"

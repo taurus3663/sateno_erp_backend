@@ -188,12 +188,19 @@ public class AdsController {
         return ResponseEntity.notFound().build();
     }
 
-    @PostMapping("/google/save2")
+    @PostMapping("/google/save")
     public ResponseEntity<GoogleAdsDto> save2(@RequestBody GoogleAdsDto dto) {
         GoogleAdsEntity googleAdsEntity;
 
         if(dto.getId() == null || dto.getId() == 0) {
-            googleAdsEntity = modelMapper.map(dto, GoogleAdsEntity.class);
+//            googleAdsEntity = modelMapper.map(dto, GoogleAdsEntity.class);
+            googleAdsEntity = new GoogleAdsEntity();
+            googleAdsEntity.setName(dto.getName());
+            googleAdsEntity.setActive(dto.isActive());
+            googleAdsEntity.setClientId(dto.getClientId());
+            googleAdsEntity.setClientSecret(dto.getClientSecret());
+            googleAdsEntity.setLoginCustomerId(dto.getLoginCustomerId());
+//            googleAdsEntity.setRefreshToken(dto.getRefreshToken());
         }
         else {
             googleAdsEntity = googleAdsRepository.findById(dto.getId())
