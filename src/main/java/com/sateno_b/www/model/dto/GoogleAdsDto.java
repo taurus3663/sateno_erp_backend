@@ -13,4 +13,5 @@ public class GoogleAdsDto {
     private String clientSecret;
     private String refreshToken;
     private String loginCustomerId;
+    private String developerToken;
 }

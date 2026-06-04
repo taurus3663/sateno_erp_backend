@@ -1,5 +1,6 @@
 package com.sateno_b.www.model.entity;
 
+import com.sateno_b.www.model.listeners.GoogleAdsEntityListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -13,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 @Table(name = "google_ads")
 @Entity
 @Data
-//@EntityListeners()
+@EntityListeners(GoogleAdsEntityListener.class)
 public class GoogleAdsEntity extends BaseEntity {
 
     @Column
@@ -33,4 +34,7 @@ public class GoogleAdsEntity extends BaseEntity {
 
     @Column
     private String loginCustomerId;
+
+    @Column
+    private String developerToken;
 }

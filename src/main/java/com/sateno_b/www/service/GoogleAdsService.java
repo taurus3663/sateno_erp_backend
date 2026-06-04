@@ -11,8 +11,13 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+import com.google.auth.oauth2.UserCredentials;
 import com.google.protobuf.TextFormat;
+import com.sateno_b.www.model.entity.GoogleAdsCampaignName;
 import com.sateno_b.www.model.entity.GoogleAdsEntity;
+import com.sateno_b.www.model.entity.GoogleAdsRecordEntity;
+import com.sateno_b.www.model.repository.GoogleAdsCampaignNameRepository;
+import com.sateno_b.www.model.repository.GoogleAdsRecordRepository;
 import com.sateno_b.www.model.repository.GoogleAdsRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -21,15 +26,19 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+
+import static org.json.XMLTokener.entity;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class GoogleAdsService {
 
+    private final GoogleAdsCampaignNameRepository googleAdsCampaignNameRepository;
+    private final GoogleAdsRecordRepository googleAdsRecordRepository;
     @Value("${app.base-url}")
     private String baseUrl;
 
@@ -248,5 +257,87 @@ public class GoogleAdsService {
         private Double spend; // в реални пари
         private String date;
         private String hour;
+    }
+
+    public void triggerBackfillForNewAccount(GoogleAdsEntity account) {
+
+        GoogleAdsClient googleAdsClient = GoogleAdsClient.newBuilder()
+                .setCredentials(
+                        UserCredentials.newBuilder()
+                                .setClientId(account.getClientId())
+                                .setClientSecret(account.getClientSecret())
+                                .setRefreshToken(account.getRefreshToken())
+                                .build()
+                )
+                .setDeveloperToken(account.getDeveloperToken())
+                .setLoginCustomerId(Long.parseLong(account.getLoginCustomerId()))
+                .build();
+
+        String query = "SELECT campaign.id, campaign.name, " +
+                "customer.id, " +
+                "customer.time_zone, " +
+                "segments.date, " +
+                "segments.hour, " +
+                "metrics.clicks, " +
+                "metrics.impressions, " +
+                "metrics.cost_micros, " +
+                "metrics.conversions, " +
+                "metrics.ctr, " +
+                "metrics.average_cpc, " +
+                "metrics.average_cpm " +
+                "FROM campaign " +
+                "WHERE segments.date DURING LAST_30_DAYS " +
+                "AND campaign.status = 'ENABLED'";
+
+        try (GoogleAdsServiceClient googleAdsServiceClient =
+                     googleAdsClient.getLatestVersion().createGoogleAdsServiceClient()) {
+
+
+            SearchGoogleAdsRequest request = SearchGoogleAdsRequest.newBuilder()
+                    .setCustomerId(account.getLoginCustomerId())
+                    .setQuery(query)
+                    .build();
+
+            googleAdsServiceClient.search(request).iterateAll().forEach(row -> {
+
+                String campaignName = row.getCampaign().getName();
+                GoogleAdsCampaignName googleAdsCampaignName = googleAdsCampaignNameRepository.findByName(campaignName)
+                        .orElseGet(() -> {
+                            GoogleAdsCampaignName cn = new GoogleAdsCampaignName();
+                            cn.setName(campaignName);
+                            return googleAdsCampaignNameRepository.save(cn);
+                        });
+
+                GoogleAdsRecordEntity n = new GoogleAdsRecordEntity();
+//                n.setId(String.valueOf(row.getCampaign().getId()));
+//                n.setName(row.getCampaign().getName());
+//                n.setS(row.getCampaign().getStatus().name());
+                String dateStr = row.getSegments().getDate(); // "2026-06-03"
+                int hour = row.getSegments().getHour();      // 15
+
+// 1. Създаваме LocalDate от стринга
+                LocalDate date = LocalDate.parse(dateStr);
+
+// 2. Създаваме LocalTime от часа (минутите и секундите са 0)
+                LocalTime time = LocalTime.of(hour, 0);
+
+// 3. Комбинираме ги в LocalDateTime и конвертираме към Instant
+// (Използваме системната зона, или UTC - препоръчително за Google Ads)
+                Instant recordedAt = LocalDateTime.of(date, time)
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant();
+                n.setRecordedAt(recordedAt);
+                n.setClicks((int) row.getMetrics().getClicks());
+                n.setImpressions((int) row.getMetrics().getImpressions());
+                n.setSpend(row.getMetrics().getCostMicros() / 1_000_000.0);
+                n.setCtr(row.getMetrics().getCtr());
+                n.setCpc(row.getMetrics().getAverageCpc() / 1_000_000.0);
+                n.setCpm(row.getMetrics().getAverageCpm() / 1_000_000.0);
+                n.setAd(account);
+                n.setCampaignName(googleAdsCampaignName);
+                googleAdsRecordRepository.save(n);
+            });
+        }
+
     }
 }
