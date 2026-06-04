@@ -9,6 +9,7 @@ import com.google.ads.googleads.v24.services.GoogleAdsServiceClient;
 import com.google.ads.googleads.v24.services.ListAccessibleCustomersResponse;
 import com.google.ads.googleads.v24.services.SearchGoogleAdsRequest;
 import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.auth.oauth2.TokenResponse;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
@@ -17,9 +18,12 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.protobuf.TextFormat;
+import com.sateno_b.www.model.entity.GoogleAdsEntity;
+import com.sateno_b.www.model.repository.GoogleAdsRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -30,11 +34,17 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class GoogleAdsService {
+
+    @Value("${app.base-url}")
+    private String baseUrl;
+
+    private final GoogleAdsRepository googleAdsRepository;
 
     public List<String> getCampaignNames(long customerId) throws IOException {
         List<String> campaignNames = new ArrayList<>();
@@ -80,17 +90,39 @@ public class GoogleAdsService {
     }
 
 
-    static final String CLIENT_ID = "797055843332-fg61agga3ej70b3b74cn8s8veker1n57.apps.googleusercontent.com";
-    static final String CLIENT_SECRET = "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";
+//    static final String CLIENT_ID = "797055843332-fg61agga3ej70b3b74cn8s8veker1n57.apps.googleusercontent.com";
+//    static final String CLIENT_SECRET = "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";
     static final String SCOPE = "https://www.googleapis.com/auth/adwords";
 
-    public void gen() throws IOException {
+    private GoogleAuthorizationCodeFlow createFlow(GoogleAdsEntity entity) {
+        GoogleClientSecrets.Details details = new GoogleClientSecrets.Details();
+        details.setClientId(entity.getClientId());
+        details.setClientSecret(entity.getClientSecret());
+
+        GoogleClientSecrets clientSecrets = new GoogleClientSecrets();
+        clientSecrets.setInstalled(details);
+
+        return new GoogleAuthorizationCodeFlow.Builder(
+                new NetHttpTransport(), GsonFactory.getDefaultInstance(), clientSecrets, Arrays.asList(SCOPE))
+                .setAccessType("offline")
+                .setApprovalPrompt("force") // Важно!
+                .build();
+    }
+
+    public String genUrl(Long googleAdsId) throws IOException {
         HttpTransport httpTransport = new NetHttpTransport();
         GsonFactory jsonFactory = GsonFactory.getDefaultInstance();
 
+
+        Optional<GoogleAdsEntity> byId = googleAdsRepository.findById(googleAdsId);
+
+        if(byId.isEmpty()) {
+            throw new IOException("Not found profile");
+        }
+
         GoogleClientSecrets.Details details = new GoogleClientSecrets.Details();
-        details.setClientId(CLIENT_ID);
-        details.setClientSecret(CLIENT_SECRET);
+        details.setClientId(byId.get().getClientId());
+        details.setClientSecret(byId.get().getClientSecret());
 
         GoogleClientSecrets clientSecrets = new GoogleClientSecrets();
         clientSecrets.setInstalled(details);
@@ -100,13 +132,39 @@ public class GoogleAdsService {
                 .setAccessType("offline")
                 .build();
 
-        LocalServerReceiver receiver = new LocalServerReceiver.Builder()
-                .setPort(8888)
+        String redirectUri = baseUrl + "/api/google/callback";
+
+        String url = flow.newAuthorizationUrl()
+                .setRedirectUri(redirectUri) // Твоят нов ендпойнт
+                .setState(googleAdsId.toString())
                 .build();
+        return url;
+//        LocalServerReceiver receiver = new LocalServerReceiver.Builder()
+//                .setPort(8888)
+//                .build();
+//
+//        Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+//
+//        System.out.println("REFRESH TOKEN: " + credential.getRefreshToken());
+    }
 
-        Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+    public void genToken(Long googleAdsId, String code) throws IOException {
+        GoogleAdsEntity entity = googleAdsRepository.findById(googleAdsId)
+                .orElseThrow(() -> new IOException("Profile not found"));
 
-        System.out.println("REFRESH TOKEN: " + credential.getRefreshToken());
+        GoogleAuthorizationCodeFlow flow = createFlow(entity);
+
+        String redirectUri = baseUrl + "/api/google/callback";
+        // Разменяме кода за TokenResponse (който съдържа refresh_token)
+        TokenResponse response = flow.newTokenRequest(code)
+                .setRedirectUri(redirectUri)
+                .execute();
+
+        String refreshToken = response.getRefreshToken();
+
+        // Записваме токена в базата
+        entity.setRefreshToken(refreshToken);
+        googleAdsRepository.save(entity);
     }
 
     public void listAccessible() throws IOException {

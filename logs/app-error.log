@@ -1,474 +1,57 @@
-2026-06-03 16:23:16 [restartedMain] ERROR o.s.boot.SpringApplication - Application run failed
-com.google.ads.googleads.v24.errors.GoogleAdsException: errors {
-  error_code {
-    query_error: EXPECTED_REFERENCED_FIELD_IN_SELECT_CLAUSE
-  }
-  message: "The following field must be present in SELECT clause: \'segments.hour\'."
-}
-request_id: "k7yElUo7I9jSE1cEFr7Yag"
-
-	at com.google.ads.googleads.v24.errors.GoogleAdsException$Factory.createException(GoogleAdsException.java:42)
-	at com.google.ads.googleads.v24.errors.GoogleAdsException$Factory.createException(GoogleAdsException.java:34)
-	at com.google.ads.googleads.lib.stubs.exceptions.BaseGoogleAdsException$Factory.createGoogleAdsException(BaseGoogleAdsException.java:105)
-	at com.google.ads.googleads.lib.callables.GoogleAdsExceptionTransformation.transform(GoogleAdsExceptionTransformation.java:39)
-	at com.google.ads.googleads.lib.stubs.callables.ExceptionTransformingUnaryCallable$ExceptionTransformingFuture.onFailure(ExceptionTransformingUnaryCallable.java:96)
-	at com.google.api.core.ApiFutures$1.onFailure(ApiFutures.java:84)
-	at com.google.common.util.concurrent.Futures$CallbackListener.run(Futures.java:1125)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:577)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
-	at java.base/java.lang.Thread.run(Thread.java:1623)
-	Suppressed: com.google.api.gax.rpc.AsyncTaskException: Asynchronous task failed
-		at com.google.api.gax.rpc.ApiExceptions.callAndTranslateApiException(ApiExceptions.java:57)
-		at com.google.api.gax.rpc.UnaryCallable.call(UnaryCallable.java:112)
-		at com.google.ads.googleads.v24.services.GoogleAdsServiceClient.search(GoogleAdsServiceClient.java:294)
-		at com.sateno_b.www.service.GoogleAdsService.getCampaignDetails(GoogleAdsService.java:161)
-		at com.sateno_b.www.init.initDB.googleApi(initDB.java:265)
-		at com.sateno_b.www.init.initDB.run(initDB.java:100)
-		at org.springframework.boot.SpringApplication.lambda$callRunner$5(SpringApplication.java:788)
-		at org.springframework.util.function.ThrowingConsumer$1.acceptWithException(ThrowingConsumer.java:82)
-		at org.springframework.util.function.ThrowingConsumer.accept(ThrowingConsumer.java:60)
-		at org.springframework.util.function.ThrowingConsumer$1.accept(ThrowingConsumer.java:86)
-		at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:796)
-		at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:787)
-		at org.springframework.boot.SpringApplication.lambda$callRunners$3(SpringApplication.java:772)
-		at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.accept(ForEachOps.java:183)
-		at java.base/java.util.stream.SortedOps$SizedRefSortingSink.end(SortedOps.java:357)
-		at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:510)
-		at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
-		at java.base/java.util.stream.ForEachOps$ForEachOp.evaluateSequential(ForEachOps.java:150)
-		at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.evaluateSequential(ForEachOps.java:173)
-		at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
-		at java.base/java.util.stream.ReferencePipeline.forEach(ReferencePipeline.java:596)
-		at org.springframework.boot.SpringApplication.callRunners(SpringApplication.java:772)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:325)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-		at com.sateno_b.www.SatenoBApplication.main(SatenoBApplication.java:18)
-		at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
-		at java.base/java.lang.reflect.Method.invoke(Method.java:578)
-		at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:50)
-Caused by: io.grpc.StatusRuntimeException: INVALID_ARGUMENT: Request contains an invalid argument.
-	at io.grpc.Status.asRuntimeException(Status.java:532)
-	at io.grpc.stub.ClientCalls$UnaryStreamToFuture.onClose(ClientCalls.java:638)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.api.gax.grpc.ChannelPool$ReleasingClientCall$1.onClose(ChannelPool.java:651)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.ads.googleads.lib.logging.LoggingInterceptor$1$1.onClose(LoggingInterceptor.java:113)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.api.gax.grpc.GrpcLoggingInterceptor$1$1.onClose(GrpcLoggingInterceptor.java:98)
-	at io.grpc.internal.DelayedClientCall$DelayedListener$3.run(DelayedClientCall.java:500)
-	at io.grpc.internal.DelayedClientCall$DelayedListener.delayOrExecute(DelayedClientCall.java:464)
-	at io.grpc.internal.DelayedClientCall$DelayedListener.onClose(DelayedClientCall.java:497)
-	at io.grpc.internal.ClientCallImpl.closeObserver(ClientCallImpl.java:566)
-	at io.grpc.internal.ClientCallImpl.access$100(ClientCallImpl.java:72)
-	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1StreamClosed.runInternal(ClientCallImpl.java:734)
-	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1StreamClosed.runInContext(ClientCallImpl.java:715)
-	at io.grpc.internal.ContextRunnable.run(ContextRunnable.java:37)
-	at io.grpc.internal.SerializingExecutor.run(SerializingExecutor.java:133)
-	... 3 common frames omitted
-2026-06-03 17:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: 401 Unauthorized: "{"error":{"message":"Invalid OAuth access token - Cannot parse access token","type":"OAuthException","code":190,"fbtrace_id":"AFmHv9LkQabhrHuENQfiTp6"}}"
-2026-06-03 18:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка при наваксване на 2026-06-02T15:00:00Z: 401 Unauthorized: "{"error":{"message":"Invalid OAuth access token - Cannot parse access token","type":"OAuthException","code":190,"fbtrace_id":"AGg3Mn7yMUg1uj_4gubR-hh"}}"
-2026-06-03 18:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: 401 Unauthorized: "{"error":{"message":"Invalid OAuth access token - Cannot parse access token","type":"OAuthException","code":190,"fbtrace_id":"AyPqTZsRX5UkCzpgsU3HCSe"}}"
-2026-06-03 18:56:20 [restartedMain] ERROR o.s.boot.SpringApplication - Application run failed
-com.google.ads.googleads.v24.errors.GoogleAdsException: errors {
-  error_code {
-    query_error: UNEXPECTED_INPUT
-  }
-  message: "Error in query: unexpected input metrics.conversionsmetrics.conversions_valuesegments.deviceFROM."
-}
-request_id: "u2uowMzwEbtRulNH5Hj8sA"
-
-	at com.google.ads.googleads.v24.errors.GoogleAdsException$Factory.createException(GoogleAdsException.java:42)
-	at com.google.ads.googleads.v24.errors.GoogleAdsException$Factory.createException(GoogleAdsException.java:34)
-	at com.google.ads.googleads.lib.stubs.exceptions.BaseGoogleAdsException$Factory.createGoogleAdsException(BaseGoogleAdsException.java:105)
-	at com.google.ads.googleads.lib.callables.GoogleAdsExceptionTransformation.transform(GoogleAdsExceptionTransformation.java:39)
-	at com.google.ads.googleads.lib.stubs.callables.ExceptionTransformingUnaryCallable$ExceptionTransformingFuture.onFailure(ExceptionTransformingUnaryCallable.java:96)
-	at com.google.api.core.ApiFutures$1.onFailure(ApiFutures.java:84)
-	at com.google.common.util.concurrent.Futures$CallbackListener.run(Futures.java:1125)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:577)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
-	at java.base/java.lang.Thread.run(Thread.java:1623)
-	Suppressed: com.google.api.gax.rpc.AsyncTaskException: Asynchronous task failed
-		at com.google.api.gax.rpc.ApiExceptions.callAndTranslateApiException(ApiExceptions.java:57)
-		at com.google.api.gax.rpc.UnaryCallable.call(UnaryCallable.java:112)
-		at com.google.ads.googleads.v24.services.GoogleAdsServiceClient.search(GoogleAdsServiceClient.java:294)
-		at com.sateno_b.www.service.GoogleAdsService.getCampaignDetails(GoogleAdsService.java:169)
-		at com.sateno_b.www.init.initDB.googleApi(initDB.java:265)
-		at com.sateno_b.www.init.initDB.run(initDB.java:100)
-		at org.springframework.boot.SpringApplication.lambda$callRunner$5(SpringApplication.java:788)
-		at org.springframework.util.function.ThrowingConsumer$1.acceptWithException(ThrowingConsumer.java:82)
-		at org.springframework.util.function.ThrowingConsumer.accept(ThrowingConsumer.java:60)
-		at org.springframework.util.function.ThrowingConsumer$1.accept(ThrowingConsumer.java:86)
-		at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:796)
-		at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:787)
-		at org.springframework.boot.SpringApplication.lambda$callRunners$3(SpringApplication.java:772)
-		at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.accept(ForEachOps.java:183)
-		at java.base/java.util.stream.SortedOps$SizedRefSortingSink.end(SortedOps.java:357)
-		at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:510)
-		at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
-		at java.base/java.util.stream.ForEachOps$ForEachOp.evaluateSequential(ForEachOps.java:150)
-		at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.evaluateSequential(ForEachOps.java:173)
-		at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
-		at java.base/java.util.stream.ReferencePipeline.forEach(ReferencePipeline.java:596)
-		at org.springframework.boot.SpringApplication.callRunners(SpringApplication.java:772)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:325)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-		at com.sateno_b.www.SatenoBApplication.main(SatenoBApplication.java:18)
-		at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
-		at java.base/java.lang.reflect.Method.invoke(Method.java:578)
-		at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:50)
-Caused by: io.grpc.StatusRuntimeException: INVALID_ARGUMENT: Request contains an invalid argument.
-	at io.grpc.Status.asRuntimeException(Status.java:532)
-	at io.grpc.stub.ClientCalls$UnaryStreamToFuture.onClose(ClientCalls.java:638)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.api.gax.grpc.ChannelPool$ReleasingClientCall$1.onClose(ChannelPool.java:651)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.ads.googleads.lib.logging.LoggingInterceptor$1$1.onClose(LoggingInterceptor.java:113)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.api.gax.grpc.GrpcLoggingInterceptor$1$1.onClose(GrpcLoggingInterceptor.java:98)
-	at io.grpc.internal.DelayedClientCall$DelayedListener$3.run(DelayedClientCall.java:500)
-	at io.grpc.internal.DelayedClientCall$DelayedListener.delayOrExecute(DelayedClientCall.java:464)
-	at io.grpc.internal.DelayedClientCall$DelayedListener.onClose(DelayedClientCall.java:497)
-	at io.grpc.internal.ClientCallImpl.closeObserver(ClientCallImpl.java:566)
-	at io.grpc.internal.ClientCallImpl.access$100(ClientCallImpl.java:72)
-	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1StreamClosed.runInternal(ClientCallImpl.java:734)
-	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1StreamClosed.runInContext(ClientCallImpl.java:715)
-	at io.grpc.internal.ContextRunnable.run(ContextRunnable.java:37)
-	at io.grpc.internal.SerializingExecutor.run(SerializingExecutor.java:133)
-	... 3 common frames omitted
-2026-06-03 18:56:43 [restartedMain] ERROR o.s.boot.SpringApplication - Application run failed
-com.google.ads.googleads.v24.errors.GoogleAdsException: errors {
-  error_code {
-    query_error: UNEXPECTED_INPUT
-  }
-  message: "Error in query: unexpected input metrics.conversionsmetrics.conversions_valueFROM."
-}
-request_id: "iBG9LpZqr5YelEhJ6e_XIw"
-
-	at com.google.ads.googleads.v24.errors.GoogleAdsException$Factory.createException(GoogleAdsException.java:42)
-	at com.google.ads.googleads.v24.errors.GoogleAdsException$Factory.createException(GoogleAdsException.java:34)
-	at com.google.ads.googleads.lib.stubs.exceptions.BaseGoogleAdsException$Factory.createGoogleAdsException(BaseGoogleAdsException.java:105)
-	at com.google.ads.googleads.lib.callables.GoogleAdsExceptionTransformation.transform(GoogleAdsExceptionTransformation.java:39)
-	at com.google.ads.googleads.lib.stubs.callables.ExceptionTransformingUnaryCallable$ExceptionTransformingFuture.onFailure(ExceptionTransformingUnaryCallable.java:96)
-	at com.google.api.core.ApiFutures$1.onFailure(ApiFutures.java:84)
-	at com.google.common.util.concurrent.Futures$CallbackListener.run(Futures.java:1125)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:577)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
-	at java.base/java.lang.Thread.run(Thread.java:1623)
-	Suppressed: com.google.api.gax.rpc.AsyncTaskException: Asynchronous task failed
-		at com.google.api.gax.rpc.ApiExceptions.callAndTranslateApiException(ApiExceptions.java:57)
-		at com.google.api.gax.rpc.UnaryCallable.call(UnaryCallable.java:112)
-		at com.google.ads.googleads.v24.services.GoogleAdsServiceClient.search(GoogleAdsServiceClient.java:294)
-		at com.sateno_b.www.service.GoogleAdsService.getCampaignDetails(GoogleAdsService.java:168)
-		at com.sateno_b.www.init.initDB.googleApi(initDB.java:265)
-		at com.sateno_b.www.init.initDB.run(initDB.java:100)
-		at org.springframework.boot.SpringApplication.lambda$callRunner$5(SpringApplication.java:788)
-		at org.springframework.util.function.ThrowingConsumer$1.acceptWithException(ThrowingConsumer.java:82)
-		at org.springframework.util.function.ThrowingConsumer.accept(ThrowingConsumer.java:60)
-		at org.springframework.util.function.ThrowingConsumer$1.accept(ThrowingConsumer.java:86)
-		at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:796)
-		at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:787)
-		at org.springframework.boot.SpringApplication.lambda$callRunners$3(SpringApplication.java:772)
-		at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.accept(ForEachOps.java:183)
-		at java.base/java.util.stream.SortedOps$SizedRefSortingSink.end(SortedOps.java:357)
-		at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:510)
-		at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
-		at java.base/java.util.stream.ForEachOps$ForEachOp.evaluateSequential(ForEachOps.java:150)
-		at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.evaluateSequential(ForEachOps.java:173)
-		at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
-		at java.base/java.util.stream.ReferencePipeline.forEach(ReferencePipeline.java:596)
-		at org.springframework.boot.SpringApplication.callRunners(SpringApplication.java:772)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:325)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-		at com.sateno_b.www.SatenoBApplication.main(SatenoBApplication.java:18)
-		at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
-		at java.base/java.lang.reflect.Method.invoke(Method.java:578)
-		at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:50)
-Caused by: io.grpc.StatusRuntimeException: INVALID_ARGUMENT: Request contains an invalid argument.
-	at io.grpc.Status.asRuntimeException(Status.java:532)
-	at io.grpc.stub.ClientCalls$UnaryStreamToFuture.onClose(ClientCalls.java:638)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.api.gax.grpc.ChannelPool$ReleasingClientCall$1.onClose(ChannelPool.java:651)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.ads.googleads.lib.logging.LoggingInterceptor$1$1.onClose(LoggingInterceptor.java:113)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.api.gax.grpc.GrpcLoggingInterceptor$1$1.onClose(GrpcLoggingInterceptor.java:98)
-	at io.grpc.internal.DelayedClientCall$DelayedListener$3.run(DelayedClientCall.java:500)
-	at io.grpc.internal.DelayedClientCall$DelayedListener.delayOrExecute(DelayedClientCall.java:464)
-	at io.grpc.internal.DelayedClientCall$DelayedListener.onClose(DelayedClientCall.java:497)
-	at io.grpc.internal.ClientCallImpl.closeObserver(ClientCallImpl.java:566)
-	at io.grpc.internal.ClientCallImpl.access$100(ClientCallImpl.java:72)
-	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1StreamClosed.runInternal(ClientCallImpl.java:734)
-	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1StreamClosed.runInContext(ClientCallImpl.java:715)
-	at io.grpc.internal.ContextRunnable.run(ContextRunnable.java:37)
-	at io.grpc.internal.SerializingExecutor.run(SerializingExecutor.java:133)
-	... 3 common frames omitted
-2026-06-03 18:57:20 [restartedMain] ERROR o.s.boot.SpringApplication - Application run failed
-com.google.ads.googleads.v24.errors.GoogleAdsException: errors {
-  error_code {
-    query_error: BAD_FIELD_NAME
-  }
-  message: "Error in SELECT clause: invalid field name \'FROM\'."
-}
-request_id: "OTR3G5Z5WMAqw1ZBSI8t1w"
-
-	at com.google.ads.googleads.v24.errors.GoogleAdsException$Factory.createException(GoogleAdsException.java:42)
-	at com.google.ads.googleads.v24.errors.GoogleAdsException$Factory.createException(GoogleAdsException.java:34)
-	at com.google.ads.googleads.lib.stubs.exceptions.BaseGoogleAdsException$Factory.createGoogleAdsException(BaseGoogleAdsException.java:105)
-	at com.google.ads.googleads.lib.callables.GoogleAdsExceptionTransformation.transform(GoogleAdsExceptionTransformation.java:39)
-	at com.google.ads.googleads.lib.stubs.callables.ExceptionTransformingUnaryCallable$ExceptionTransformingFuture.onFailure(ExceptionTransformingUnaryCallable.java:96)
-	at com.google.api.core.ApiFutures$1.onFailure(ApiFutures.java:84)
-	at com.google.common.util.concurrent.Futures$CallbackListener.run(Futures.java:1125)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:577)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
-	at java.base/java.lang.Thread.run(Thread.java:1623)
-	Suppressed: com.google.api.gax.rpc.AsyncTaskException: Asynchronous task failed
-		at com.google.api.gax.rpc.ApiExceptions.callAndTranslateApiException(ApiExceptions.java:57)
-		at com.google.api.gax.rpc.UnaryCallable.call(UnaryCallable.java:112)
-		at com.google.ads.googleads.v24.services.GoogleAdsServiceClient.search(GoogleAdsServiceClient.java:294)
-		at com.sateno_b.www.service.GoogleAdsService.getCampaignDetails(GoogleAdsService.java:169)
-		at com.sateno_b.www.init.initDB.googleApi(initDB.java:265)
-		at com.sateno_b.www.init.initDB.run(initDB.java:100)
-		at org.springframework.boot.SpringApplication.lambda$callRunner$5(SpringApplication.java:788)
-		at org.springframework.util.function.ThrowingConsumer$1.acceptWithException(ThrowingConsumer.java:82)
-		at org.springframework.util.function.ThrowingConsumer.accept(ThrowingConsumer.java:60)
-		at org.springframework.util.function.ThrowingConsumer$1.accept(ThrowingConsumer.java:86)
-		at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:796)
-		at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:787)
-		at org.springframework.boot.SpringApplication.lambda$callRunners$3(SpringApplication.java:772)
-		at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.accept(ForEachOps.java:183)
-		at java.base/java.util.stream.SortedOps$SizedRefSortingSink.end(SortedOps.java:357)
-		at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:510)
-		at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
-		at java.base/java.util.stream.ForEachOps$ForEachOp.evaluateSequential(ForEachOps.java:150)
-		at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.evaluateSequential(ForEachOps.java:173)
-		at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
-		at java.base/java.util.stream.ReferencePipeline.forEach(ReferencePipeline.java:596)
-		at org.springframework.boot.SpringApplication.callRunners(SpringApplication.java:772)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:325)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-		at com.sateno_b.www.SatenoBApplication.main(SatenoBApplication.java:18)
-		at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
-		at java.base/java.lang.reflect.Method.invoke(Method.java:578)
-		at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:50)
-Caused by: io.grpc.StatusRuntimeException: INVALID_ARGUMENT: Request contains an invalid argument.
-	at io.grpc.Status.asRuntimeException(Status.java:532)
-	at io.grpc.stub.ClientCalls$UnaryStreamToFuture.onClose(ClientCalls.java:638)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.api.gax.grpc.ChannelPool$ReleasingClientCall$1.onClose(ChannelPool.java:651)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.ads.googleads.lib.logging.LoggingInterceptor$1$1.onClose(LoggingInterceptor.java:113)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.api.gax.grpc.GrpcLoggingInterceptor$1$1.onClose(GrpcLoggingInterceptor.java:98)
-	at io.grpc.internal.DelayedClientCall$DelayedListener$3.run(DelayedClientCall.java:500)
-	at io.grpc.internal.DelayedClientCall$DelayedListener.delayOrExecute(DelayedClientCall.java:464)
-	at io.grpc.internal.DelayedClientCall$DelayedListener.onClose(DelayedClientCall.java:497)
-	at io.grpc.internal.ClientCallImpl.closeObserver(ClientCallImpl.java:566)
-	at io.grpc.internal.ClientCallImpl.access$100(ClientCallImpl.java:72)
-	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1StreamClosed.runInternal(ClientCallImpl.java:734)
-	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1StreamClosed.runInContext(ClientCallImpl.java:715)
-	at io.grpc.internal.ContextRunnable.run(ContextRunnable.java:37)
-	at io.grpc.internal.SerializingExecutor.run(SerializingExecutor.java:133)
-	... 3 common frames omitted
-2026-06-03 19:00:30 [restartedMain] ERROR o.s.boot.SpringApplication - Application run failed
-com.google.ads.googleads.v24.errors.GoogleAdsException: errors {
-  error_code {
-    query_error: UNEXPECTED_INPUT
-  }
-  message: "Error in query: unexpected input metrics.average_cpm."
-}
-request_id: "TrgkcrkkZHpxgSOeF_LANA"
-
-	at com.google.ads.googleads.v24.errors.GoogleAdsException$Factory.createException(GoogleAdsException.java:42)
-	at com.google.ads.googleads.v24.errors.GoogleAdsException$Factory.createException(GoogleAdsException.java:34)
-	at com.google.ads.googleads.lib.stubs.exceptions.BaseGoogleAdsException$Factory.createGoogleAdsException(BaseGoogleAdsException.java:105)
-	at com.google.ads.googleads.lib.callables.GoogleAdsExceptionTransformation.transform(GoogleAdsExceptionTransformation.java:39)
-	at com.google.ads.googleads.lib.stubs.callables.ExceptionTransformingUnaryCallable$ExceptionTransformingFuture.onFailure(ExceptionTransformingUnaryCallable.java:96)
-	at com.google.api.core.ApiFutures$1.onFailure(ApiFutures.java:84)
-	at com.google.common.util.concurrent.Futures$CallbackListener.run(Futures.java:1125)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:577)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
-	at java.base/java.lang.Thread.run(Thread.java:1623)
-	Suppressed: com.google.api.gax.rpc.AsyncTaskException: Asynchronous task failed
-		at com.google.api.gax.rpc.ApiExceptions.callAndTranslateApiException(ApiExceptions.java:57)
-		at com.google.api.gax.rpc.UnaryCallable.call(UnaryCallable.java:112)
-		at com.google.ads.googleads.v24.services.GoogleAdsServiceClient.search(GoogleAdsServiceClient.java:294)
-		at com.sateno_b.www.service.GoogleAdsService.getCampaignDetails(GoogleAdsService.java:170)
-		at com.sateno_b.www.init.initDB.googleApi(initDB.java:265)
-		at com.sateno_b.www.init.initDB.run(initDB.java:100)
-		at org.springframework.boot.SpringApplication.lambda$callRunner$5(SpringApplication.java:788)
-		at org.springframework.util.function.ThrowingConsumer$1.acceptWithException(ThrowingConsumer.java:82)
-		at org.springframework.util.function.ThrowingConsumer.accept(ThrowingConsumer.java:60)
-		at org.springframework.util.function.ThrowingConsumer$1.accept(ThrowingConsumer.java:86)
-		at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:796)
-		at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:787)
-		at org.springframework.boot.SpringApplication.lambda$callRunners$3(SpringApplication.java:772)
-		at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.accept(ForEachOps.java:183)
-		at java.base/java.util.stream.SortedOps$SizedRefSortingSink.end(SortedOps.java:357)
-		at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:510)
-		at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
-		at java.base/java.util.stream.ForEachOps$ForEachOp.evaluateSequential(ForEachOps.java:150)
-		at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.evaluateSequential(ForEachOps.java:173)
-		at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
-		at java.base/java.util.stream.ReferencePipeline.forEach(ReferencePipeline.java:596)
-		at org.springframework.boot.SpringApplication.callRunners(SpringApplication.java:772)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:325)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-		at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-		at com.sateno_b.www.SatenoBApplication.main(SatenoBApplication.java:18)
-		at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
-		at java.base/java.lang.reflect.Method.invoke(Method.java:578)
-		at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:50)
-Caused by: io.grpc.StatusRuntimeException: INVALID_ARGUMENT: Request contains an invalid argument.
-	at io.grpc.Status.asRuntimeException(Status.java:532)
-	at io.grpc.stub.ClientCalls$UnaryStreamToFuture.onClose(ClientCalls.java:638)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.api.gax.grpc.ChannelPool$ReleasingClientCall$1.onClose(ChannelPool.java:651)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.ads.googleads.lib.logging.LoggingInterceptor$1$1.onClose(LoggingInterceptor.java:113)
-	at io.grpc.PartialForwardingClientCallListener.onClose(PartialForwardingClientCallListener.java:39)
-	at io.grpc.ForwardingClientCallListener.onClose(ForwardingClientCallListener.java:23)
-	at io.grpc.ForwardingClientCallListener$SimpleForwardingClientCallListener.onClose(ForwardingClientCallListener.java:40)
-	at com.google.api.gax.grpc.GrpcLoggingInterceptor$1$1.onClose(GrpcLoggingInterceptor.java:98)
-	at io.grpc.internal.DelayedClientCall$DelayedListener$3.run(DelayedClientCall.java:500)
-	at io.grpc.internal.DelayedClientCall$DelayedListener.delayOrExecute(DelayedClientCall.java:464)
-	at io.grpc.internal.DelayedClientCall$DelayedListener.onClose(DelayedClientCall.java:497)
-	at io.grpc.internal.ClientCallImpl.closeObserver(ClientCallImpl.java:566)
-	at io.grpc.internal.ClientCallImpl.access$100(ClientCallImpl.java:72)
-	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1StreamClosed.runInternal(ClientCallImpl.java:734)
-	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1StreamClosed.runInContext(ClientCallImpl.java:715)
-	at io.grpc.internal.ContextRunnable.run(ContextRunnable.java:37)
-	at io.grpc.internal.SerializingExecutor.run(SerializingExecutor.java:133)
-	... 3 common frames omitted
-2026-06-03 19:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: 401 Unauthorized: "{"error":{"message":"Invalid OAuth access token - Cannot parse access token","type":"OAuthException","code":190,"fbtrace_id":"AET1kp6UcCrVW8fGm--d5A4"}}"
-2026-06-03 19:21:23 [restartedMain] ERROR o.s.boot.SpringApplication - Application run failed
-org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'initDB': Resolution of declared constructors on bean Class [com.sateno_b.www.init.initDB] from ClassLoader [org.springframework.boot.devtools.restart.classloader.RestartClassLoader@509fd4f7] failed
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.determineCandidateConstructors(AutowiredAnnotationBeanPostProcessor.java:384)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.determineConstructorsFromBeanPostProcessors(AbstractAutowireCapableBeanFactory.java:1334)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1229)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
-	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.instantiateSingleton(DefaultListableBeanFactory.java:1228)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingleton(DefaultListableBeanFactory.java:1194)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:1130)
-	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:990)
-	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
-	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
-	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-	at com.sateno_b.www.SatenoBApplication.main(SatenoBApplication.java:18)
-	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:578)
-	at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:50)
-Caused by: java.lang.NoClassDefFoundError: com/sateno_b/www/service/GoogleAdsService
-	at java.base/java.lang.Class.getDeclaredConstructors0(Native Method)
-	at java.base/java.lang.Class.privateGetDeclaredConstructors(Class.java:3473)
-	at java.base/java.lang.Class.getDeclaredConstructors(Class.java:2652)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.determineCandidateConstructors(AutowiredAnnotationBeanPostProcessor.java:379)
-	... 23 common frames omitted
-Caused by: java.lang.ClassNotFoundException: com.sateno_b.www.service.GoogleAdsService
-	at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:641)
-	at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
-	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:521)
-	at java.base/java.lang.Class.forName0(Native Method)
-	at java.base/java.lang.Class.forName(Class.java:496)
-	at java.base/java.lang.Class.forName(Class.java:475)
-	at org.springframework.boot.devtools.restart.classloader.RestartClassLoader.loadClass(RestartClassLoader.java:121)
-	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:521)
-	... 27 common frames omitted
-2026-06-03 19:24:04 [restartedMain] ERROR o.s.boot.SpringApplication - Application run failed
-org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'initDB': Resolution of declared constructors on bean Class [com.sateno_b.www.init.initDB] from ClassLoader [org.springframework.boot.devtools.restart.classloader.RestartClassLoader@6508eed3] failed
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.determineCandidateConstructors(AutowiredAnnotationBeanPostProcessor.java:384)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.determineConstructorsFromBeanPostProcessors(AbstractAutowireCapableBeanFactory.java:1334)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1229)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
-	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.instantiateSingleton(DefaultListableBeanFactory.java:1228)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingleton(DefaultListableBeanFactory.java:1194)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:1130)
-	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:990)
-	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
-	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
-	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-	at com.sateno_b.www.SatenoBApplication.main(SatenoBApplication.java:18)
-	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:578)
-	at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:50)
-Caused by: java.lang.NoClassDefFoundError: com/sateno_b/www/service/GoogleAdsService
-	at java.base/java.lang.Class.getDeclaredConstructors0(Native Method)
-	at java.base/java.lang.Class.privateGetDeclaredConstructors(Class.java:3473)
-	at java.base/java.lang.Class.getDeclaredConstructors(Class.java:2652)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.determineCandidateConstructors(AutowiredAnnotationBeanPostProcessor.java:379)
-	... 23 common frames omitted
-Caused by: java.lang.ClassNotFoundException: com.sateno_b.www.service.GoogleAdsService
-	at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:641)
-	at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
-	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:521)
-	at java.base/java.lang.Class.forName0(Native Method)
-	at java.base/java.lang.Class.forName(Class.java:496)
-	at java.base/java.lang.Class.forName(Class.java:475)
-	at org.springframework.boot.devtools.restart.classloader.RestartClassLoader.loadClass(RestartClassLoader.java:121)
-	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:521)
-	... 27 common frames omitted
-2026-06-03 20:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: 401 Unauthorized: "{"error":{"message":"Invalid OAuth access token - Cannot parse access token","type":"OAuthException","code":190,"fbtrace_id":"AjP8CyEnrQPh4dlrbcLr_Ox"}}"
+2026-06-04 00:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка при наваксване на 2026-06-02T21:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 00:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка при наваксване на 2026-06-03T18:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 00:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка при наваксване на 2026-06-03T18:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 00:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка при наваксване на 2026-06-03T18:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 00:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 00:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 00:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 00:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 01:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 01:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 01:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 01:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 02:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 02:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 02:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 02:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 03:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка при наваксване на 2026-06-03T00:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 03:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка при наваксване на 2026-06-03T18:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 03:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка при наваксване на 2026-06-03T18:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 03:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка при наваксване на 2026-06-03T18:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 03:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 03:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 03:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 03:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 04:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 04:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 04:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 04:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 05:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 05:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 05:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 05:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 06:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка при наваксване на 2026-06-03T03:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 06:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка при наваксване на 2026-06-03T18:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 06:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка при наваксване на 2026-06-03T18:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 06:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка при наваксване на 2026-06-03T18:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 06:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 06:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 06:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 06:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 07:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 07:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 07:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 07:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 08:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 08:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 08:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 08:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 09:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка при наваксване на 2026-06-03T06:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 09:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка при наваксване на 2026-06-03T18:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 09:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка при наваксване на 2026-06-03T18:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 09:00:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка при наваксване на 2026-06-03T18:00:00Z: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 09:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_sad/insights": null
+2026-06-04 09:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [sateno.bg] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 09:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [111] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 09:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [SATENO] Грешка: I/O error on GET request for "https://graph.facebook.com/v25.0/act_636762158736104/insights": null
+2026-06-04 10:05:00 [scheduling-1] ERROR c.s.www.service.MetaAdsService - [ads2] Грешка: 401 Unauthorized: "{"error":{"message":"Invalid OAuth access token - Cannot parse access token","type":"OAuthException","code":190,"fbtrace_id":"Adi2NUqkW5pLqEOn1dAI5P6"}}"

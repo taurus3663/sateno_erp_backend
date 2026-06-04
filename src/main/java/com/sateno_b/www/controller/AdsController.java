@@ -5,6 +5,7 @@ import com.sateno_b.www.model.dto.MetaAdsDto;
 import com.sateno_b.www.model.dto.MetaAdsRecordEntityDto;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.repository.*;
+import com.sateno_b.www.service.GoogleAdsService;
 import com.sateno_b.www.service.MetaAdsService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -12,9 +13,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -34,6 +37,7 @@ public class AdsController {
     private final GoogleAdsRepository googleAdsRepository;
     private final GoogleAdsCampaignNameRepository googleAdsCampaignNameRepository;
     private final GoogleAdsRecordRepository googleAdsRecordRepository;
+    private final GoogleAdsService googleAdsService;
 
 
     @GetMapping("/meta/list")
@@ -225,6 +229,25 @@ public class AdsController {
         List<GoogleAdsCampaignName> distinctCampaignsByAd = googleAdsRecordRepository.findDistinctCampaignsByAd(referenceById);
 
         return ResponseEntity.ok(distinctCampaignsByAd);
+    }
+
+    @PostMapping("/google/campaign/{id}/token")
+    public ResponseEntity<Object> genToken(@PathVariable Long id) {
+        try {
+            String url = googleAdsService.genUrl(id);
+            return ResponseEntity.ok(url); // Връщаме URL-а към Angular
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/google/callback")
+    public ResponseEntity<String> callback(
+            @RequestParam("code") String code,
+            @RequestParam("state") Long id) throws IOException {
+
+        googleAdsService.genToken(id, code);
+        return ResponseEntity.ok("Токенът е записан за кампания с ID: " + id);
     }
 
 
