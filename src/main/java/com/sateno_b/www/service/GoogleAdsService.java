@@ -1,20 +1,14 @@
 package com.sateno_b.www.service;
 
 import com.google.ads.googleads.lib.GoogleAdsClient;
-//import com.google.ads.googleads.v19.services.GoogleAdsServiceClient;
-//import com.google.ads.googleads.v19.services.SearchGoogleAdsRequest;
 import com.google.ads.googleads.v24.services.ListAccessibleCustomersRequest;
 import com.google.ads.googleads.v24.services.CustomerServiceClient;
 import com.google.ads.googleads.v24.services.GoogleAdsServiceClient;
 import com.google.ads.googleads.v24.services.ListAccessibleCustomersResponse;
 import com.google.ads.googleads.v24.services.SearchGoogleAdsRequest;
-import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.auth.oauth2.TokenResponse;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
-import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.protobuf.TextFormat;
@@ -25,16 +19,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
-import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -89,55 +78,8 @@ public class GoogleAdsService {
         return campaignNames;
     }
 
-
-//    static final String CLIENT_ID = "797055843332-fg61agga3ej70b3b74cn8s8veker1n57.apps.googleusercontent.com";
-//    static final String CLIENT_SECRET = "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";
     static final String SCOPE = "https://www.googleapis.com/auth/adwords";
-
-//    public String genUrl(Long googleAdsId) throws IOException {
-//        HttpTransport httpTransport = new NetHttpTransport();
-//        GsonFactory jsonFactory = GsonFactory.getDefaultInstance();
-//
-//
-//        Optional<GoogleAdsEntity> byId = googleAdsRepository.findById(googleAdsId);
-//
-//        if(byId.isEmpty()) {
-//            throw new IOException("Not found profile");
-//        }
-//
-//        GoogleClientSecrets.Details details = new GoogleClientSecrets.Details();
-//        details.setClientId(byId.get().getClientId());
-//        details.setClientSecret(byId.get().getClientSecret());
-//
-//        GoogleClientSecrets clientSecrets = new GoogleClientSecrets();
-//        clientSecrets.setInstalled(details);
-//
-//        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-//                httpTransport, jsonFactory, clientSecrets, Arrays.asList(SCOPE))
-//                .setAccessType("offline")
-//                .build();
-//
-//        String redirectUri = baseUrl + "/api/google/callback";
-//
-//        String url = flow.newAuthorizationUrl()
-//                .setRedirectUri(redirectUri) // Твоят нов ендпойнт
-//                .setState(googleAdsId.toString())
-//                .build();
-//
-//
-//        trackCredentials(flow);
-//
-//        return url;
-////        LocalServerReceiver receiver = new LocalServerReceiver.Builder()
-////                .setPort(8888)
-////                .build();
-////
-////        Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
-////
-////        System.out.println("REFRESH TOKEN: " + credential.getRefreshToken());
-//    }
-
-// Пазим активните flows по googleAdsId
+    static final String ERP = "/api/ads/google/callback";
 
     // ── 1. Генерира URL → фронтендът го отваря ──────────────────
     public String genUrl(Long googleAdsId) throws IOException {
@@ -149,8 +91,7 @@ public class GoogleAdsService {
                 entity.getClientSecret()
         );
 
-        String redirectUri = baseUrl + "/api/google/callback";
-        log.info("Redirect URI: " + redirectUri);
+        String redirectUri = baseUrl + ERP;
         return flow.newAuthorizationUrl()
                 .setRedirectUri(redirectUri)
                 .setState(googleAdsId.toString())   // пазим ID-то
@@ -170,16 +111,14 @@ public class GoogleAdsService {
                 new NetHttpTransport(),
                 GsonFactory.getDefaultInstance(),
                 clientSecrets,
-                List.of("https://www.googleapis.com/auth/adwords"))
+                List.of(SCOPE))
                 .setAccessType("offline")
                 .setApprovalPrompt("force")
                 .build();
     }
 
-
     // ── 2. Google ни праща тук след потвърждение ─────────────────
     public void handleCallback(String code, Long id) throws IOException {
-        log.info("caka se");
         Long googleAdsId = id;
 
         GoogleAdsEntity entity = googleAdsRepository.findById(googleAdsId)
@@ -190,15 +129,13 @@ public class GoogleAdsService {
                 entity.getClientSecret()
         );
 
-        String redirectUri = baseUrl + "/api/google/callback";
+        String redirectUri = baseUrl + ERP;
 
         TokenResponse tokenResponse = flow.newTokenRequest(code)
                 .setRedirectUri(redirectUri)
                 .execute();
 
         String refreshToken = tokenResponse.getRefreshToken();
-        log.info("✅ Refresh token получен за profile {}", googleAdsId);
-
         entity.setRefreshToken(refreshToken);
         googleAdsRepository.save(entity);
     }
@@ -232,22 +169,11 @@ public class GoogleAdsService {
 //                    "metrics.impressions, metrics.cost_micros " +
 //                    "FROM campaign WHERE campaign.status = 'ENABLED'";
             // Промени заявката си така:
-//            String query = "SELECT campaign.id, campaign.name, segments.date, segments.hour, metrics.clicks, metrics.impressions, metrics.cost_micros " +
-//                    "FROM campaign " +
-//                    "WHERE segments.date DURING LAST_30_DAYS " + // Тук дефинираш периода
-//                    "AND campaign.status = 'ENABLED'";
-
-            // Логика за предходния час
-            LocalDateTime lastHour = LocalDateTime.now().minusHours(1);
-            String date = lastHour.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-            int hour = lastHour.getHour();
-
-            String query = String.format(
-                    "SELECT campaign.id, campaign.name, " +
+            String query = "SELECT campaign.id, campaign.name, " +
                             "customer.id, " +
                             "customer.time_zone, " +
                             "segments.date, " +
-                            "segments.hour, " + // ТОВА Е ТИ ЛИПСВАШЕ
+                            "segments.hour, " +
                             "metrics.clicks, " +
                             "metrics.impressions, " +
                             "metrics.cost_micros, " +
@@ -255,9 +181,31 @@ public class GoogleAdsService {
                             "metrics.ctr, " +
                             "metrics.average_cpc, " +
                             "metrics.average_cpm " +
-                            "FROM campaign " +
-                            "WHERE segments.date = '%s' AND segments.hour = %d " +
-                            "AND campaign.status = 'ENABLED'", date, hour);
+                    "FROM campaign " +
+                    "WHERE segments.date DURING LAST_30_DAYS " +
+                    "AND campaign.status = 'ENABLED'";
+
+            // Логика за предходния час
+            LocalDateTime lastHour = LocalDateTime.now().minusHours(1);
+            String date = lastHour.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            int hour = lastHour.getHour();
+
+//            String query = String.format(
+//                    "SELECT campaign.id, campaign.name, " +
+//                            "customer.id, " +
+//                            "customer.time_zone, " +
+//                            "segments.date, " +
+//                            "segments.hour, " +
+//                            "metrics.clicks, " +
+//                            "metrics.impressions, " +
+//                            "metrics.cost_micros, " +
+//                            "metrics.conversions, " +
+//                            "metrics.ctr, " +
+//                            "metrics.average_cpc, " +
+//                            "metrics.average_cpm " +
+//                            "FROM campaign " +
+//                            "WHERE segments.date = '%s' AND segments.hour = %d " +
+//                            "AND campaign.status = 'ENABLED'", date, hour);
 
             SearchGoogleAdsRequest request = SearchGoogleAdsRequest.newBuilder()
                     .setCustomerId(String.valueOf(customerId)) // Използвай параметъра
@@ -279,7 +227,7 @@ public class GoogleAdsService {
                 dto.setCtr(row.getMetrics().getAverageCpm());
                 dto.setCpm(row.getMetrics().getCtr());
 
-                System.out.println(TextFormat.printer().printToString(row));
+//                System.out.println(TextFormat.printer().printToString(row));
 
                 campaigns.add(dto);
             });

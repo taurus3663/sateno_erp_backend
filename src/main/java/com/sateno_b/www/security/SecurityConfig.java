@@ -40,7 +40,8 @@ public class SecurityConfig {
                                 "/erp/email/seen/**",
                                 "/erp/email/confirm/**",
                                 "/erp/email/cancel/**",
-                                "/erp/discount/**"
+                                "/erp/discount/**",
+                                "/ads/google/callback"
                         ).permitAll()
                         .anyRequest().authenticated());
 

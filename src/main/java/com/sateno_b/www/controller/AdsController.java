@@ -8,6 +8,7 @@ import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.service.GoogleAdsService;
 import com.sateno_b.www.service.MetaAdsService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +25,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/ads")
 @RequiredArgsConstructor
@@ -235,7 +237,6 @@ public class AdsController {
     public ResponseEntity<Object> genToken(@PathVariable Long id) {
         try {
             String url = googleAdsService.genUrl(id);
-            System.out.println(url);
             return ResponseEntity.ok(url); // Връщаме URL-а към Angular
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
@@ -246,7 +247,6 @@ public class AdsController {
     public ResponseEntity<String> callback(
             @RequestParam("code") String code,
             @RequestParam("state") Long id) throws IOException {
-
         googleAdsService.handleCallback(code, id);
         return ResponseEntity.ok("Токенът е записан за кампания с ID: " + id);
     }
