@@ -25,16 +25,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -94,75 +94,110 @@ public class GoogleAdsService {
 //    static final String CLIENT_SECRET = "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";
     static final String SCOPE = "https://www.googleapis.com/auth/adwords";
 
-    private GoogleAuthorizationCodeFlow createFlow(GoogleAdsEntity entity) {
-        GoogleClientSecrets.Details details = new GoogleClientSecrets.Details();
-        details.setClientId(entity.getClientId());
-        details.setClientSecret(entity.getClientSecret());
-
-        GoogleClientSecrets clientSecrets = new GoogleClientSecrets();
-        clientSecrets.setInstalled(details);
-
-        return new GoogleAuthorizationCodeFlow.Builder(
-                new NetHttpTransport(), GsonFactory.getDefaultInstance(), clientSecrets, Arrays.asList(SCOPE))
-                .setAccessType("offline")
-                .setApprovalPrompt("force") // Важно!
-                .build();
-    }
-
-    public String genUrl(Long googleAdsId) throws IOException {
-        HttpTransport httpTransport = new NetHttpTransport();
-        GsonFactory jsonFactory = GsonFactory.getDefaultInstance();
-
-
-        Optional<GoogleAdsEntity> byId = googleAdsRepository.findById(googleAdsId);
-
-        if(byId.isEmpty()) {
-            throw new IOException("Not found profile");
-        }
-
-        GoogleClientSecrets.Details details = new GoogleClientSecrets.Details();
-        details.setClientId(byId.get().getClientId());
-        details.setClientSecret(byId.get().getClientSecret());
-
-        GoogleClientSecrets clientSecrets = new GoogleClientSecrets();
-        clientSecrets.setInstalled(details);
-
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                httpTransport, jsonFactory, clientSecrets, Arrays.asList(SCOPE))
-                .setAccessType("offline")
-                .build();
-
-        String redirectUri = baseUrl + "/api/google/callback";
-
-        String url = flow.newAuthorizationUrl()
-                .setRedirectUri(redirectUri) // Твоят нов ендпойнт
-                .setState(googleAdsId.toString())
-                .build();
-        return url;
-//        LocalServerReceiver receiver = new LocalServerReceiver.Builder()
-//                .setPort(8888)
+//    public String genUrl(Long googleAdsId) throws IOException {
+//        HttpTransport httpTransport = new NetHttpTransport();
+//        GsonFactory jsonFactory = GsonFactory.getDefaultInstance();
+//
+//
+//        Optional<GoogleAdsEntity> byId = googleAdsRepository.findById(googleAdsId);
+//
+//        if(byId.isEmpty()) {
+//            throw new IOException("Not found profile");
+//        }
+//
+//        GoogleClientSecrets.Details details = new GoogleClientSecrets.Details();
+//        details.setClientId(byId.get().getClientId());
+//        details.setClientSecret(byId.get().getClientSecret());
+//
+//        GoogleClientSecrets clientSecrets = new GoogleClientSecrets();
+//        clientSecrets.setInstalled(details);
+//
+//        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+//                httpTransport, jsonFactory, clientSecrets, Arrays.asList(SCOPE))
+//                .setAccessType("offline")
 //                .build();
 //
-//        Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+//        String redirectUri = baseUrl + "/api/google/callback";
 //
-//        System.out.println("REFRESH TOKEN: " + credential.getRefreshToken());
-    }
+//        String url = flow.newAuthorizationUrl()
+//                .setRedirectUri(redirectUri) // Твоят нов ендпойнт
+//                .setState(googleAdsId.toString())
+//                .build();
+//
+//
+//        trackCredentials(flow);
+//
+//        return url;
+////        LocalServerReceiver receiver = new LocalServerReceiver.Builder()
+////                .setPort(8888)
+////                .build();
+////
+////        Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+////
+////        System.out.println("REFRESH TOKEN: " + credential.getRefreshToken());
+//    }
 
-    public void genToken(Long googleAdsId, String code) throws IOException {
+// Пазим активните flows по googleAdsId
+
+    // ── 1. Генерира URL → фронтендът го отваря ──────────────────
+    public String genUrl(Long googleAdsId) throws IOException {
         GoogleAdsEntity entity = googleAdsRepository.findById(googleAdsId)
-                .orElseThrow(() -> new IOException("Profile not found"));
+                .orElseThrow(() -> new IOException("Not found profile: " + googleAdsId));
 
-        GoogleAuthorizationCodeFlow flow = createFlow(entity);
+        GoogleAuthorizationCodeFlow flow = buildFlow(
+                entity.getClientId(),
+                entity.getClientSecret()
+        );
 
         String redirectUri = baseUrl + "/api/google/callback";
-        // Разменяме кода за TokenResponse (който съдържа refresh_token)
-        TokenResponse response = flow.newTokenRequest(code)
+
+        return flow.newAuthorizationUrl()
+                .setRedirectUri(redirectUri)
+                .setState(googleAdsId.toString())   // пазим ID-то
+                .setApprovalPrompt("force")
+                .build();
+    }
+
+    private GoogleAuthorizationCodeFlow buildFlow(String clientId, String clientSecret) throws IOException {
+        GoogleClientSecrets.Details details = new GoogleClientSecrets.Details();
+        details.setClientId(clientId);
+        details.setClientSecret(clientSecret);
+
+        GoogleClientSecrets clientSecrets = new GoogleClientSecrets();
+        clientSecrets.setInstalled(details);  // Desktop app — правилно за LocalServerReceiver
+
+        return new GoogleAuthorizationCodeFlow.Builder(
+                new NetHttpTransport(),
+                GsonFactory.getDefaultInstance(),
+                clientSecrets,
+                List.of("https://www.googleapis.com/auth/adwords"))
+                .setAccessType("offline")
+                .setApprovalPrompt("force")
+                .build();
+    }
+
+
+    // ── 2. Google ни праща тук след потвърждение ─────────────────
+    public void handleCallback(String code, Long id) throws IOException {
+        Long googleAdsId = id;
+
+        GoogleAdsEntity entity = googleAdsRepository.findById(googleAdsId)
+                .orElseThrow(() -> new IOException("Not found profile: " + googleAdsId));
+
+        GoogleAuthorizationCodeFlow flow = buildFlow(
+                entity.getClientId(),
+                entity.getClientSecret()
+        );
+
+        String redirectUri = baseUrl + "/api/google/callback";
+
+        TokenResponse tokenResponse = flow.newTokenRequest(code)
                 .setRedirectUri(redirectUri)
                 .execute();
 
-        String refreshToken = response.getRefreshToken();
+        String refreshToken = tokenResponse.getRefreshToken();
+        log.info("✅ Refresh token получен за profile {}", googleAdsId);
 
-        // Записваме токена в базата
         entity.setRefreshToken(refreshToken);
         googleAdsRepository.save(entity);
     }

@@ -235,6 +235,7 @@ public class AdsController {
     public ResponseEntity<Object> genToken(@PathVariable Long id) {
         try {
             String url = googleAdsService.genUrl(id);
+            System.out.println(url);
             return ResponseEntity.ok(url); // Връщаме URL-а към Angular
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
@@ -246,7 +247,7 @@ public class AdsController {
             @RequestParam("code") String code,
             @RequestParam("state") Long id) throws IOException {
 
-        googleAdsService.genToken(id, code);
+        googleAdsService.handleCallback(code, id);
         return ResponseEntity.ok("Токенът е записан за кампания с ID: " + id);
     }
 
