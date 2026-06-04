@@ -150,7 +150,7 @@ public class GoogleAdsService {
         );
 
         String redirectUri = baseUrl + "/api/google/callback";
-
+        log.info("Redirect URI: " + redirectUri);
         return flow.newAuthorizationUrl()
                 .setRedirectUri(redirectUri)
                 .setState(googleAdsId.toString())   // пазим ID-то
@@ -179,6 +179,7 @@ public class GoogleAdsService {
 
     // ── 2. Google ни праща тук след потвърждение ─────────────────
     public void handleCallback(String code, Long id) throws IOException {
+        log.info("caka se");
         Long googleAdsId = id;
 
         GoogleAdsEntity entity = googleAdsRepository.findById(googleAdsId)
