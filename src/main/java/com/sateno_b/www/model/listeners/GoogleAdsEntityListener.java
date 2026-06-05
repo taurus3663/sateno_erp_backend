@@ -3,6 +3,7 @@ package com.sateno_b.www.model.listeners;
 import com.sateno_b.www.model.entity.GoogleAdsEntity;
 import com.sateno_b.www.service.GoogleAdsService;
 import jakarta.persistence.PostPersist;
+import jakarta.persistence.PostUpdate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
@@ -19,7 +20,7 @@ public class GoogleAdsEntityListener {
         this.googleAdsServiceProvider = googleAdsServiceProvider;
     }
 
-    @PostPersist
+    @PostUpdate
     public void postPersist(GoogleAdsEntity googleAdsEntity) {
         // Проверяваме дали акаунтът е активен
         if (googleAdsEntity.isActive()) {

@@ -262,15 +262,15 @@ public class GoogleAdsService {
     public void triggerBackfillForNewAccount(GoogleAdsEntity account) {
 
         GoogleAdsClient googleAdsClient = GoogleAdsClient.newBuilder()
+                .setDeveloperToken(account.getDeveloperToken())
+                .setLoginCustomerId(Long.parseLong(account.getLoginCustomerId()))
                 .setCredentials(
-                        UserCredentials.newBuilder()
+                        com.google.auth.oauth2.UserCredentials.newBuilder()
                                 .setClientId(account.getClientId())
                                 .setClientSecret(account.getClientSecret())
                                 .setRefreshToken(account.getRefreshToken())
                                 .build()
                 )
-                .setDeveloperToken(account.getDeveloperToken())
-                .setLoginCustomerId(Long.parseLong(account.getLoginCustomerId()))
                 .build();
 
         String query = "SELECT campaign.id, campaign.name, " +

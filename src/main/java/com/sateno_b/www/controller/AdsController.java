@@ -210,16 +210,15 @@ public class AdsController {
 //            googleAdsEntity.setRefreshToken(dto.getRefreshToken());
         }
         else {
-//            googleAdsEntity = googleAdsRepository.findById(dto.getId())
-//                    .orElseThrow(() -> new RuntimeException("Google ads не е намерен"));
-            googleAdsEntity = new GoogleAdsEntity();
+            googleAdsEntity = googleAdsRepository.findById(dto.getId())
+                    .orElseThrow(() -> new RuntimeException("Google ads не е намерен"));
             googleAdsEntity.setActive(dto.isActive());
             googleAdsEntity.setClientId(dto.getClientId());
             googleAdsEntity.setClientSecret(dto.getClientSecret());
             googleAdsEntity.setLoginCustomerId(dto.getLoginCustomerId());
             googleAdsEntity.setName(dto.getName());
             googleAdsEntity.setDeveloperToken(dto.getDeveloperToken());
-            googleAdsEntity.setRefreshToken(dto.getRefreshToken());
+//            googleAdsEntity.setRefreshToken(dto.getRefreshToken());
         }
 
         GoogleAdsEntity saved = googleAdsRepository.save(googleAdsEntity);
