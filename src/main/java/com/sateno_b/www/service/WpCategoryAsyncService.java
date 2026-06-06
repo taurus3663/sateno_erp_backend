@@ -277,8 +277,9 @@ public class WpCategoryAsyncService {
                     String sourceLang = base.getLanguage().getName();
 
                     String namePrompt = String.format(
-                            "Translate this e-commerce category name from %s to %s: '%s'. " +
-                                    "IMPORTANT: Return ONLY the translated string. Do not include any quotes, explanations, or introductory text.",
+                            "Извърши буквален (дума по дума) превод на това име на категория за електронна търговия от %s на %s: '%s'. " +
+                                    "ВАЖНО: Върни САМО преведения низ. Не включвай никакви кавички, обяснения или уводни текстове. " +
+                                    "Запази буквалното значение на всяка дума, дори ако звучи неестествено на целевия език.",
                             sourceLang, targetLang, base.getName()
                     );
 
@@ -338,7 +339,8 @@ public class WpCategoryAsyncService {
                             .toBodilessEntity();
                     log.info("Успешно обновен сайт {}: WP_ID {}", site.getUrlWithHttps(), mapping.getWpId());
 
-                } else {
+                }
+                else {
                     // --- CREATE (Ако мапингът липсва) ---
                     Map<String, Object> response = restClient.post()
                             .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/categories")
