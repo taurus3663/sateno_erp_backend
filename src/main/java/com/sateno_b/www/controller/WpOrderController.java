@@ -198,8 +198,6 @@ public class WpOrderController {
         else return ResponseEntity.notFound().build();
 }
 
-//sdasdadsadasdasdas
-
     @PostMapping("/create")
     public void createWpOrder(@RequestHeader("x-wc-webhook-signature") String signature,
                               @RequestBody String rawPayload){
