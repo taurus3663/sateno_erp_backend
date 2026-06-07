@@ -1175,11 +1175,11 @@ public class WpOrderService {
             newOrder.setCustomShippingTotal(wpOrderDto.getCustomShippingTotal());
             newOrder.setPaymentMethod(wpOrderDto.getPaymentMethod());
 
-            try {
-                discountPhoneService.saveNewPhoneByOrder(newOrder.getSite(), newOrder.getCustomer());
-            } catch (Exception e){
-                log.error(e.getMessage());
-            }
+//            try {
+//                discountPhoneService.saveNewPhoneByOrder(newOrder.getSite(), newOrder.getCustomer());
+//            } catch (Exception e){
+//                log.error(e.getMessage());
+//            }
 
             wpOrderRepository.save(newOrder);
             modelMapper.map(newOrder, wpOrderDto);
