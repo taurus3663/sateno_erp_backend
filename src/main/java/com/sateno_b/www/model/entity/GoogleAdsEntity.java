@@ -37,4 +37,7 @@ public class GoogleAdsEntity extends BaseEntity {
 
     @Column
     private String developerToken;
+
+    @Column
+    private String timeZone;
 }

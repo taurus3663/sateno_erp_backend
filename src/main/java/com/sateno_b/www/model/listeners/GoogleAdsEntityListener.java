@@ -23,7 +23,7 @@ public class GoogleAdsEntityListener {
     @PostUpdate
     public void postPersist(GoogleAdsEntity googleAdsEntity) {
         // Проверяваме дали акаунтът е активен
-        if (googleAdsEntity.isActive()) {
+        if (googleAdsEntity.isActive() && !googleAdsEntity.getRefreshToken().isEmpty()) {
             googleAdsServiceProvider.ifAvailable(service -> {
                 CompletableFuture.runAsync(() -> {
                     try {

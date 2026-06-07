@@ -1,10 +1,7 @@
 package com.sateno_b.www.init;
 
 import com.sateno_b.www.model.dto.EmailSendRequest;
-import com.sateno_b.www.model.entity.CustomerEntity;
-import com.sateno_b.www.model.entity.DiscountPhone;
-import com.sateno_b.www.model.entity.SiteEntity;
-import com.sateno_b.www.model.entity.UserEntity;
+import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.service.*;
 import com.sateno_b.www.shared.Shared;
@@ -43,6 +40,7 @@ public class initDB implements CommandLineRunner {
     private final MetaAdsService metaAdsService;
     private final GoogleAdsService googleAdsService;
     private final WpProductService wpProductService;
+    private final GoogleAdsRepository googleAdsRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -97,7 +95,7 @@ public class initDB implements CommandLineRunner {
 //            System.err.println("Meta API инициализацията се провали: " + e.getMessage());
 //            // НЕ хвърляй RuntimeException тук, за да продължи стартът на приложението!
 //        }
-//        googleApi();
+        googleApi();
 
     }
 
@@ -254,19 +252,18 @@ public class initDB implements CommandLineRunner {
     }
 
     private void googleApi() {
-        try {
-            System.out.println("T2");
+//        System.out.println("T2");
 //            List<String> campaignNames = googleAdsService.getCampaignNames(7532974920L);
-            System.out.println("T");
+//        System.out.println("T");
 //            googleAdsService.listAccessible();
 //            System.out.println(campaignNames);
 //            System.out.println(campaignNames.size());
 //            googleAdsService.gen();
-            List<GoogleAdsService.CampaignDetailsDTO> campaignDetails = googleAdsService.getCampaignDetails(3458720615L);
-            System.out.println(campaignDetails);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//            List<GoogleAdsService.CampaignDetailsDTO> campaignDetails = googleAdsService.getCampaignDetails(3458720615L);
+//        Optional<GoogleAdsEntity> googleAds = googleAdsRepository.findById(1L);
+//        googleAdsService.triggerBackfillForNewAccount(googleAds.get());
+//        googleAdsService.syncPreviousHour();
+//            System.out.println(campaignDetails);
 
     }
 }

@@ -1,6 +1,7 @@
 package com.sateno_b.www.controller;
 
 import com.sateno_b.www.model.dto.GoogleAdsDto;
+import com.sateno_b.www.model.dto.GoogleAdsRecordEntityDto;
 import com.sateno_b.www.model.dto.MetaAdsDto;
 import com.sateno_b.www.model.dto.MetaAdsRecordEntityDto;
 import com.sateno_b.www.model.entity.*;
@@ -250,6 +251,79 @@ public class AdsController {
             @RequestParam("state") Long id) throws IOException {
         googleAdsService.handleCallback(code, id);
         return ResponseEntity.ok("Токенът е записан за кампания с ID: " + id);
+    }
+
+    @GetMapping("/google/campaign/adsrecords")
+    public ResponseEntity<Object> getGoogleAdsRecords(
+            @RequestParam List<Long> ids,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam String timeZone
+    ) {
+        if (ids.isEmpty()) {
+            return ResponseEntity.ok(Collections.emptyMap());
+        }
+
+        ZoneId userZone = ZoneId.of(timeZone);
+
+        List<GoogleAdsCampaignName> campaigns = googleAdsCampaignNameRepository.findAllById(ids);
+
+        LocalDate startLocal = (from != null && !from.isEmpty())
+                ? LocalDate.parse(from)
+                : LocalDate.now().withDayOfYear(1);
+
+        LocalDate endLocal = (to != null && !to.isEmpty())
+                ? LocalDate.parse(to)
+                : LocalDate.now();
+
+        Instant start = startLocal.atStartOfDay(userZone).toInstant();
+        Instant end = endLocal.atTime(LocalTime.MAX).atZone(userZone).toInstant();
+
+        List<GoogleAdsRecordEntity> records = googleAdsRecordRepository.findByCampaignAndDateRange(campaigns, start, end);
+        Map<String, List<GoogleAdsRecordEntityDto>> grouped = records.stream()
+                .collect(Collectors.groupingBy(
+                        r -> {
+                            ZonedDateTime zdt = r.getRecordedAt().atZone(userZone);
+                            LocalDate startDate = start.atZone(userZone).toLocalDate();
+                            LocalDate endDate = end.atZone(userZone).toLocalDate();
+
+                            if (startDate.equals(endDate)) {
+                                return zdt.format(DateTimeFormatter.ofPattern("HH:mm"));
+                            }
+                            if (ChronoUnit.DAYS.between(startDate, endDate) > 31) {
+                                return zdt.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+                            }
+                            return zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                        },
+                        TreeMap::new,
+                        Collectors.mapping(r -> {
+                            GoogleAdsRecordEntityDto dto = new GoogleAdsRecordEntityDto();
+                            dto.setSpend(r.getSpend());
+                            dto.setClicks(r.getClicks());
+                            dto.setImpressions(r.getImpressions());
+                            dto.setCpc(r.getCpc());
+                            dto.setCpm(r.getCpm());
+                            dto.setCtr(r.getCtr());
+                            dto.setRecordedAt(r.getRecordedAt());
+                            return dto;
+                        }, Collectors.toList())
+                ));
+
+        return ResponseEntity.ok(grouped);
+    }
+
+    private String groupingKey(Instant recordedAt, Instant start, Instant end, ZoneId userZone) {
+        ZonedDateTime zonedDateTime = recordedAt.atZone(userZone);
+        LocalDate startDate = start.atZone(userZone).toLocalDate();
+        LocalDate endDate = end.atZone(userZone).toLocalDate();
+
+        if (startDate.equals(endDate)) {
+            return zonedDateTime.format(DateTimeFormatter.ofPattern("HH:mm"));
+        }
+        if (ChronoUnit.DAYS.between(startDate, endDate) > 31) {
+            return zonedDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        }
+        return zonedDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
     }
 
 
