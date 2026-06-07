@@ -30,4 +30,7 @@ public interface GoogleAdsRecordRepository extends JpaRepository<GoogleAdsRecord
 
     @Query("SELECT MAX(r.recordedAt) FROM GoogleAdsRecordEntity r WHERE r.ad = :ad")
     Optional<Instant> findLatestRecordedAt(@Param("ad") GoogleAdsEntity ad);
+
+    @Query("SELECT DISTINCT r.recordedAt FROM GoogleAdsRecordEntity r WHERE r.ad = :ad AND r.recordedAt >= :start AND r.recordedAt <= :end")
+    List<Instant> findDistinctRecordedAtInRange(@Param("ad") GoogleAdsEntity ad, @Param("start") Instant start, @Param("end") Instant end);
 }

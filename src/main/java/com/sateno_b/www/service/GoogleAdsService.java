@@ -451,6 +451,7 @@ public void triggerBackfillForNewAccount(GoogleAdsEntity account) {
     }
 
 @Scheduled(cron = "0 0 0/3 * * *")
+//@Scheduled(fixedDelay = 60000)
 public void runRecoverySync() {
     syncMissingHours();
 }
@@ -461,24 +462,26 @@ public void runRecoverySync() {
 
         Instant now = Instant.now().truncatedTo(ChronoUnit.HOURS)
                 .minus(2, ChronoUnit.HOURS);
+        Instant recoveryFrom = now.minus(24, ChronoUnit.HOURS);
 
         for (GoogleAdsEntity account : activeAccounts) {
             try {
-                Instant lastRecorded = googleAdsRecordRepository.findLatestRecordedAt(account)
-                        .orElse(now.minus(24, ChronoUnit.HOURS));
+                Set<Instant> existingHours = new HashSet<>(
+                        googleAdsRecordRepository.findDistinctRecordedAtInRange(account, recoveryFrom, now)
+                );
 
-                Instant recoveryFrom = now.minus(24, ChronoUnit.HOURS);
-                Instant cursor = lastRecorded.isBefore(recoveryFrom) ? recoveryFrom : lastRecorded.plus(1, ChronoUnit.HOURS);
-
+                Instant cursor = recoveryFrom;
                 while (!cursor.isAfter(now)) {
-                    log.info("[{}] Наваксване на пропуснат час: {}", account.getLoginCustomerId(), cursor);
-                    try {
-                        syncInstant(account, cursor);
-                        TimeUnit.MILLISECONDS.sleep(500);
-                    } catch (Exception e) {
-                        log.error("[{}] Грешка при наваксване на {}: {}",
-                                account.getLoginCustomerId(), cursor, e.getMessage());
-                        break;
+                    if (!existingHours.contains(cursor)) {
+                        log.info("[{}] Наваксване на пропуснат час: {}", account.getLoginCustomerId(), cursor);
+                        try {
+                            syncInstant(account, cursor);
+                            TimeUnit.MILLISECONDS.sleep(500);
+                        } catch (Exception e) {
+                            log.error("[{}] Грешка при наваксване на {}: {}",
+                                    account.getLoginCustomerId(), cursor, e.getMessage());
+                            break;
+                        }
                     }
                     cursor = cursor.plus(1, ChronoUnit.HOURS);
                 }
