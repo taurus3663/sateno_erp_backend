@@ -426,12 +426,13 @@ public class SpeedyService implements ShippingProvider {
         List<Map<String, Object>> fiscalReceiptItems = new ArrayList<>();
 //            double checkSum = 0.0;
             int count = 1;
-            boolean isLast = false;
+//            boolean isLast = false;
+            boolean didCalc = false;
             for (OrderLineItem item : order.getOrderLine()) {
 
-                if(order.getOrderLine().size() == count){
-                    isLast = true;
-                }
+//                if(order.getOrderLine().size() == count){
+//                    isLast = true;
+//                }
 
                 double unitPrice = (item.getTotalPrice() != null) ? Double.parseDouble(item.getTotalPrice().toString()) / item.getQuantity() : 0.0;
                 if(unitPrice <= 0) continue;
@@ -445,9 +446,10 @@ public class SpeedyService implements ShippingProvider {
 
                 fiscalItem.put("description", name.length() > 50 ? name.substring(0, 47) + "..." : name);
                 fiscalItem.put("vatGroup", "А");
-                if(isLast){
+                if(!didCalc){
                     fiscalItem.put("amount", (Double.parseDouble(item.getTotalPrice().toString()) + order.getCustomShippingTotal()) - createLabelDto.getRealShipmentPrice());
                     fiscalItem.put("amountWithVat", (Double.parseDouble(item.getTotalPrice().toString()) + order.getCustomShippingTotal()) - createLabelDto.getRealShipmentPrice());
+                    didCalc = true;
                 } else {
                     fiscalItem.put("amount", item.getTotalPrice());
                     fiscalItem.put("amountWithVat", item.getTotalPrice());
