@@ -45,7 +45,7 @@ public class initDB implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         initAdmin();
-//        wpProductService.syncProductsToSite(3L);
+//        wpProductService.syncProductNAnInfo(6L);
 //        sendEmailTest();
 //        callAi();
 //        nekorektenService.checkPhone("0888182076");
@@ -95,7 +95,7 @@ public class initDB implements CommandLineRunner {
 //            System.err.println("Meta API инициализацията се провали: " + e.getMessage());
 //            // НЕ хвърляй RuntimeException тук, за да продължи стартът на приложението!
 //        }
-        googleApi();
+//        googleApi();
 
     }
 

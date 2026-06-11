@@ -119,6 +119,34 @@ public class WpProductService {
 
     }
 
+//    sinhronizirane na imena i otnosno na produkti
+    @Transactional
+    public void syncProductNAnInfo(Long siteId) {
+//        SiteEntity site = siteRepository.findById(siteId).orElseThrow();
+//        if(site.getUrl().contains("sateno.bg")) {
+//            throw new RuntimeException("sateno.bg");
+//        }
+
+        int count = 0;
+        List<WpProductEntity> productList = wpProductRepository.findAll();
+        for (WpProductEntity product : productList) {
+            try {
+                log.info(String.valueOf(++count));
+                wpProductAsyncService.updateProductNameAnInfo(product, siteId);
+//                   wpProductAsyncService.updateProductOnSitesOnlyPrices(product, siteId);
+//                   log.info("Успешно създаден нов продукт с SKU {} в сайт {}", product.getSku(), site.getUrl());
+            } catch (Exception e) {
+                log.error("Критична грешка при масова синхронизация на SKU {}: {}", product.getSku(), e.getMessage());
+            }
+//            });
+        }
+        System.out.println("УСПЕШНО ПРИКЛЮЧЕН СИНХ");
+        log.info("УСПЕШНО ПРИКЛЮЧЕН СИНХ");
+
+
+
+    }
+
 //    @Transactional
     public void syncProductsToSite(Long siteId) {
         SiteEntity site = siteRepository.findById(siteId).orElseThrow();

@@ -166,7 +166,7 @@ public class WpProductAsyncService {
                 // PRICE
                 for (WpProductSiteConfigEntity siteConfig : product.getSiteConfigs()) {
                     if(Objects.equals(siteConfig.getSite().getId(), site.getId())) {
-                        updateBody.put("price", siteConfig.getRegularPrice().toString());
+//                        updateBody.put("price", siteConfig.getRegularPrice().toString());
                         updateBody.put("regular_price", siteConfig.getRegularPrice().toString());
                         String salePriceStr = (siteConfig.getPrice() != null && siteConfig.getPrice().compareTo(BigDecimal.ONE) >= 0)
                                 ? siteConfig.getPrice().toString()
@@ -951,6 +951,7 @@ public class WpProductAsyncService {
                 addonGroupMap.put("required", 1);
                 addonGroupMap.put("title_format", "label");
                 addonGroupMap.put("adjust_price", 1);
+                addonGroupMap.put("default", "0");
 
                 List<Map<String, Object>> options = new ArrayList<>();
                 int optionPosition = 0;
@@ -1102,6 +1103,219 @@ public class WpProductAsyncService {
 
             } catch (Exception e) {
                 log.error("Грешка при обновяване на сайт {}: {}", site.getUrl(), e.getMessage());
+            }
+
+        }
+
+
+    }
+
+    @Transactional
+    @Async
+    public void updateProductNameAnInfo(WpProductEntity product, Long siteId) {
+        log.info("започва за продукт {}", product.getSku());
+        product = wpProductRepository.findById(product.getId()).orElse(null);
+        if(product == null) return;
+
+
+        List<SiteEntity> siteList = siteRepository.findById(siteId)
+                .map(List::of) // Превръщаме в списък с един елемент
+                .orElse(Collections.emptyList());
+
+        for (SiteEntity site : siteList) {
+//            if(site.getId().equals(sourceSiteId) || site.getUrl().equals("sateno.bg")) continue;
+//            System.out.println(site.toString());
+            String description = null;
+            String nameT = "";
+            String descriptionT = "";
+            try {
+                Thread.sleep(2000);
+                String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+
+                var searchResponse = restClient.get()
+                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products?sku=" + product.getSku())
+                        .header("Authorization", "Basic " + auth)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {
+                        });
+
+                if (searchResponse == null || searchResponse.isEmpty()) {
+                    log.warn("Продукт с SKU {} не е намерен в сайта {}", product.getSku(), site.getUrl());
+                    return;
+                }
+
+                Map<String, Object> updateBody = new HashMap<>();
+
+//                Object priceObj = searchResponse.get(0).get("price");
+//                String price = priceObj != null ? priceObj.toString() : "";
+//                String salePrice = searchResponse.get(0).get("sale_price").toString();
+//                if(price.isEmpty() || price.equals("0") || price.equals("0.0") || price.equals("0.00")) {
+//                log.info("obnovqva se !!!!!!!!!! {} {}", product.getSku(), price);
+
+//                Optional<WpProductSiteConfigEntity> g = wpProductSiteConfigRepository.findByProductAndSite(product, site);
+//                    if (g.isPresent()) {
+//                        WpProductSiteConfigEntity gg = g.get();
+//
+//                        BigDecimal regularPrice = gg.getRegularPrice();
+//                        BigDecimal salePrice = gg.getPrice();
+//
+//                        // Ако няма цена - вземи от site 6 (EUR)
+//                        if (regularPrice == null || regularPrice.compareTo(BigDecimal.ZERO) == 0 || salePrice == null || salePrice.compareTo(BigDecimal.ZERO) == 0 || regularPrice.compareTo(salePrice) == 0) {
+//                            SiteEntity bgSite = siteRepository.findById(6L).orElse(null);
+//                            if (bgSite != null) {
+//                                Optional<WpProductSiteConfigEntity> bgConfig = wpProductSiteConfigRepository.findByProductAndSite(product, bgSite);
+//                                if (bgConfig.isPresent()) {
+//                                    BigDecimal eurPrice = bgConfig.get().getRegularPrice();
+//                                    BigDecimal eurPrice2 = bgConfig.get().getPrice();
+//                                    if (eurPrice != null && eurPrice.compareTo(BigDecimal.ZERO) > 0) {
+//                                        regularPrice = currencyService.convert(eurPrice, bgSite.getCurrency().getCode(), site.getCurrency().getCode());
+////                                        salePrice = currencyService.convert(eurPrice2, "EUR", site.getCurrency().getCode());
+//                                        salePrice = eurPrice2 != null ? currencyService.convert(eurPrice2, bgSite.getCurrency().getCode(), site.getCurrency().getCode()) : null; // ← добави проверка
+//
+//                                    }
+//                                }
+//                            }
+//                        }
+//
+//                        updateBody.put("sale_price", salePrice != null && salePrice.compareTo(BigDecimal.ZERO) > 0 ? salePrice.toString() : "");
+////                        updateBody.put("price", regularPrice != null ? regularPrice.toString() : "");
+//                        updateBody.put("regular_price", regularPrice != null ? regularPrice.toString() : "");
+//                        log.info(updateBody.toString());
+//                        gg.setRegularPrice(regularPrice);
+//                        gg.setSalePrice(salePrice != null && salePrice.compareTo(BigDecimal.ZERO) > 0 ? salePrice: null);
+//                        gg.setPrice(salePrice);
+//                        wpProductSiteConfigRepository.save(gg);
+//                    }
+//                }
+
+
+
+//                SiteEntity bgSite = siteRepository.findById(6L).orElse(null);
+//                if (bgSite != null) {
+//                    Optional<WpProductTranslationEntity> byProductAndLanguage = wpProductTranslationRepository.findByProductAndLanguage(product, bgSite.getLanguage());
+//                    if (byProductAndLanguage.isPresent()) {
+//                        String prompt = String.format("Да се преведе текста от %s на %s език", bgSite.getLanguage().getCode(), site.getLanguage().getCode());
+//                        nameT = chatGptService.translateText(byProductAndLanguage.get().getName(), prompt);
+////                        String shortDescription = chatGptService.translateText(byProductAndLanguage.get().getShortDescription(), prompt);
+//                        descriptionT = chatGptService.translateText(byProductAndLanguage.get().getDescription(), prompt);
+//
+//                        Optional<WpProductTranslationEntity> byProductAndLanguage2 = wpProductTranslationRepository.findByProductAndLanguage(product, site.getLanguage());
+//                        String finalNameT = nameT;
+//                        String finalDescriptionT = descriptionT;
+//                        byProductAndLanguage2.ifPresent(wpProductTranslationEntity -> {
+//                            if (finalNameT != null && !finalNameT.isEmpty()) {
+//                                updateBody.put("name", finalNameT);
+//                                wpProductTranslationEntity.setName(finalNameT);
+//                            }
+//                            if (finalDescriptionT != null && !finalDescriptionT.isEmpty()) {
+//                                updateBody.put("description", finalDescriptionT);
+//                                wpProductTranslationEntity.setDescription(finalDescriptionT);
+//                            }
+////                        if(shortDescription != null && !shortDescription.isEmpty()) {
+////                            updateBody.put("short_description", shortDescription != null? shortDescription: "");
+////                            wpProductTranslationEntity.setShortDescription(shortDescription != null? shortDescription: "");
+////                        }
+//                            wpProductTranslationRepository.save(wpProductTranslationEntity);
+//                        });
+//                    }
+//
+//                }
+
+//                Optional<WpProductTranslationEntity> byProductAndLanguage = wpProductTranslationRepository.findByProductAndLanguage(product, site.getLanguage());
+//                byProductAndLanguage.ifPresent(wpProductTranslationEntity -> {
+//                    updateBody.put("name", wpProductTranslationEntity.getName());
+//                    updateBody.put("description", wpProductTranslationEntity.getDescription());
+//                    updateBody.put("short_description", wpProductTranslationEntity.getShortDescription());
+//                });
+
+//                WpProductSiteConfigEntity baseConfig = product.getSiteConfigs().stream()
+//                        .filter(c -> c.getSite().equals(site))
+//                        .findFirst()
+//                        .orElse(null);
+//                if(baseConfig != null) {
+//                    updateBody.put("sale_price", baseConfig.getSalePrice() != null ? baseConfig.getSalePrice().toString() : "");
+//                    updateBody.put("price", baseConfig.getPrice() != null ? baseConfig.getPrice().toString() : "");
+//                    updateBody.put("regular_price", baseConfig.getPrice() != null ? baseConfig.getPrice().toString() : "");
+//                }
+
+
+                List<Map<String, Object>> currentAddons = (List<Map<String, Object>>) searchResponse.get(0).get("addons");
+                if (currentAddons != null && !currentAddons.isEmpty()) {
+
+                    // Преминаваме през всяка група адони (напр. "Размер")
+                    for (Map<String, Object> addonGroup : currentAddons) {
+
+
+//                        String addonName = (String) addonGroup.get("name");
+//                        if (addonName != null) {
+//                            String translatedAddonName = chatGptService.translateText(addonName, String.format("Да се преведе текста на %s език", site.getLanguage().getCode()));
+//                            addonGroup.put("name", translatedAddonName);
+//                        }
+
+
+                        List<Map<String, Object>> options = (List<Map<String, Object>>) addonGroup.get("options");
+                        if (options != null && !options.isEmpty()) {
+                            // Вземи label на първата опция (вече преведен)
+                            addonGroup.put("default", "0");
+                        }
+
+//                       BigDecimal rsPRice = new BigDecimal("0");
+//                        if (options != null) {
+//                            for (Map<String, Object> option : options) {
+//                                String rawPrice = (String) option.get("price");
+//                                if (rawPrice != null && !rawPrice.isEmpty()) {
+//                                    // ПРЕВАЛУТИРАМЕ: Приемаме, че в сайта цената е била в EUR
+//                                    BigDecimal eurPrice = new BigDecimal("5.10");
+////                                    BigDecimal eurPrice = new BigDecimal(rawPrice);
+//                                    if(rsPRice.compareTo(BigDecimal.ZERO) == 0){
+//                                        rsPRice = currencyService.convert(eurPrice, "EUR", site.getCurrency().getCode());
+//                                    }
+//                                    // Записваме новата цена в обекта
+//                                    option.put("price", rsPRice.toString());
+//                                }
+//
+//
+////                                String currentLabel = (String) option.get("label");
+////                                if (currentLabel != null) {
+////                                    product.getAddonConfig().stream()
+////                                            .filter(config -> {
+////                                                String bgLabel = config.getAddonValue().getTranslations().stream()
+////                                                        .filter(t -> t.getLanguage().getCode().equals("bg"))
+////                                                        .map(WpAddonValueTranslationEntity::getLabel)
+////                                                        .findFirst().orElse("");
+////                                                return bgLabel.equals(currentLabel);
+////                                            })
+////                                            .findFirst()
+////                                            .ifPresent(config -> {
+////                                                String translatedLabel = config.getAddonValue().getTranslations().stream()
+////                                                        .filter(t -> t.getLanguage().getId().equals(site.getLanguage().getId()))
+////                                                        .map(WpAddonValueTranslationEntity::getLabel)
+////                                                        .findFirst()
+////                                                        .orElse(currentLabel); // fallback към оригинала
+////                                                option.put("label", translatedLabel);
+////                                            });
+////                                }
+//
+//                            }
+//                        }
+                    }
+
+                    // Добавяме превалутираните адони към тялото за обновяване
+                    updateBody.put("addons", currentAddons);
+                }
+
+
+                Integer wpId = (Integer) searchResponse.get(0).get("id");
+                restClient.patch()
+                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpId)
+                        .header("Authorization", "Basic " + auth)
+                        .body(updateBody)
+                        .retrieve()
+                        .toBodilessEntity();
+                log.info("успешно за продукт {}", product.getSku());
+
+            } catch (Exception e) {
+                log.error("Грешка при обновяване на сайт {}: {}, {}: {} {}", site.getUrl(), e.getMessage(), nameT, descriptionT, product.getSku());
             }
 
         }
