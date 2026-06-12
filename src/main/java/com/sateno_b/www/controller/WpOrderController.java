@@ -48,6 +48,7 @@ public class WpOrderController {
     private final EmailLogRepository emailLogRepository;
     private final SiteRepository siteRepository;
     private final WpOrderAsyncService wpOrderAsyncService;
+    private final NekorektenService nekorektenService;
 
     @GetMapping("/list")
     public ResponseEntity<Page<WpOrderDto>> getAll(Pageable pageable, @RequestParam(required = false) String status,
@@ -356,6 +357,19 @@ public class WpOrderController {
             return ResponseEntity.ok(Map.of("success", result));
 
         } catch (Exception e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping(value = "/signal/{orderId}", consumes = "text/plain")
+    public ResponseEntity<?> createSignal(@PathVariable Long orderId, @RequestBody String text) {
+        try {
+            if (text == null || text.isBlank()) {
+                return ResponseEntity.badRequest().body("Текстът не може да е празен");
+            }
+            boolean result = nekorektenService.sendReport(orderId, text);
+            return ResponseEntity.ok(Map.of("success", result));
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
