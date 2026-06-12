@@ -33,27 +33,27 @@ mvn clean package -DskipTests || exit 1
 LOCAL_JAR="target/$JAR_NAME"
 
 # -------------------------
-# 2. UPLOAD
+# 2. UPLOAD (с временно име, докато старото работи)
 # -------------------------
-echo ">>> 2) Качване на сървъра през порт $SERVER_PORT..."
-scp -P "$SERVER_PORT" "$LOCAL_JAR" "$SERVER_USER@$SERVER_HOST:$SERVER_DIR/" || exit 1
+echo ">>> 2) Качване на сървъра (временен файл)..."
+scp -P "$SERVER_PORT" "$LOCAL_JAR" "$SERVER_USER@$SERVER_HOST:$SERVER_DIR/${JAR_NAME}.new" || exit 1
 
 # -------------------------
-# 3. DEPLOY (На сървъра)
+# 3. DEPLOY (спиране → атомарна замяна → старт)
 # -------------------------
-echo ">>> 3) Рестартиране на приложението..."
+echo ">>> 3) Замяна и рестартиране..."
 ssh -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" << EOF
   cd $SERVER_DIR
 
-  echo ">>> Спиране на системния сървис (за всеки случай)..."
-    sudo systemctl stop sateno-backend.service || true
+  echo ">>> Спиране на сървиса..."
+  sudo systemctl stop sateno-backend.service || true
+  fuser -k 9494/tcp || true
+  pgrep -f $JAR_NAME | xargs kill -9 2>/dev/null || true
 
- echo ">>> Почистване на забила Java..."
-   fuser -k 9494/tcp || true
-   pgrep -f $JAR_NAME | xargs kill -9 2>/dev/null || true
-  sleep 2
+  echo ">>> Атомарна замяна на JAR..."
+  mv -f ${JAR_NAME}.new ${JAR_NAME}
 
-echo ">>> Рестартиране на приложението чрез Systemd..."
+  echo ">>> Стартиране на сървиса..."
   sudo systemctl daemon-reload
   sudo systemctl start sateno-backend.service
 

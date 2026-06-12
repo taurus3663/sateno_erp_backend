@@ -1,8 +1,133 @@
-2026-06-08 14:01:19 [scheduling-1] ERROR c.sateno_b.www.service.SpeedyService - Error parsing JSON from Econt: I/O error on POST request for "https://api.speedy.bg/v1/track": null
-2026-06-08 14:01:19 [scheduling-1] ERROR c.sateno_b.www.service.EcontService - Error parsing JSON from Econt: I/O error on POST request for "https://ee.econt.com/services/Shipments/ShipmentService.getShipmentStatuses.json": null
-2026-06-08 14:01:19 [scheduling-1] ERROR c.sateno_b.www.service.BoxNowService - Error parsing JSON from Econt: I/O error on GET request for "https://api-production.boxnow.bg/api/v1/parcels": null
-2026-06-08 14:01:26 [scheduling-1] ERROR c.sateno_b.www.service.SpeedyService - Error parsing JSON from Econt: I/O error on POST request for "https://api.speedy.bg/v1/track": null
-2026-06-08 14:01:26 [scheduling-1] ERROR c.sateno_b.www.service.EcontService - Error parsing JSON from Econt: I/O error on POST request for "https://ee.econt.com/services/Shipments/ShipmentService.getShipmentStatuses.json": null
-2026-06-08 14:01:26 [scheduling-1] ERROR c.sateno_b.www.service.BoxNowService - Error parsing JSON from Econt: I/O error on GET request for "https://api-production.boxnow.bg/api/v1/parcels": null
-2026-06-08 14:04:27 [http-nio-9494-exec-10] ERROR c.s.www.controller.WpOrderController - Cannot parse null string
-2026-06-08 14:10:19 [http-nio-9494-exec-2] ERROR c.s.www.controller.WpOrderController - Cannot parse null string
+2026-06-12 10:29:12 [WooSync-4] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg: I/O error on GET request for "https://sateno.bg/wp-json/wc/v3/orders/18393": Request was interrupted: null
+2026-06-12 10:29:12 [WooSync-5] ERROR o.s.a.i.SimpleAsyncUncaughtExceptionHandler - Unexpected exception occurred invoking async method: public void com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(com.sateno_b.www.model.entity.WpOrderEntity,java.lang.Long)
+java.lang.RuntimeException: java.lang.InterruptedException: sleep interrupted
+	at com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(WpOrderAsyncService.java:34)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:578)
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:360)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163)
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+	at org.springframework.aop.interceptor.AsyncExecutionInterceptor.lambda$invoke$0(AsyncExecutionInterceptor.java:114)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1623)
+Caused by: java.lang.InterruptedException: sleep interrupted
+	at java.base/java.lang.Thread.sleep0(Native Method)
+	at java.base/java.lang.Thread.sleep(Thread.java:484)
+	at com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(WpOrderAsyncService.java:32)
+	... 13 common frames omitted
+2026-06-12 10:29:14 [scheduling-1] ERROR c.sateno_b.www.service.SpeedyService - Error parsing JSON from Econt: ExecutorService in shutdown state did not accept task: org.springframework.aop.interceptor.AsyncExecutionInterceptor$$Lambda$2728/0x0000745738f22ca8@1ecb1635
+2026-06-12 10:30:25 [WooSync-8] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg: I/O error on PATCH request for "https://sateno.bg/wp-json/wc/v3/orders/18433": Request was interrupted: null
+2026-06-12 10:30:25 [WooSync-9] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg: I/O error on GET request for "https://sateno.bg/wp-json/wc/v3/orders/18358": Request was interrupted: null
+2026-06-12 10:30:25 [WooSync-2] ERROR o.s.a.i.SimpleAsyncUncaughtExceptionHandler - Unexpected exception occurred invoking async method: public void com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(com.sateno_b.www.model.entity.WpOrderEntity,java.lang.Long)
+java.lang.RuntimeException: java.lang.InterruptedException: sleep interrupted
+	at com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(WpOrderAsyncService.java:34)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:578)
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:360)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163)
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+	at org.springframework.aop.interceptor.AsyncExecutionInterceptor.lambda$invoke$0(AsyncExecutionInterceptor.java:114)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1623)
+Caused by: java.lang.InterruptedException: sleep interrupted
+	at java.base/java.lang.Thread.sleep0(Native Method)
+	at java.base/java.lang.Thread.sleep(Thread.java:484)
+	at com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(WpOrderAsyncService.java:32)
+	... 13 common frames omitted
+2026-06-12 10:30:25 [WooSync-4] ERROR o.s.a.i.SimpleAsyncUncaughtExceptionHandler - Unexpected exception occurred invoking async method: public void com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(com.sateno_b.www.model.entity.WpOrderEntity,java.lang.Long)
+java.lang.RuntimeException: java.lang.InterruptedException: sleep interrupted
+	at com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(WpOrderAsyncService.java:34)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:578)
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:360)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163)
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+	at org.springframework.aop.interceptor.AsyncExecutionInterceptor.lambda$invoke$0(AsyncExecutionInterceptor.java:114)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1623)
+Caused by: java.lang.InterruptedException: sleep interrupted
+	at java.base/java.lang.Thread.sleep0(Native Method)
+	at java.base/java.lang.Thread.sleep(Thread.java:484)
+	at com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(WpOrderAsyncService.java:32)
+	... 13 common frames omitted
+2026-06-12 10:30:25 [WooSync-3] ERROR o.s.a.i.SimpleAsyncUncaughtExceptionHandler - Unexpected exception occurred invoking async method: public void com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(com.sateno_b.www.model.entity.WpOrderEntity,java.lang.Long)
+java.lang.RuntimeException: java.lang.InterruptedException: sleep interrupted
+	at com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(WpOrderAsyncService.java:34)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:578)
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:360)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163)
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+	at org.springframework.aop.interceptor.AsyncExecutionInterceptor.lambda$invoke$0(AsyncExecutionInterceptor.java:114)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1623)
+Caused by: java.lang.InterruptedException: sleep interrupted
+	at java.base/java.lang.Thread.sleep0(Native Method)
+	at java.base/java.lang.Thread.sleep(Thread.java:484)
+	at com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(WpOrderAsyncService.java:32)
+	... 13 common frames omitted
+2026-06-12 10:30:25 [WooSync-1] ERROR o.s.a.i.SimpleAsyncUncaughtExceptionHandler - Unexpected exception occurred invoking async method: public void com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(com.sateno_b.www.model.entity.WpOrderEntity,java.lang.Long)
+java.lang.RuntimeException: java.lang.InterruptedException: sleep interrupted
+	at com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(WpOrderAsyncService.java:34)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:578)
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:360)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163)
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+	at org.springframework.aop.interceptor.AsyncExecutionInterceptor.lambda$invoke$0(AsyncExecutionInterceptor.java:114)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1623)
+Caused by: java.lang.InterruptedException: sleep interrupted
+	at java.base/java.lang.Thread.sleep0(Native Method)
+	at java.base/java.lang.Thread.sleep(Thread.java:484)
+	at com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(WpOrderAsyncService.java:32)
+	... 13 common frames omitted
+2026-06-12 10:30:25 [WooSync-10] ERROR o.s.a.i.SimpleAsyncUncaughtExceptionHandler - Unexpected exception occurred invoking async method: public void com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(com.sateno_b.www.model.entity.WpOrderEntity,java.lang.Long)
+java.lang.RuntimeException: java.lang.InterruptedException: sleep interrupted
+	at com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(WpOrderAsyncService.java:34)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:578)
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:360)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163)
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+	at org.springframework.aop.interceptor.AsyncExecutionInterceptor.lambda$invoke$0(AsyncExecutionInterceptor.java:114)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1623)
+Caused by: java.lang.InterruptedException: sleep interrupted
+	at java.base/java.lang.Thread.sleep0(Native Method)
+	at java.base/java.lang.Thread.sleep(Thread.java:484)
+	at com.sateno_b.www.service.WpOrderAsyncService.updateOrderOnSites(WpOrderAsyncService.java:32)
+	... 13 common frames omitted
+2026-06-12 10:30:49 [WooSync-1] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/18431": null
+2026-06-12 10:30:51 [WooSync-2] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/18625": null
+2026-06-12 14:32:35 [WooSync-1] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/18393": null

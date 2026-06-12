@@ -34,7 +34,9 @@ import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import org.springframework.scheduling.annotation.Scheduled;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.*;
@@ -984,6 +986,12 @@ public class WpOrderService {
 //            System.out.println(orderEntity.isPresent());
 //            CourierParser.CourierMatch parse = new CourierParser.CourierMatch(request.getCourierType().name(), request.getCourierShipmentType().name(), request.getTargetId(), "", request.getCityName(), request.getPostcode());
             CourierParser.CourierMatch parse = CourierParser.parseWithFallback(orderEntity.get());
+            if (parse != null && (parse.getCity() == null || parse.getCity().isBlank())) {
+                parse = new CourierParser.CourierMatch(
+                        parse.getCourier(), parse.getTargetType(), parse.getCode(),
+                        parse.getAddress(), request.getCityName(), request.getPostcode()
+                );
+            }
 //            System.out.println(request.toString());
 
 //            System.out.println("11111113");
@@ -1241,6 +1249,57 @@ public class WpOrderService {
         }
     }
 
+    @Scheduled(cron = "0 0 0 * * *", zone = "Europe/Sofia")
+//@Scheduled(fixedRate = 20, timeUnit = TimeUnit.SECONDS, zone = "Europe/Sofia")
+    public void syncMissingOrdersFromWooCommerce() {
+        SiteEntity site = siteRepository.findSiteEntityByUrl("sateno.bg");
+        if (site == null) {
+            log.warn("syncMissingOrders: сайт sateno.bg не е намерен");
+            return;
+        }
 
+        String auth = Base64.getEncoder().encodeToString(
+                (site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes()
+        );
 
+        ZoneId sofia = ZoneId.of("Europe/Sofia");
+        LocalDate yesterday = LocalDate.now(sofia).minusDays(1);
+        String after  = yesterday.atStartOfDay().toString();
+        String before = yesterday.plusDays(1).atStartOfDay().toString();
+
+        int page = 1;
+        int synced = 0;
+
+        while (true) {
+            String url = site.getUrlWithHttps()
+                    + "/wp-json/wc/v3/orders?status=processing&per_page=100&page=" + page
+                    + "&after=" + after + "&before=" + before;
+            try {
+                List<WoOrderDto> orders = restClient.get()
+                        .uri(url)
+                        .header("Authorization", "Basic " + auth)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<List<WoOrderDto>>() {});
+
+                if (orders == null || orders.isEmpty()) break;
+
+                for (WoOrderDto dto : orders) {
+                    try {
+                        newOrderFromSite(dto, site.getId());
+                        synced++;
+                    } catch (Exception e) {
+                        log.error("syncMissingOrders: грешка при поръчка #{}: {}", dto.getId(), e.getMessage());
+                    }
+                }
+
+                if (orders.size() < 100) break;
+                page++;
+            } catch (Exception e) {
+                log.error("syncMissingOrders: грешка при страница {}: {}", page, e.getMessage());
+                break;
+            }
+        }
+
+        log.info("syncMissingOrders: синхронизирани {} поръчки за {}", synced, yesterday);
+    }
 }
