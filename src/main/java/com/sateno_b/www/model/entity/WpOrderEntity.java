@@ -109,6 +109,9 @@ public class WpOrderEntity extends BaseEntity {
     @Column()
     private String comment;
 
+    @Column(columnDefinition = "TEXT")
+    private String signalText;
+
     @Transient
     private WpOrderEntity snapshot; // Пазим снимка на целия обект
 

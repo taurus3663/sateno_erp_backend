@@ -54,6 +54,7 @@ public class WpOrderDto {
     private boolean confirmed = false;
 
     private String comment;
+    private String signalText;
 
     private OrderSavedCourierSettings savedCourierBilling;
     private Double customShippingTotal;

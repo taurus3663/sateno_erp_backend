@@ -38,6 +38,10 @@ public class NekorektenService {
         WpOrderEntity order = wpOrderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Поръчката не е намерена"));
 
+        if (order.getSignalText() != null) {
+            throw new RuntimeException("Вече има изпратен сигнал за тази поръчка");
+        }
+
         String phone = cleanPhoneNumber(order.getBilling().getPhone());
 
         try {
@@ -52,6 +56,9 @@ public class NekorektenService {
                     .body(body)
                     .retrieve()
                     .toBodilessEntity();
+
+            order.setSignalText(text);
+            wpOrderRepository.save(order);
             return true;
         } catch (Exception e) {
             System.err.println("Грешка при изпращане на сигнал: " + e.getMessage());
