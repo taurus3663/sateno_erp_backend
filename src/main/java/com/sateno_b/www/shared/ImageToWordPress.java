@@ -2,12 +2,17 @@ package com.sateno_b.www.shared;
 
 import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.service.FileStorageService;
+import com.sksamuel.scrimage.ImmutableImage;
+import com.sksamuel.scrimage.webp.WebpWriter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,19 +26,93 @@ public class ImageToWordPress {
     private final FileStorageService fileStorageService;
     private final RestClient restClient;
 
+    private static final int MAX_SIDE = 1600;
+    private static final int TARGET_MAX_BYTES = 280 * 1024; // ~280 KB
+    private static final int MIN_QUALITY = 60;
+
+
+    // --- 1. Конверсия: 1600px / WebP q82 / без EXIF / таван на размера ---
+    public byte[] toWebp(byte[] original) throws java.io.IOException {
+        ImmutableImage image = ImmutableImage.loader().fromBytes(original);
+
+        // дългата страна <= 1600, запазено съотношение, без уголемяване
+        ImmutableImage resized = (image.width > MAX_SIDE || image.height > MAX_SIDE)
+                ? image.max(MAX_SIDE, MAX_SIDE)
+                : image;
+
+        int quality = 82;
+        byte[] bytes = resized.bytes(WebpWriter.DEFAULT.withQ(quality).withM(6));
+
+        while (bytes.length > TARGET_MAX_BYTES && quality > MIN_QUALITY) {
+            quality -= 6;
+            bytes = resized.bytes(WebpWriter.DEFAULT.withQ(quality).withM(6));
+        }
+        return bytes;
+    }
+
+//    public Long uploadImageToWordPress(SiteEntity site, String localPath) {
+//        String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+//        // Взимаме байтовете от локалния диск
+//        byte[] imageBytes = fileStorageService.getImageBytes(localPath);
+//        String fileName = localPath.substring(localPath.lastIndexOf("/") + 1);
+//
+//        try {
+//            var response = restClient.post()
+//                    .uri(site.getUrlWithHttps() + "/wp-json/wp/v2/media")
+//                    .header("Authorization", "Basic " + auth)
+//                    .header("Content-Disposition", "attachment; filename=" + fileName)
+//                    .header("Content-Type", "image/jpeg") // или динамично според разширението
+//                    .body(imageBytes)
+//                    .retrieve()
+//                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+//
+//            // Връща ID-то на новосъздадената медия в WordPress
+//            return Long.valueOf(response.get("id").toString());
+//        }
+//        catch (org.springframework.web.client.RestClientResponseException e) {
+//            // ТУК Е МАГИЯТА: Вземаме тялото на грешката (JSON-а от WordPress)
+//            String errorBody = e.getResponseBodyAsString();
+//            log.error("Грешка от WordPress API (Status: {}): {}", e.getStatusCode(), errorBody);
+//
+//            // Можеш да логнеш и хедърите, ако се съмняваш в проксита или защитни стени
+//            log.debug("Headers: {}", e.getResponseHeaders());
+//
+//            return null;
+//        }
+//        catch (Exception e) {
+//            log.error("Грешка при качване на снимка в WP: {}", e.getMessage());
+//            return null;
+//        }
+//    }
+
     public Long uploadImageToWordPress(SiteEntity site, String localPath) {
         String auth = Base64.getEncoder().encodeToString((site.getConsumerKey() + ":" + site.getConsumerSecret()).getBytes());
+
         // Взимаме байтовете от локалния диск
         byte[] imageBytes = fileStorageService.getImageBytes(localPath);
+
+        // Конвертираме в оптимизиран WebP (1600px / q82 / без EXIF)
+        byte[] webpBytes;
+        try {
+            webpBytes = toWebp(imageBytes);
+        } catch (Exception e) {
+            log.error("Грешка при конверсия към WebP за {}: {}", localPath, e.getMessage());
+            return null;
+        }
+
+        // Име на файла -> .webp
         String fileName = localPath.substring(localPath.lastIndexOf("/") + 1);
+        int dot = fileName.lastIndexOf('.');
+        if (dot > 0) fileName = fileName.substring(0, dot);
+        fileName = fileName + ".webp";
 
         try {
             var response = restClient.post()
                     .uri(site.getUrlWithHttps() + "/wp-json/wp/v2/media")
                     .header("Authorization", "Basic " + auth)
                     .header("Content-Disposition", "attachment; filename=" + fileName)
-                    .header("Content-Type", "image/jpeg") // или динамично според разширението
-                    .body(imageBytes)
+                    .header("Content-Type", "image/webp")
+                    .body(webpBytes)
                     .retrieve()
                     .body(new ParameterizedTypeReference<Map<String, Object>>() {});
 
@@ -41,13 +120,9 @@ public class ImageToWordPress {
             return Long.valueOf(response.get("id").toString());
         }
         catch (org.springframework.web.client.RestClientResponseException e) {
-            // ТУК Е МАГИЯТА: Вземаме тялото на грешката (JSON-а от WordPress)
             String errorBody = e.getResponseBodyAsString();
             log.error("Грешка от WordPress API (Status: {}): {}", e.getStatusCode(), errorBody);
-
-            // Можеш да логнеш и хедърите, ако се съмняваш в проксита или защитни стени
             log.debug("Headers: {}", e.getResponseHeaders());
-
             return null;
         }
         catch (Exception e) {

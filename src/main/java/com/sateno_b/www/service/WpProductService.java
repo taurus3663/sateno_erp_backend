@@ -132,7 +132,8 @@ public class WpProductService {
         for (WpProductEntity product : productList) {
             try {
                 log.info(String.valueOf(++count));
-                wpProductAsyncService.updateProductNameAnInfo(product, siteId);
+//                wpProductAsyncService.updateProductNameAnInfo(product, siteId);
+                wpProductAsyncService.syncImagesFromSite6ToSite(product, siteId);
 //                   wpProductAsyncService.updateProductOnSitesOnlyPrices(product, siteId);
 //                   log.info("Успешно създаден нов продукт с SKU {} в сайт {}", product.getSku(), site.getUrl());
             } catch (Exception e) {

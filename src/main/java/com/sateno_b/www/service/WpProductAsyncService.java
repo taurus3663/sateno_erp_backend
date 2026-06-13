@@ -1820,4 +1820,108 @@ public class WpProductAsyncService {
         }
 
     }
+
+    @Transactional
+    @Async
+    public void syncImagesFromSite6ToSite(WpProductEntity product, Long targetSiteId) {
+        product = wpProductRepository.findById(product.getId()).orElse(null);
+        if (product == null) return;
+
+        SiteEntity targetSite = siteRepository.findById(targetSiteId).orElse(null);
+        SiteEntity site6 = siteRepository.findById(6L).orElse(null);
+        if (targetSite == null || site6 == null || targetSite.getUrl().contains("sateno.bg")) {
+            log.error("ERROR because there is selected sateno.bg | or targetSite == null | site6 == null");
+            return;
+        };
+
+        String auth = Base64.getEncoder().encodeToString(
+                (targetSite.getConsumerKey() + ":" + targetSite.getConsumerSecret()).getBytes()
+        );
+
+        try {
+            // 1. Намираме продукта в целевия сайт
+            var searchResponse = restClient.get()
+                    .uri(targetSite.getUrlWithHttps() + "/wp-json/wc/v3/products?sku=" + product.getSku())
+                    .header("Authorization", "Basic " + auth)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+
+            if (searchResponse == null || searchResponse.isEmpty()) {
+                log.warn("syncImagesFromSite6: продукт {} не е намерен в {}", product.getSku(), targetSite.getUrl());
+                return;
+            }
+
+            Map<String, Object> wpProduct = searchResponse.get(0);
+            Integer wpProductId = (Integer) wpProduct.get("id");
+
+            // 2. Изтриваме всички снимки от целевия сайт
+            List<Map<String, Object>> wpImages = (List<Map<String, Object>>) wpProduct.get("images");
+            if (wpImages != null && !wpImages.isEmpty()) {
+                Set<Long> mediaIds = wpImages.stream()
+                        .map(img -> Long.valueOf(img.get("id").toString()))
+                        .collect(Collectors.toSet());
+                imageToWordPress.deleteMediaOneByOne(targetSite, mediaIds, auth);
+            }
+
+            // 3. Намираме снимките от сайт 6 за този продукт
+            List<WpProductImageEntity> productImages = product.getImages();
+            if (productImages == null || productImages.isEmpty()) {
+                log.error("ERROR productImages are null or empty");
+                return;
+            };
+
+            List<Map<String, Object>> imageList = new ArrayList<>();
+
+            for (WpProductImageEntity imgEntity : productImages) {
+                if (imgEntity.isVideo()) continue;
+
+                // Проверяваме дали снимката има mapping за сайт 6
+                Optional<WpProductImageSiteMappingEntity> site6Mapping =
+                        wpProductImageSiteMappingRepository.findByProductImageIdAndSite(imgEntity.getId(), site6);
+                if (site6Mapping.isEmpty()) continue;
+
+                // 4. Качваме снимката в целевия сайт (или ползваме вече качена)
+                Optional<WpProductImageSiteMappingEntity> existingMapping =
+                        wpProductImageSiteMappingRepository.findByProductImageIdAndSite(imgEntity.getId(), targetSite);
+
+                Long wpMediaId;
+                if (existingMapping.isPresent() && existingMapping.get().getWpMediaId() != null) {
+                    wpMediaId = existingMapping.get().getWpMediaId();
+                } else {
+                    wpMediaId = imageToWordPress.uploadImageToWordPress(targetSite, imgEntity.getLocalSrc());
+                    if (wpMediaId != null) {
+                        WpProductImageSiteMappingEntity newMapping = new WpProductImageSiteMappingEntity();
+                        newMapping.setProductImage(imgEntity);
+                        newMapping.setSite(targetSite);
+                        newMapping.setWpMediaId(wpMediaId);
+                        newMapping.setOrderIndex(site6Mapping.get().getOrderIndex());
+                        wpProductImageSiteMappingRepository.save(newMapping);
+                    }
+                }
+
+                if (wpMediaId != null) {
+                    Map<String, Object> imgMap = new HashMap<>();
+                    imgMap.put("id", wpMediaId);
+                    imageList.add(imgMap);
+                }
+            }
+
+            // 5. Закачаме снимките към продукта в целевия сайт
+            Map<String, Object> updateBody = new HashMap<>();
+            updateBody.put("images", imageList);
+
+            restClient.patch()
+                    .uri(targetSite.getUrlWithHttps() + "/wp-json/wc/v3/products/" + wpProductId)
+                    .header("Authorization", "Basic " + auth)
+                    .body(updateBody)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("syncImagesFromSite6: закачени {} снимки към {} за продукт {}",
+                    imageList.size(), targetSite.getUrl(), product.getSku());
+
+        } catch (Exception e) {
+            log.error("syncImagesFromSite6: грешка за продукт {}: {}", product.getSku(), e.getMessage());
+        }
+    }
 }
