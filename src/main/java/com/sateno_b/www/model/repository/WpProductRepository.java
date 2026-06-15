@@ -56,6 +56,8 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
             "ORDER BY i.isPrimary DESC, i.id ASC LIMIT 1")
     String findImagePathsByProductId(@Param("productId") Long productId);
 
+    List<WpProductEntity> findAllBySkuIn(List<String> skuList);
+
 
 //    @EntityGraph(attributePaths = {"brand"})
 //    @Query("SELECT p FROM WpProductEntity p")

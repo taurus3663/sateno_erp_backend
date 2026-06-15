@@ -121,14 +121,21 @@ public class WpProductService {
 
 //    sinhronizirane na imena i otnosno na produkti
     @Transactional
-    public void syncProductNAnInfo(Long siteId) {
+    public void syncProductNAnInfo(Long siteId, List<String> skuList) {
 //        SiteEntity site = siteRepository.findById(siteId).orElseThrow();
 //        if(site.getUrl().contains("sateno.bg")) {
 //            throw new RuntimeException("sateno.bg");
 //        }
 
         int count = 0;
-        List<WpProductEntity> productList = wpProductRepository.findAll();
+        List<WpProductEntity> productList;
+
+        if(skuList.isEmpty()){
+            productList = wpProductRepository.findAll();
+        } else {
+            productList = wpProductRepository.findAllBySkuIn(skuList);
+        }
+
         for (WpProductEntity product : productList) {
             try {
                 log.info(String.valueOf(++count));

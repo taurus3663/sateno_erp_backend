@@ -45,7 +45,8 @@ public class initDB implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         initAdmin();
-//        wpProductService.syncProductNAnInfo(7L);
+//        wpProductService.syncProductNAnInfo(3L, List.of("a2228", "a2210", "a2201", "a2134", "a2132", "a2104", "a2084", "a2067", "a2065", "a2052", "a2045"));
+//        wpProductService.syncProductNAnInfo(6L, List.of());
 //        sendEmailTest();
 //        callAi();
 //        nekorektenService.checkPhone("0888182076");

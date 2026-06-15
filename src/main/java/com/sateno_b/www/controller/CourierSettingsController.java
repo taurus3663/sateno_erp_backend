@@ -173,5 +173,13 @@ public class CourierSettingsController {
         ));
     }
 
-
+    @PostMapping("/request-pickup/econt/{siteId}")
+    public ResponseEntity<?> requestPickup(@PathVariable Long siteId) {
+        try {
+            econtService.requestCourierPickup(siteId);
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

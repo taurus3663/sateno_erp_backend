@@ -1828,11 +1828,11 @@ public class WpProductAsyncService {
         if (product == null) return;
 
         SiteEntity targetSite = siteRepository.findById(targetSiteId).orElse(null);
-        SiteEntity site6 = siteRepository.findById(6L).orElse(null);
-        if (targetSite == null || site6 == null || targetSite.getUrl().contains("sateno.bg")) {
-            log.error("ERROR because there is selected sateno.bg | or targetSite == null | site6 == null");
-            return;
-        };
+        SiteEntity site6 = siteRepository.findById(7L).orElse(null);
+//        if (targetSite == null || site6 == null || targetSite.getUrl().contains("sateno.bg")) {
+//            log.error("ERROR because there is selected sateno.bg | or targetSite == null | site6 == null");
+//            return;
+//        };
 
         String auth = Base64.getEncoder().encodeToString(
                 (targetSite.getConsumerKey() + ":" + targetSite.getConsumerSecret()).getBytes()

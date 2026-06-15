@@ -946,7 +946,41 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
         }
     }
 
+    public boolean requestCourierPickup(Long siteId) {
+        SiteEntity site = siteRepository.findById(siteId)
+                .orElseThrow(() -> new RuntimeException("Сайтът не е намерен"));
 
+        CourierSettingsEntity settings = courierSettingsRepository
+                .findBySiteAndCourierTypeAndActiveTrueAndDefaultCourierTrue(site, CourierType.ECONT)
+                .orElseThrow(() -> new RuntimeException("Няма активни Еконт настройки за сайта"));
 
+        var config = settings.getConfig();
 
+        Map<String, Object> senderClient = new HashMap<>();
+        senderClient.put("name", config.getAgentName());
+        senderClient.put("phones", List.of(config.getPhoneNumber()));
+
+        Map<String, Object> senderCity = new HashMap<>();
+        senderCity.put("name", config.getCity());
+        senderCity.put("postCode", config.getPostalCode());
+        senderCity.put("country", Map.of("code3", "BGR"));
+
+        Map<String, Object> senderAddress = new HashMap<>();
+        senderAddress.put("city", senderCity);
+        senderAddress.put("street", config.getAddress());
+
+        Map<String, Object> courier = new HashMap<>();
+        courier.put("senderClient", senderClient);
+        courier.put("senderAddress", senderAddress);
+        courier.put("pickupDate", LocalDate.now(ZoneId.of("Europe/Sofia")).toString());
+        courier.put("fromTime", "09:00");
+        courier.put("toTime", "18:00");
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("courier", courier);
+
+        postToEcont("services/Shipments/ShipmentService.requestCourier.json",
+                body, settings.getUsername(), settings.getPassword());
+        return true;
+    }
 }
