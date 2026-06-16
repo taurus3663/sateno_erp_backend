@@ -1175,9 +1175,12 @@ public class WpOrderService {
                 }
             }
 
-            if(wpOrderDto.getSite() != null) {
+            if(wpOrderDto.getSite() != null && wpOrderDto.getSite().getId() != null && wpOrderDto.getSite().getId() != 0) {
                 SiteEntity site = siteRepository.getReferenceById(wpOrderDto.getSite().getId());
                 newOrder.setSite(site);
+            } else {
+                SiteEntity defaultSite = siteRepository.findSiteEntityByUrl("sateno.bg");
+                if (defaultSite != null) newOrder.setSite(defaultSite);
             }
 
             newOrder.setCustomShippingTotal(wpOrderDto.getCustomShippingTotal());

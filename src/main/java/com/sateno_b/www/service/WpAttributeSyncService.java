@@ -261,18 +261,22 @@ public class WpAttributeSyncService {
                 String baseUrl = site.getUrlWithHttps() + "/wp-json/wc/v3/products/attributes";
                 String label = translationService.ensureValueLabel(value.getId(), site.getLanguage());
 
-                List<Map<String, Object>> wpTypes = restClient.get()
-                        .uri(baseUrl + "?slug=" + typeSlug)
+                // Зареждаме всички типове веднъж → Map<slug, wcId>
+                List<Map<String, Object>> allWcTypes = restClient.get()
+                        .uri(baseUrl + "?per_page=100")
                         .header("Authorization", auth)
                         .retrieve()
                         .body(new ParameterizedTypeReference<>() {});
+                Map<String, Integer> wcTypeIdBySlug = new HashMap<>();
+                if (allWcTypes != null) {
+                    allWcTypes.forEach(wt -> wcTypeIdBySlug.put((String) wt.get("slug"), (Integer) wt.get("id")));
+                }
 
-                if (wpTypes == null || wpTypes.isEmpty()) {
+                Integer wpTypeId = wcTypeIdBySlug.get(typeSlug);
+                if (wpTypeId == null) {
                     log.warn("Attribute type '{}' not found on site {}", typeSlug, site.getUrl());
                     continue;
                 }
-
-                int wpTypeId = (int) wpTypes.get(0).get("id");
                 String termsUrl = baseUrl + "/" + wpTypeId + "/terms";
 
                 List<Map<String, Object>> existing = restClient.get()

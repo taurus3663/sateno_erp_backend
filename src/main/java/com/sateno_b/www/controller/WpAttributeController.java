@@ -65,7 +65,10 @@ public class WpAttributeController {
                 ? typeRepository.findById(dto.getId()).orElse(new WpAttributeTypeEntity())
                 : new WpAttributeTypeEntity();
 
-        entity.setSlug(dto.getSlug());
+        String slug = (dto.getSlug() != null && !dto.getSlug().isBlank())
+                ? dto.getSlug()
+                : generateSlug(dto.getTranslations());
+        entity.setSlug(slug);
         entity.setMultipleValues(dto.isMultipleValues());
         WpAttributeTypeEntity saved = typeRepository.save(entity);
 
@@ -118,7 +121,10 @@ public class WpAttributeController {
                 .orElseThrow(() -> new RuntimeException("Attribute type not found: " + dto.getTypeId()));
 
         entity.setAttributeType(type);
-        entity.setSlug(dto.getSlug());
+        String slug = (dto.getSlug() != null && !dto.getSlug().isBlank())
+                ? dto.getSlug()
+                : generateSlug(dto.getTranslations());
+        entity.setSlug(slug);
         WpAttributeValueEntity saved = valueRepository.save(entity);
 
         if (dto.getTranslations() != null) {
@@ -227,5 +233,29 @@ public class WpAttributeController {
             return m.containsKey("label") ? m.get("label").toString() : "";
         }
         return value.toString();
+    }
+
+    private String generateSlug(Map<String, Object> translations) {
+        if (translations == null || translations.isEmpty()) return "pa_attribute";
+        String label = translations.values().stream()
+                .map(this::extractLabel)
+                .filter(s -> s != null && !s.isBlank())
+                .findFirst().orElse("attribute");
+        String slugBody = transliterate(label.toLowerCase())
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-+|-+$", "");
+        return "pa_" + slugBody;
+    }
+
+    private String transliterate(String text) {
+        String[][] map = {
+            {"щ","sht"},{"ж","zh"},{"ц","ts"},{"ч","ch"},{"ш","sh"},{"ю","yu"},{"я","ya"},
+            {"а","a"},{"б","b"},{"в","v"},{"г","g"},{"д","d"},{"е","e"},{"з","z"},
+            {"и","i"},{"й","y"},{"к","k"},{"л","l"},{"м","m"},{"н","n"},{"о","o"},
+            {"п","p"},{"р","r"},{"с","s"},{"т","t"},{"у","u"},{"ф","f"},{"х","h"},
+            {"ъ","a"},{"ь",""},{"є","e"},{"і","i"},{"ї","yi"},{"ґ","g"}
+        };
+        for (String[] pair : map) text = text.replace(pair[0], pair[1]);
+        return text;
     }
 }
