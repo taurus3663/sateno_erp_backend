@@ -84,6 +84,7 @@ public class WpProductService {
     private final WpBrandAsyncService wpBrandAsyncService;
     private final WpCategorySiteMappingRepository wpCategorySiteMappingRepository;
     private final WpProductCleanupService wpProductCleanupService;
+    private final WpAttributeValueRepository wpAttributeValueRepository;
 
 
     @Transactional
@@ -629,6 +630,14 @@ public class WpProductService {
             entity.getCategories().clear();
             for (WpCategoryDetailDto category : dto.getCategories()) {
                 entity.getCategories().add(wpCategoryRepository.getReferenceById(category.getId()));
+            }
+        }
+
+        // ATTRIBUTE VALUES
+        if (dto.getAttributeValueIds() != null) {
+            entity.getAttributeValues().clear();
+            for (Long valueId : dto.getAttributeValueIds()) {
+                entity.getAttributeValues().add(wpAttributeValueRepository.getReferenceById(valueId));
             }
         }
 

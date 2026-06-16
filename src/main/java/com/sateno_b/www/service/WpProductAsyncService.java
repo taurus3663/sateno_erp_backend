@@ -33,6 +33,7 @@ public class WpProductAsyncService {
     private final CurrencyService currencyService;
     private final WpProductSiteConfigRepository wpProductSiteConfigRepository;
     private final CurrencyRepository currencyRepository;
+    private final WpAttributeTranslationService wpAttributeTranslationService;
 
     @Transactional
     @Async
@@ -57,6 +58,12 @@ public class WpProductAsyncService {
                 if (val.getGroups() != null && !val.getGroups().isEmpty()) {
                     val.getGroups().forEach(group -> group.getTranslations().size());
                 }
+            });
+        }
+        if (product.getAttributeValues() != null) {
+            product.getAttributeValues().forEach(attrVal -> {
+                attrVal.getTranslations().size();
+                attrVal.getAttributeType().getTranslations().size();
             });
         }
         // --- КРАЙ НА ИНИЦИАЛИЗАЦИЯТА ---
@@ -404,6 +411,75 @@ public class WpProductAsyncService {
                 // 7. ADDONS
                 List<Map<String, Object>> wooAddons = generateWooAddons(product, site, currency);
                 updateBody.put("addons", wooAddons);
+
+                // 8. ATTRIBUTES
+                if (product.getAttributeValues() != null && !product.getAttributeValues().isEmpty() && site.getLanguage() != null) {
+                    // Зареждаме ВЕДНЪЖ всички WC типове и правим Map<slug, wcId>
+                    Map<String, Integer> wcTypeIdBySlug = new HashMap<>();
+                    try {
+                        List<Map<String, Object>> allWcTypes = restClient.get()
+                                .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/attributes?per_page=100")
+                                .header("Authorization", "Basic " + auth)
+                                .retrieve()
+                                .body(new ParameterizedTypeReference<>() {});
+                        if (allWcTypes != null) {
+                            allWcTypes.forEach(wt -> wcTypeIdBySlug.put((String) wt.get("slug"), (Integer) wt.get("id")));
+                        }
+                    } catch (Exception e) {
+                        log.error("Failed to load WC attribute types for site {}: {}", site.getUrl(), e.getMessage());
+                    }
+
+                    Map<WpAttributeTypeEntity, List<WpAttributeValueEntity>> byType = new LinkedHashMap<>();
+                    for (WpAttributeValueEntity attrVal : product.getAttributeValues()) {
+                        byType.computeIfAbsent(attrVal.getAttributeType(), k -> new ArrayList<>()).add(attrVal);
+                    }
+                    List<Map<String, Object>> attributesList = new ArrayList<>();
+                    for (Map.Entry<WpAttributeTypeEntity, List<WpAttributeValueEntity>> entry : byType.entrySet()) {
+                        WpAttributeTypeEntity attrType = entry.getKey();
+                        try {
+                            int wcTypeId;
+                            if (wcTypeIdBySlug.containsKey(attrType.getSlug())) {
+                                wcTypeId = wcTypeIdBySlug.get(attrType.getSlug());
+                            } else {
+                                String typeLabel = wpAttributeTranslationService.ensureTypeLabel(attrType.getId(), site.getLanguage());
+                                Map<String, Object> typeBody = new HashMap<>();
+                                typeBody.put("name", typeLabel);
+                                typeBody.put("slug", attrType.getSlug());
+                                typeBody.put("type", "select");
+                                typeBody.put("order_by", "menu_order");
+                                typeBody.put("has_archives", false);
+                                Map<String, Object> created = restClient.post()
+                                        .uri(site.getUrlWithHttps() + "/wp-json/wc/v3/products/attributes")
+                                        .header("Authorization", "Basic " + auth)
+                                        .body(typeBody)
+                                        .retrieve()
+                                        .body(new ParameterizedTypeReference<>() {});
+                                if (created == null || !created.containsKey("id")) {
+                                    log.warn("Failed to create attribute type '{}' on site {}", attrType.getSlug(), site.getUrl());
+                                    continue;
+                                }
+                                wcTypeId = (int) created.get("id");
+                                wcTypeIdBySlug.put(attrType.getSlug(), wcTypeId);
+                                log.info("Created missing attribute type '{}' on site {}", attrType.getSlug(), site.getUrl());
+                            }
+                            List<String> options = new ArrayList<>();
+                            for (WpAttributeValueEntity attrVal : entry.getValue()) {
+                                String label = wpAttributeTranslationService.ensureValueLabel(attrVal.getId(), site.getLanguage());
+                                if (label != null && !label.isBlank()) options.add(label);
+                            }
+                            if (options.isEmpty()) continue;
+                            Map<String, Object> attrMap = new HashMap<>();
+                            attrMap.put("id", wcTypeId);
+                            attrMap.put("visible", true);
+                            attrMap.put("variation", false);
+                            attrMap.put("options", options);
+                            attributesList.add(attrMap);
+                        } catch (Exception e) {
+                            log.error("Error building attributes for type '{}' on site {}: {}", attrType.getSlug(), site.getUrl(), e.getMessage());
+                        }
+                    }
+                    updateBody.put("attributes", attributesList);
+                }
 
 
                 if(isNewProduct) {

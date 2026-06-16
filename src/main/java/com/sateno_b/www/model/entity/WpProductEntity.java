@@ -112,4 +112,13 @@ public class WpProductEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private Dimensions dimensions;
+
+    @BatchSize(size = 250)
+    @ManyToMany
+    @JoinTable(
+            name = "wp_product_attribute_value",
+            joinColumns = @JoinColumn(name = "product_id"),
+            inverseJoinColumns = @JoinColumn(name = "attribute_value_id")
+    )
+    private List<WpAttributeValueEntity> attributeValues = new ArrayList<>();
 }

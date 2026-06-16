@@ -902,8 +902,13 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
                         // ОБХОЖДАМЕ ЦЯЛАТА ХРОНОЛОГИЯ ОТ ЕКОНТ
                         for (Map<String, Object> event : events) {
                             String desc = (String) event.get("destinationDetails");
+                            String descEn = (String) event.get("destinationDetailsEn");
+                            String destType = (String) event.get("destinationType");
                             Long eventMillis = (Long) event.get("time");
                             Instant eventTime = Instant.ofEpochMilli(eventMillis);
+
+                            log.info("ECONT event shipment={} type={} bg='{}' en='{}'",
+                                shipmentNum, destType, desc, descEn);
 
                             // Проверка дали точно този ивент (време + текст) вече съществува
                             boolean alreadyExists = order.getCourierHistory().stream()
@@ -920,17 +925,38 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
                             }
                         }
                         String currentShortStatus = (String) statusInfo.get("shortDeliveryStatus");
+                        String currentShortStatusEn = (String) statusInfo.get("shortDeliveryStatusEn");
+                        log.info("ECONT shortStatus shipment={} bg='{}' en='{}'",
+                            shipmentNum, currentShortStatus, currentShortStatusEn);
+
                         CustomerEntity customer = order.getCustomer();
 
-                        if ("Връщане на пратката".equalsIgnoreCase(currentShortStatus)) {
-                            order.setStatus(OrderStatus.CANCELLED);
+                        if ("Връщане на пратката".equalsIgnoreCase(currentShortStatus)
+                                || "return".equalsIgnoreCase(currentShortStatusEn)) {
+                            boolean refusedAfterReview = events.stream()
+                                    .anyMatch(e -> {
+                                        String bg = (String) e.get("destinationDetails");
+                                        String en = (String) e.get("destinationDetailsEn");
+                                        String type = (String) e.get("destinationType");
+                                        return (bg != null && bg.toLowerCase().contains("преглед"))
+                                            || (en != null && (en.toLowerCase().contains("inspect") || en.toLowerCase().contains("review")))
+                                            || ("refused_after_inspection".equalsIgnoreCase(type))
+                                            || ("rejected_after_inspection".equalsIgnoreCase(type));
+                                    });
+
+                            order.setStatus(refusedAfterReview
+                                    ? OrderStatus.REFUSED_AFTER_REVIEW
+                                    : OrderStatus.CANCELLED);
                             isUpdated = true;
 
                         } else {
                             String firstNameLC = customer.getFirstName().toLowerCase().trim();
                             String lastNameLC = customer.getLastName().toLowerCase().trim();
-                            String currentShortStatusLC = currentShortStatus.toLowerCase();
-                            if ((currentShortStatusLC.contains(firstNameLC) && currentShortStatusLC.contains(lastNameLC)) || currentShortStatusLC.contains("доставена")) {
+                            String currentShortStatusLC = currentShortStatus != null ? currentShortStatus.toLowerCase() : "";
+                            String currentShortStatusEnLC = currentShortStatusEn != null ? currentShortStatusEn.toLowerCase() : "";
+                            if ((currentShortStatusLC.contains(firstNameLC) && currentShortStatusLC.contains(lastNameLC))
+                                    || currentShortStatusLC.contains("доставена")
+                                    || currentShortStatusEnLC.contains("delivered")) {
                                 order.setStatus(OrderStatus.COMPLETED);
                                 isUpdated = true;
                             }

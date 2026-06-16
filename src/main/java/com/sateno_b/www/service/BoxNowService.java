@@ -551,9 +551,10 @@ public class BoxNowService implements ShippingProvider {
                 try {
                     Instant eventTime = Instant.parse(createTimeStr);
 
-                    // Проверка дали този ивент вече е записан
+                    // Проверка дали този ивент вече е записан (по време + текст)
                     boolean exists = order.getCourierHistory().stream()
-                            .anyMatch(h -> h.getStatusDescription().equals(translatedStatus));
+                            .anyMatch(h -> h.getStatusDescription().equals(translatedStatus)
+                                    && h.getEventTime().equals(eventTime));
 
                     if (!exists) {
                         WpOrderCourierHistory history = new WpOrderCourierHistory();
@@ -575,7 +576,10 @@ public class BoxNowService implements ShippingProvider {
             if ("delivered".equalsIgnoreCase(currentState) && order.getStatus() != OrderStatus.COMPLETED) {
                 order.setStatus(OrderStatus.COMPLETED);
                 isUpdated = true;
-            } else if ("canceled".equalsIgnoreCase(currentState) && order.getStatus() != OrderStatus.CANCELLED) {
+            } else if (("canceled".equalsIgnoreCase(currentState)
+                    || "expired".equalsIgnoreCase(currentState)
+                    || "returned-to-sender".equalsIgnoreCase(currentState))
+                    && order.getStatus() != OrderStatus.CANCELLED) {
                 order.setStatus(OrderStatus.CANCELLED);
                 isUpdated = true;
             }

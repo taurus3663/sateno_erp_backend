@@ -14,7 +14,8 @@ public enum OrderStatus {
     APPROVED("approved"),
     JOINT("joint"),
     WAITING("waiting"),
-    FAILED("failed");
+    FAILED("failed"),
+    REFUSED_AFTER_REVIEW("refused_after_review");
     private final String value;
 
     OrderStatus(String value) {

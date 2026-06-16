@@ -1027,16 +1027,23 @@ public class SpeedyService implements ShippingProvider {
                                 isUpdated = true;
                             }
 
-                            // 2. АВТОМАТИЧНО МАРКИРАНЕ КАТО ПРИКЛЮЧЕНА
-                            // Проверяваме дали описанието съдържа фразата за доставка
+                            log.info("SPEEDY event shipment={} opCode={} desc='{}'", shipmentNum, opCode, desc);
+
+                            // 2. АВТОМАТИЧНО МАРКИРАНЕ НА СТАТУС
                             if (desc.toLowerCase().contains("доставка на клиент") && order.getStatus() != OrderStatus.COMPLETED) {
                                 order.setStatus(OrderStatus.COMPLETED);
                                 isUpdated = true;
                                 log.info("Order #{} marked as COMPLETED based on Speedy status: {}", order.getId(), desc);
                             }
-                            else if(desc.toLowerCase().contains("връщане към подателя") || opCode.equals("111")) {
-                                order.setStatus(OrderStatus.FAILED);
+                            else if (desc.toLowerCase().contains("преглед") && order.getStatus() != OrderStatus.REFUSED_AFTER_REVIEW) {
+                                order.setStatus(OrderStatus.REFUSED_AFTER_REVIEW);
                                 isUpdated = true;
+                            }
+                            else if(desc.toLowerCase().contains("връщане към подателя") || opCode.equals("111")) {
+                                if (order.getStatus() != OrderStatus.REFUSED_AFTER_REVIEW) {
+                                    order.setStatus(OrderStatus.FAILED);
+                                    isUpdated = true;
+                                }
                             }
                         }
 

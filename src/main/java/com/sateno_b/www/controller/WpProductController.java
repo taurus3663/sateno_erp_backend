@@ -228,6 +228,13 @@ public class WpProductController {
                     return wpProductHistoryDTO;
                 }).toList());
 
+        // ATTRIBUTE VALUES
+        if (entity.getAttributeValues() != null) {
+            dto.setAttributeValueIds(entity.getAttributeValues().stream()
+                    .map(v -> v.getId())
+                    .collect(Collectors.toList()));
+        }
+
         return ResponseEntity.ok(dto);
     }
 

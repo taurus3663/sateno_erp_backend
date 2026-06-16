@@ -41,10 +41,14 @@ public class initDB implements CommandLineRunner {
     private final GoogleAdsService googleAdsService;
     private final WpProductService wpProductService;
     private final GoogleAdsRepository googleAdsRepository;
+    private final WpAttributeSyncService wpAttributeSyncService;
 
     @Override
     public void run(String... args) throws Exception {
         initAdmin();
+//        wpAttributeSyncService.pushAllToAllSites(List.of(7L)); // push product-attribute links
+//        wpAttributeSyncService.pushAllToAllSites(List.of(7L )); // добави ID-тата на сайтовете
+//        wpAttributeSyncService.pullFromSite(6L); // смени с правилното siteId
 //        wpProductService.syncProductNAnInfo(3L, List.of("a2228", "a2210", "a2201", "a2134", "a2132", "a2104", "a2084", "a2067", "a2065", "a2052", "a2045"));
 //        wpProductService.syncProductNAnInfo(6L, List.of());
 //        sendEmailTest();

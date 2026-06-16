@@ -37,4 +37,5 @@ public class WpProductDto {
 //    private ProductUnit unit;
     private Long lastEditedSiteId;
     private List<WpProductHistoryDTO> history = new  ArrayList<>();
+    private List<Long> attributeValueIds = new ArrayList<>();
 }

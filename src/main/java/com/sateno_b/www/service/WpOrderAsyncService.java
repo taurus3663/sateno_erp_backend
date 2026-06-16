@@ -83,6 +83,9 @@ public class WpOrderAsyncService {
             else if(order.getStatus() == OrderStatus.JOINT) {
                 status = OrderStatus.COMPLETED.name().toLowerCase();
             }
+            else if(order.getStatus() == OrderStatus.REFUSED_AFTER_REVIEW) {
+                status = OrderStatus.CANCELLED.getValue();
+            }
 
             if(status.isEmpty()) {
                 status = order.getStatus().name().toLowerCase();
