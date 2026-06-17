@@ -1052,6 +1052,12 @@ public class WpOrderService {
                 order.setStatus(wpOrderDto.getStatus());
                 order.setComment(wpOrderDto.getComment());
 
+                // При ръчен отказ — флагваме за безусловно връщане на бройки
+                if (wpOrderDto.getStatus() == OrderStatus.CANCELLED
+                        || wpOrderDto.getStatus() == OrderStatus.REFUSED_AFTER_REVIEW) {
+                    order.setManualCancellation(true);
+                }
+
                 // Важно: Проверяваме дали billing обекта съществува
                 if (order.getBilling() != null && wpOrderDto.getBilling() != null) {
                     order.getBilling().setFirstName(wpOrderDto.getBilling().getFirstName());

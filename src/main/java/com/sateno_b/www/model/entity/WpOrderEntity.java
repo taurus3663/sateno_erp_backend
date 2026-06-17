@@ -115,6 +115,9 @@ public class WpOrderEntity extends BaseEntity {
     @Transient
     private WpOrderEntity snapshot; // Пазим снимка на целия обект
 
+    @Transient
+    private boolean manualCancellation = false;
+
     @PostLoad
     public void createSnapshot() {
         // Правим повърхностно копие на най-важните полета

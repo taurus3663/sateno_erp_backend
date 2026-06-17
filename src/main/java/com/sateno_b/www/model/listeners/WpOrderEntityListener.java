@@ -38,13 +38,14 @@ public class WpOrderEntityListener {
         }
         WpOrderEntity old = wpOrderEntity.getSnapshot();
 
-        // Проверка за статус CANCELLED
+        // Проверка за статус CANCELLED / REFUSED_AFTER_REVIEW / FAILED
         if (old != null && old.getStatus() != wpOrderEntity.getStatus()
-                && (wpOrderEntity.getStatus() == OrderStatus.CANCELLED ||
-                wpOrderEntity.getStatus() == OrderStatus.FAILED) ) {
+                && (wpOrderEntity.getStatus() == OrderStatus.CANCELLED
+                || wpOrderEntity.getStatus() == OrderStatus.REFUSED_AFTER_REVIEW
+                || wpOrderEntity.getStatus() == OrderStatus.FAILED)) {
 
-            // Извикваме сервиза само при нужда през Provider-а
-            wpProductServiceProvider.ifAvailable(service -> service.restoreQuantity(wpOrderEntity));
+            boolean manual = wpOrderEntity.isManualCancellation();
+            wpProductServiceProvider.ifAvailable(service -> service.restoreQuantity(wpOrderEntity, manual));
         }
         else if(old != null && old.getStatus() == OrderStatus.CANCELLED && wpOrderEntity.getStatus() != null
                 && wpOrderEntity.getStatus() == OrderStatus.PROCESSING) {

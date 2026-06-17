@@ -550,7 +550,16 @@ public class SpeedyService implements ShippingProvider {
 //        Map<String, Object> response = postToSpeedy("calculate", body);
 //        System.out.println(response);
 //        System.out.println(response);
+        if (response.containsKey("error")) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> error = (Map<String, Object>) response.get("error");
+            String message = String.valueOf(error.get("message"));
+            log.error("Speedy отказа товарителницата: {}", message);
+            throw new RuntimeException("Speedy: " + message); // ← смисленото съобщение стига до UI
+        }
+
         SpeedyCreateLabelResponse labelResponse = getLabelResponse(response);
+
 //        System.out.println(labelResponse.toString());
 
         order.setWayBillShipmentNumber(Long.parseLong(labelResponse.getId()));

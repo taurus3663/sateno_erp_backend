@@ -116,6 +116,10 @@ public class BoxNowService implements ShippingProvider {
                 courierSettingsEntity.getApiKey(), courierSettingsEntity.getApiSecret());
 //        System.out.println(response);
         BoxNowDeliveryResponse boxNowDeliveryResponse = getBoxNowDeliveryResponse(response);
+        if (boxNowDeliveryResponse == null) {
+            throw new RuntimeException("BOXNOW: липсва номер на товарителница. Отговор: " + response);
+        }
+
 
         order.setParcelIds(boxNowDeliveryResponse.getParcels().stream().map(BoxNowDeliveryResponse.Parcel::getId).toList());
         order.setWayBillShipmentNumber(Long.parseLong(boxNowDeliveryResponse.getId()));
@@ -443,6 +447,11 @@ public class BoxNowService implements ShippingProvider {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {
+                    String errorBody = new String(res.getBody().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                    log.error("BoxNow HTTP {} от {}: {}", res.getStatusCode(), endpoint, errorBody);
+                    throw new RuntimeException("BoxNow: " + errorBody); // ← реалното съобщение стига до Angular
+                })
                 .body(new ParameterizedTypeReference<Map<String, Object>>() {});
     }
     private Map<String, Object> getToBoxNow(String endpoint, Map<String, Object> body, String username, String password) {

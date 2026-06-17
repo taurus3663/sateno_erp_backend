@@ -991,6 +991,10 @@ public class WpProductService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void restoreQuantity(WpOrderEntity wpOrderEntity) {
+        restoreQuantity(wpOrderEntity, false);
+    }
+
+    public void restoreQuantity(WpOrderEntity wpOrderEntity, boolean manualCancellation) {
         wpOrderEntity = wpOrderRepository.findById(wpOrderEntity.getId()).orElse(null);
         if (wpOrderEntity == null) return;
 
@@ -1000,12 +1004,19 @@ public class WpProductService {
 
             if (qtyToRestore <= 0) continue;
 
+            // При автоматичен отказ (куриер) — проверяваме адона за ластик
+            // При ръчен отказ — винаги връщаме бройката
+            if (!manualCancellation && hasElasticAddon(orderLineItem)) {
+                log.info("restoreQuantity: пропускаме {} — продуктът е с ластик (автоматичен отказ)", pSku);
+                continue;
+            }
+
             Optional<WpProductEntity> productOpt = wpProductRepository.findBySku(pSku);
             if (productOpt.isPresent()) {
                 WpProductEntity wpProductEntity = productOpt.get();
 
                 int oldStock = wpProductEntity.getStockQuantity() != null ? wpProductEntity.getStockQuantity() : 0;
-                int newStock = oldStock + qtyToRestore; // Връщаме стоката обратно
+                int newStock = oldStock + qtyToRestore;
 
                 // 1. Обновяваме склада
                 wpProductEntity.setStockQuantity(newStock);
@@ -1015,7 +1026,6 @@ public class WpProductService {
                 WpProductHistoryEntity historyEntity = new WpProductHistoryEntity();
                 historyEntity.setProduct(wpProductEntity);
                 historyEntity.setOrder(wpOrderEntity);
-//                historyEntity.setProductSku(pSku);
                 historyEntity.setOldQuantity((long) oldStock);
                 historyEntity.setNewQuantity((long) newStock);
                 historyEntity.setQuantity(qtyToRestore);
@@ -1031,6 +1041,19 @@ public class WpProductService {
                 }
             }
         }
+    }
+
+    private boolean hasElasticAddon(OrderLineItem line) {
+        if (line.getPaoIdValue() == null) return false;
+        return line.getPaoIdValue().stream()
+            .filter(p -> p.getValue() != null)
+            .flatMap(p -> p.getValue().stream())
+            .anyMatch(v -> {
+                String combined = ((v.getValue() != null ? v.getValue() : "") + " "
+                        + (v.getRawValue() != null ? v.getRawValue() : "")
+                        + " " + (v.getKey() != null ? v.getKey() : "")).toLowerCase();
+                return combined.contains("ластик") && !combined.contains("без ластик");
+            });
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

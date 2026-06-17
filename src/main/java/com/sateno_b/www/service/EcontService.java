@@ -361,6 +361,11 @@ public class EcontService implements ShippingProvider {
 //        System.out.println(response);
 
         EcontCreateLabelResponse labelResponse = getLabelResponse(response);
+        if (labelResponse == null || labelResponse.getLabel() == null
+                || labelResponse.getLabel().getShipmentNumber() == null) {
+            throw new RuntimeException("Econt: липсва номер на товарителница. Отговор: " + response);
+        }
+
         order.setWayBillUrl(labelResponse.getLabel().getPdfURL());
         order.setWayBillShipmentNumber(Long.parseLong(labelResponse.getLabel().getShipmentNumber()));
         order.setCourierType(CourierType.ECONT);
@@ -732,6 +737,11 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
                 })
                 .body(body)
                 .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {
+                    String errorBody = new String(res.getBody().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                    log.error("Econt HTTP {} от {}: {}", res.getStatusCode(), endpoint, errorBody);
+                    throw new RuntimeException("Econt: " + errorBody); // ← реалното съобщение стига до UI
+                })
                 .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
 
     }
@@ -917,7 +927,8 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
 
                             if (!alreadyExists) {
                                 WpOrderCourierHistory newEntry = new WpOrderCourierHistory();
-                                newEntry.setStatusDescription(desc);
+                                String typeLabel = econtTypeLabel(destType);
+                                newEntry.setStatusDescription(typeLabel != null ? typeLabel + ": " + desc : desc);
                                 newEntry.setEventTime(eventTime);
 
                                 order.getCourierHistory().add(newEntry);
@@ -930,36 +941,48 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
                             shipmentNum, currentShortStatus, currentShortStatusEn);
 
                         CustomerEntity customer = order.getCustomer();
+                        String shortStatusLC = currentShortStatus != null ? currentShortStatus.toLowerCase() : "";
+                        String shortStatusEnLC = currentShortStatusEn != null ? currentShortStatusEn.toLowerCase() : "";
 
-                        if ("Връщане на пратката".equalsIgnoreCase(currentShortStatus)
-                                || "return".equalsIgnoreCase(currentShortStatusEn)) {
-                            boolean refusedAfterReview = events.stream()
-                                    .anyMatch(e -> {
-                                        String bg = (String) e.get("destinationDetails");
-                                        String en = (String) e.get("destinationDetailsEn");
-                                        String type = (String) e.get("destinationType");
-                                        return (bg != null && bg.toLowerCase().contains("преглед"))
-                                            || (en != null && (en.toLowerCase().contains("inspect") || en.toLowerCase().contains("review")))
-                                            || ("refused_after_inspection".equalsIgnoreCase(type))
-                                            || ("rejected_after_inspection".equalsIgnoreCase(type));
-                                    });
+                        // Проверяваме event типовете от официалния Еконт енум
+                        boolean hasRefusedAfterReview = events.stream().anyMatch(e -> {
+                            String type = (String) e.get("destinationType");
+                            String bg   = (String) e.get("destinationDetails");
+                            String en   = (String) e.get("destinationDetailsEn");
+                            return (bg != null && bg.toLowerCase().contains("преглед"))
+                                || (en != null && (en.toLowerCase().contains("inspect") || en.toLowerCase().contains("review")));
+                        });
 
-                            order.setStatus(refusedAfterReview
-                                    ? OrderStatus.REFUSED_AFTER_REVIEW
-                                    : OrderStatus.CANCELLED);
+                        boolean hasReturnType = events.stream().anyMatch(e -> {
+                            String type = (String) e.get("destinationType");
+                            return "return".equals(type)
+                                || "is_returning_to_sender".equals(type)
+                                || "returned_to_sender".equals(type)
+                                || "destroy".equals(type);
+                        });
+
+                        boolean hasDeliveredToClient = events.stream().anyMatch(e ->
+                            "client".equals(e.get("destinationType")));
+
+                        boolean shortStatusIsReturn = shortStatusLC.contains("връщане")
+                            || shortStatusEnLC.contains("return");
+
+                        boolean shortStatusIsDelivered = shortStatusLC.contains("доставена")
+                            || shortStatusEnLC.contains("delivered")
+                            || (customer != null
+                                && customer.getFirstName() != null && customer.getLastName() != null
+                                && shortStatusLC.contains(customer.getFirstName().toLowerCase().trim())
+                                && shortStatusLC.contains(customer.getLastName().toLowerCase().trim()));
+
+                        if (hasRefusedAfterReview && (hasReturnType || shortStatusIsReturn)) {
+                            order.setStatus(OrderStatus.REFUSED_AFTER_REVIEW);
                             isUpdated = true;
-
-                        } else {
-                            String firstNameLC = customer.getFirstName().toLowerCase().trim();
-                            String lastNameLC = customer.getLastName().toLowerCase().trim();
-                            String currentShortStatusLC = currentShortStatus != null ? currentShortStatus.toLowerCase() : "";
-                            String currentShortStatusEnLC = currentShortStatusEn != null ? currentShortStatusEn.toLowerCase() : "";
-                            if ((currentShortStatusLC.contains(firstNameLC) && currentShortStatusLC.contains(lastNameLC))
-                                    || currentShortStatusLC.contains("доставена")
-                                    || currentShortStatusEnLC.contains("delivered")) {
-                                order.setStatus(OrderStatus.COMPLETED);
-                                isUpdated = true;
-                            }
+                        } else if (hasReturnType || shortStatusIsReturn) {
+                            order.setStatus(OrderStatus.CANCELLED);
+                            isUpdated = true;
+                        } else if (hasDeliveredToClient || shortStatusIsDelivered) {
+                            order.setStatus(OrderStatus.COMPLETED);
+                            isUpdated = true;
                         }
 
                         // Ако сме добавили нови записи в историята, записваме поръчката веднъж
@@ -970,6 +993,32 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
                         }
                     });
         }
+    }
+
+    private String econtTypeLabel(String type) {
+        if (type == null) return null;
+        return switch (type) {
+            case "client"                       -> "Доставена";
+            case "courier"                      -> "Предаден на куриер";
+            case "courier_direction"            -> "Маршрут";
+            case "office"                       -> "В офис";
+            case "first_try"                    -> "Първи опит за доставка";
+            case "second_try"                   -> "Втори опит за доставка";
+            case "instruction"                  -> "Инструкция";
+            case "redirect"                     -> "Пренасочена";
+            case "return"                       -> "Връщане";
+            case "destroy"                      -> "Унищожена";
+            case "failed_delivery"              -> "Неуспешна доставка";
+            case "in_pickup_courier"            -> "Приета от куриер";
+            case "in_pickup_office"             -> "Приета в офис";
+            case "in_delivery_courier"          -> "Предадена на куриер за доставка";
+            case "in_delivery_office"           -> "Пристигнала в офис";
+            case "arrival_departure_from_hub"   -> "Пристигнала/заминала от хъб";
+            case "is_returning_to_sender"       -> "Връща се към подателя";
+            case "returned_to_sender"           -> "Върната към подателя";
+            case "delivered"                    -> "Доставена";
+            default                             -> null;
+        };
     }
 
     public boolean requestCourierPickup(Long siteId) {

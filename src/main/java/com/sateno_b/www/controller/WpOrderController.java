@@ -235,7 +235,6 @@ public class WpOrderController {
 
     @PostMapping("/create/waybill")
     public ResponseEntity<?> createWayBill(@RequestBody CreateLabelDto createLabelDto) {
-
         Optional<WpOrderEntity> byId = wpOrderRepository.findById(createLabelDto.getId());
 
        if(byId.isPresent()){
@@ -258,6 +257,7 @@ public class WpOrderController {
         if(createLabelDto.getCourierType() == CourierType.ECONT){
             rs = econtService.createWayBill(createLabelDto);
         } else if(createLabelDto.getCourierType() == CourierType.SPEEDY) {
+            log.info("TEST");
             rs = speedyService.createWayBill(createLabelDto);
         } else if(createLabelDto.getCourierType() == CourierType.BOX_NOW) {
             rs = boxNowService.createWayBill(createLabelDto);
