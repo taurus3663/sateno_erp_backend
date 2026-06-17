@@ -603,10 +603,10 @@ public class WpProductService {
 
             WpProductHistoryEntity historyEntity = new WpProductHistoryEntity();
             historyEntity.setProduct(entity);
-            historyEntity.setOldQuantity(Long.valueOf(entity.getStockQuantity()));
-            historyEntity.setNewQuantity(Long.valueOf(dto.getStockQuantity()));
+            historyEntity.setOldQuantity((long) entity.getStockQuantity());
+            historyEntity.setNewQuantity(dto.getStockQuantity() != null ? (long) dto.getStockQuantity() : 0L);
             historyEntity.setReason("Changed by User");
-            historyEntity.setQuantity(dto.getStockQuantity());
+            historyEntity.setQuantity(dto.getStockQuantity() != null ? dto.getStockQuantity() : 0);
             historyEntity.setUser(userr);
             wpProductHistoryRepository.save(historyEntity);
         }

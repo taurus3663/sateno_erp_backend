@@ -7,6 +7,7 @@ import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.service.BoxNowService;
+import com.sateno_b.www.service.CourierSettingsCache;
 import com.sateno_b.www.service.EcontService;
 import com.sateno_b.www.service.SpeedyService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import java.util.Optional;
 public class CourierSettingsController {
 
     private final CourierSettingsRepository courierSettingsRepository;
+    private final CourierSettingsCache courierSettingsCache;
     private final ModelMapper modelMapper;
     private final SpeedyService speedyService;
     private final EcontService econtService;
@@ -104,26 +106,24 @@ public class CourierSettingsController {
             // Важно: ModelMapper автоматично ще мапне site.id, ако DTO-то го има.
             // Hibernate ще разпознае, че това е съществуващ запис само по ID.
             CourierSettingsEntity savedEntity = courierSettingsRepository.save(entity);
+            courierSettingsCache.evict();
             return ResponseEntity.ok(modelMapper.map(savedEntity, CourierSettingsDto.class));
         }
 
         // 2. Редакция на съществуващ куриер
         return courierSettingsRepository.findById(courierSettingsDto.getId())
                 .map(en -> {
-                    // 1. Ръчно се справяме с референцията към обекта
                     if (courierSettingsDto.getSite() == null) {
-                        en.setSite(null); // Казваме на JPA, че връзката е премахната
+                        en.setSite(null);
                     } else {
                         SiteEntity referenceById = siteRepository.getReferenceById(courierSettingsDto.getSite().getId());
                         en.setSite(referenceById);
                     }
 
-                    // 2. Мапваме останалите полета
-                    // Важно: Настрой ModelMapper да прескача 'site' полето при мапване,
-                    // за да не презапише току-що зададения null с грешна стойност
                     modelMapper.map(courierSettingsDto, en);
 
                     CourierSettingsEntity u = courierSettingsRepository.save(en);
+                    courierSettingsCache.evict();
                     return ResponseEntity.ok(modelMapper.map(u, CourierSettingsDto.class));
                 }).orElse(ResponseEntity.notFound().build());
     }

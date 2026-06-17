@@ -28,8 +28,12 @@ import java.util.Set;
 @Table(name = "wp_product")
 public class WpProductEntity extends BaseEntity {
 
-    @Column
-    private Integer stockQuantity;
+    @Column(columnDefinition = "integer default 0")
+    private Integer stockQuantity = 0;
+
+    public Integer getStockQuantity() {
+        return stockQuantity == null ? 0 : stockQuantity;
+    }
 
     @Enumerated(EnumType.ORDINAL)
     @Column

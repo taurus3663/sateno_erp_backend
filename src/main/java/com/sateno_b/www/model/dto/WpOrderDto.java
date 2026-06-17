@@ -60,4 +60,5 @@ public class WpOrderDto {
     private Double customShippingTotal;
     private List<WpOrderCourierHistory> courierHistory =  new ArrayList<>();
     private BigDecimal totalPriceFCoutier;
+    private boolean freeDelivery = false;
 }

@@ -72,6 +72,7 @@ public class WpOrderService {
     private final SpeedyService speedyService;
     private final BoxNowService boxnowService;
     private final CourierSettingsRepository courierSettingsRepository;
+    private final CourierSettingsCache courierSettingsCache;
     private final WpOrderAsyncService wpOrderAsyncService;
     private final DiscountPhoneService discountPhoneService;
 
@@ -779,6 +780,8 @@ public class WpOrderService {
 
         Page<WpOrderEntity> wpOrderEntities = wpOrderRepository.findAll(spec, pageable);
 
+        Map<String, CourierSettingsEntity> courierSettingsMap = courierSettingsCache.getMap();
+
         List<CustomerEntity> customers = wpOrderEntities.getContent().stream()
                 .map(WpOrderEntity::getCustomer)
                 .filter(Objects::nonNull)
@@ -855,6 +858,29 @@ public class WpOrderService {
 //            }
             dto.setSavedCourierBilling(entity.getSavedCourierBilling());
             dto.setCourierHistory(entity.getCourierHistory());
+
+            if (entity.getSite() != null) {
+                CourierParser.CourierMatch match = CourierParser.parseWithFallback(entity);
+                if (match != null) {
+                    CourierSettingsEntity cs = courierSettingsMap.get(entity.getSite().getId() + "_" + match.getCourier());
+                    if (cs != null) {
+                        double price = entity.getTotalPriceFCoutier() != null ? entity.getTotalPriceFCoutier().doubleValue() : 0;
+                        boolean free = switch (match.getTargetType()) {
+                            case "OFFICE" -> cs.isOfficeFreeShippingPriceMaxBol()
+                                    && cs.getOfficeFreeShippingPriceMax() != null
+                                    && price >= cs.getOfficeFreeShippingPriceMax();
+                            case "ADDRESS" -> cs.isAddressFreeShippingPriceMaxBol()
+                                    && cs.getAddressFreeShippingPriceMax() != null
+                                    && price >= cs.getAddressFreeShippingPriceMax();
+                            case "LOCKER" -> cs.isLockerFreeShippingPriceMaxBol()
+                                    && cs.getLockerFreeShippingPriceMax() != null
+                                    && price >= cs.getLockerFreeShippingPriceMax();
+                            default -> false;
+                        };
+                        dto.setFreeDelivery(free);
+                    }
+                }
+            }
 
             return dto;
         });
