@@ -31,11 +31,6 @@ public class WpOrderEntityListener {
 
     @PostUpdate
     public void onOrderChange(WpOrderEntity wpOrderEntity) {
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
         WpOrderEntity old = wpOrderEntity.getSnapshot();
 
         // Проверка за статус CANCELLED / REFUSED_AFTER_REVIEW / FAILED

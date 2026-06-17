@@ -994,6 +994,7 @@ public class WpProductService {
         restoreQuantity(wpOrderEntity, false);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void restoreQuantity(WpOrderEntity wpOrderEntity, boolean manualCancellation) {
         wpOrderEntity = wpOrderRepository.findById(wpOrderEntity.getId()).orElse(null);
         if (wpOrderEntity == null) return;

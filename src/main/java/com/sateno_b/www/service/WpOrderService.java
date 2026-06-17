@@ -957,6 +957,9 @@ public class WpOrderService {
 
             if(wpOrderDto.getStatus() != null) {
                 wpOrderEntity.setStatus(wpOrderDto.getStatus());
+                if (wpOrderDto.getStatus() == OrderStatus.CANCELLED) {
+                    wpOrderEntity.setManualCancellation(true);
+                }
             }
 
             WpOrderEntity save = wpOrderRepository.save(wpOrderEntity);
@@ -1052,9 +1055,8 @@ public class WpOrderService {
                 order.setStatus(wpOrderDto.getStatus());
                 order.setComment(wpOrderDto.getComment());
 
-                // При ръчен отказ — флагваме за безусловно връщане на бройки
-                if (wpOrderDto.getStatus() == OrderStatus.CANCELLED
-                        || wpOrderDto.getStatus() == OrderStatus.REFUSED_AFTER_REVIEW) {
+                // При ръчен отказ — флагваме за безусловно връщане на бройки (само CANCELLED)
+                if (wpOrderDto.getStatus() == OrderStatus.CANCELLED) {
                     order.setManualCancellation(true);
                 }
 
