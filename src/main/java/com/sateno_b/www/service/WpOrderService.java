@@ -1156,6 +1156,18 @@ public class WpOrderService {
                     order.setSite(site);
                 }
 
+                // Ако валутата липсва — попълваме от сайта
+                if (order.getCurrency() == null || order.getCurrency().isBlank()) {
+                    if (order.getSite() != null) {
+                        siteRepository.findById(order.getSite().getId()).ifPresent(site -> {
+                            if (site.getCurrency() != null) {
+                                order.setCurrency(site.getCurrency().getCode());
+                                order.setCurrency_symbol(site.getCurrency().getSymbol());
+                            }
+                        });
+                    }
+                }
+
                 if(order.getCustomer() == null) {
                     Optional<CustomerEntity> byPhone = customerRepository.findByPhone(wpOrderDto.getBilling().getPhone());
                     if(byPhone.isPresent()) {
@@ -1209,12 +1221,18 @@ public class WpOrderService {
                 }
             }
 
+            SiteEntity resolvedSite = null;
             if(wpOrderDto.getSite() != null && wpOrderDto.getSite().getId() != null && wpOrderDto.getSite().getId() != 0) {
-                SiteEntity site = siteRepository.getReferenceById(wpOrderDto.getSite().getId());
-                newOrder.setSite(site);
+                resolvedSite = siteRepository.findById(wpOrderDto.getSite().getId()).orElse(null);
             } else {
-                SiteEntity defaultSite = siteRepository.findSiteEntityByUrl("sateno.bg");
-                if (defaultSite != null) newOrder.setSite(defaultSite);
+                resolvedSite = siteRepository.findSiteEntityByUrl("sateno.bg");
+            }
+            if (resolvedSite != null) {
+                newOrder.setSite(resolvedSite);
+                if (resolvedSite.getCurrency() != null) {
+                    newOrder.setCurrency(resolvedSite.getCurrency().getCode());
+                    newOrder.setCurrency_symbol(resolvedSite.getCurrency().getSymbol());
+                }
             }
 
             newOrder.setCustomShippingTotal(wpOrderDto.getCustomShippingTotal());

@@ -921,14 +921,16 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
                                 shipmentNum, destType, desc, descEn);
 
                             // Проверка дали точно този ивент (време + текст) вече съществува
+                            String typeLabel = econtTypeLabel(destType);
+                            String formattedDesc = typeLabel != null ? typeLabel + ": " + desc : desc;
+
                             boolean alreadyExists = order.getCourierHistory().stream()
                                     .anyMatch(h -> h.getEventTime().equals(eventTime) &&
-                                            h.getStatusDescription().equals(desc));
+                                            h.getStatusDescription().equals(formattedDesc));
 
                             if (!alreadyExists) {
                                 WpOrderCourierHistory newEntry = new WpOrderCourierHistory();
-                                String typeLabel = econtTypeLabel(destType);
-                                newEntry.setStatusDescription(typeLabel != null ? typeLabel + ": " + desc : desc);
+                                newEntry.setStatusDescription(formattedDesc);
                                 newEntry.setEventTime(eventTime);
 
                                 order.getCourierHistory().add(newEntry);
