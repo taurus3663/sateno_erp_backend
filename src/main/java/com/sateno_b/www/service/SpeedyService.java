@@ -1044,14 +1044,20 @@ public class SpeedyService implements ShippingProvider {
                                 isUpdated = true;
                                 log.info("Order #{} marked as COMPLETED based on Speedy status: {}", order.getId(), desc);
                             }
-                            else if (desc.toLowerCase().contains("преглед") && order.getStatus() != OrderStatus.REFUSED_AFTER_REVIEW) {
-                                order.setStatus(OrderStatus.REFUSED_AFTER_REVIEW);
-                                isUpdated = true;
-                            }
                             else if(desc.toLowerCase().contains("връщане към подателя") || opCode.equals("111")) {
-                                if (order.getStatus() != OrderStatus.REFUSED_AFTER_REVIEW) {
-                                    order.setStatus(OrderStatus.FAILED);
-                                    isUpdated = true;
+                                boolean hadReview = order.getCourierHistory().stream()
+                                        .anyMatch(h -> h.getStatusDescription() != null &&
+                                                h.getStatusDescription().toLowerCase().contains("предаване за преглед"));
+                                if (hadReview) {
+                                    if (order.getStatus() != OrderStatus.REFUSED_AFTER_REVIEW) {
+                                        order.setStatus(OrderStatus.REFUSED_AFTER_REVIEW);
+                                        isUpdated = true;
+                                    }
+                                } else {
+                                    if (order.getStatus() != OrderStatus.FAILED) {
+                                        order.setStatus(OrderStatus.FAILED);
+                                        isUpdated = true;
+                                    }
                                 }
                             }
                         }
