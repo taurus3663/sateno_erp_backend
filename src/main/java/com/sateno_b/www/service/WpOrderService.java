@@ -63,8 +63,6 @@ public class WpOrderService {
     private static final String ORDER_URL = "/wp-json/wc/v3/orders/";
     private final CustomerRepository customerRepository;
     private final UserSignalRepository userSignalRepository;
-    private final EmailService emailService;
-    private final OrderAutomationService orderAutomationService;
     private final WpProductRepository wpProductRepository;
     private final WpProductHistoryRepository wpProductHistoryRepository;
     private final WpProductAsyncService wpProductAsyncService;
@@ -549,33 +547,6 @@ public class WpOrderService {
                 userSignalRepository.save(userSignalEntity);
             }
         }
-        if(siteEntity.getEmail() != null && siteEntity.getEmail().isActive()) {
-            String subject = "Нова поръчка";
-
-            EmailSendRequest emailSendRequest = new EmailSendRequest();
-            emailSendRequest.setTo(wpOrderEntity.getCustomer().getEmail());
-            emailSendRequest.setConfigId(siteEntity.getEmail().getId());
-            emailSendRequest.setSubject(subject);
-            emailSendRequest.setContent(siteEntity.getNewOrderMessage());
-            emailSendRequest.setGenConfirm(true);
-            emailSendRequest.setShowItemsTable(true);
-            emailSendRequest.setWpOrderEntity(wpOrderEntity);
-            EmailLogEntity emailLogEntity = emailService.sendEmail(emailSendRequest);
-            if(emailLogEntity != null) {
-                wpOrderEntity.getEmails().add(emailLogEntity);
-            }
-
-
-            if(siteEntity.getSecondOrderMessageTimer() != null && siteEntity.getSecondOrderMessageTimer() > 0){
-                orderAutomationService.scheduleTask(wpOrderEntity, TaskType.SECOND_EMAIL, siteEntity.getSecondOrderMessageTimer());
-            }
-           if(siteEntity.getChangeStatusTimer() != null && siteEntity.getChangeStatusTimer() > 0){
-               orderAutomationService.scheduleTask(wpOrderEntity, TaskType.STATUS_CHANGE, siteEntity.getChangeStatusTimer());
-           }
-
-
-        }
-
 //        try {
 //            discountPhoneService.saveNewPhoneByOrder(siteEntity, customer);
 //        } catch (Exception e){

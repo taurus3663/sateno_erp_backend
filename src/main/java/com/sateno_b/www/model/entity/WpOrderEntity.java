@@ -1,7 +1,5 @@
 package com.sateno_b.www.model.entity;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.sateno_b.www.model.dto.EmailLogDto;
 import com.sateno_b.www.model.entity.data.*;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
@@ -101,10 +99,6 @@ public class WpOrderEntity extends BaseEntity {
     private CourierType courierType;
     @Column
     private Long courierId;
-
-    @OneToMany(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id")
-    private List<EmailLogEntity> emails = new ArrayList<>();
 
     @Column()
     private String comment;

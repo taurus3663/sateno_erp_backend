@@ -3,7 +3,6 @@ package com.sateno_b.www.controller;
 import com.sateno_b.www.model.dto.CourierSettingsDto;
 import com.sateno_b.www.model.dto.SiteDto;
 import com.sateno_b.www.model.entity.CourierSettingsEntity;
-import com.sateno_b.www.model.entity.EmailEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.repository.*;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +29,6 @@ public class SiteController {
     private final CurrencyRepository currencyRepository;
     private final LanguageRepository languageRepository;
     private final CourierSettingsRepository courierSettingsRepository;
-    private final EmailRepository emailRepository;
 
     @GetMapping("/list")
     public ResponseEntity<Page<SiteDto>> getAllSites(
@@ -130,10 +128,6 @@ public class SiteController {
             }
         }
 
-        if(siteDto.getEmail() != null){
-        Optional<EmailEntity> email = emailRepository.findById(siteDto.getEmail().getId());
-        email.ifPresent(siteEntity::setEmail);
-        }
         siteEntity.setNewOrderMessage(siteDto.getNewOrderMessage());
 
         SiteEntity saved = siteRepository.save(siteEntity);

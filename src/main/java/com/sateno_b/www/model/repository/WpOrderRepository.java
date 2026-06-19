@@ -1,7 +1,6 @@
 package com.sateno_b.www.model.repository;
 
 import com.sateno_b.www.model.entity.CustomerEntity;
-import com.sateno_b.www.model.entity.EmailLogEntity;
 import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
@@ -60,7 +59,6 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long>, J
     List<Object[]> countByCustomersBatch(@Param("customers") List<CustomerEntity> customers);
 
     Boolean existsByWpOrderId(Long id);
-    Optional<WpOrderEntity> findByEmailsContaining(EmailLogEntity emailLog);
 
     Optional<WpOrderEntity> findByWpOrderId(Long wpOrderId);
     Optional<WpOrderEntity> findByWpOrderIdAndSiteId(Long orderId, Long siteId);

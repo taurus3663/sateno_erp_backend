@@ -45,7 +45,6 @@ public class WpOrderController {
     private final CourierSettingsRepository courierSettingsRepository;
     private final BoxNowService boxNowService;
     private final UserSignalRepository userSignalRepository;
-    private final EmailLogRepository emailLogRepository;
     private final SiteRepository siteRepository;
     private final WpOrderAsyncService wpOrderAsyncService;
     private final NekorektenService nekorektenService;

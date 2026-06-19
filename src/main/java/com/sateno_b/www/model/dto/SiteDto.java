@@ -20,7 +20,6 @@ public class SiteDto {
     private LanguageDto language;
     private boolean active = false;
     private String orderCreateApiKey;
-    private EmailDto email;
     private String newOrderMessage;
     private Long changeStatusTimer;
     private Long secondOrderMessageTimer;

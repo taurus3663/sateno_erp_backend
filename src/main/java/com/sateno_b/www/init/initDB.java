@@ -1,23 +1,16 @@
 package com.sateno_b.www.init;
 
-import com.sateno_b.www.model.dto.EmailSendRequest;
 import com.sateno_b.www.model.entity.*;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.service.*;
 import com.sateno_b.www.shared.Shared;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -125,39 +118,6 @@ public class initDB implements CommandLineRunner {
             admin.setEmail("taurus.ali47@gmail.com");
             userRepository.save(admin);
         }
-    }
-
-    private final EmailService emailService;
-
-    private void sendEmailTest() {
-        String buttonHtml = """
-        <div style="text-align: center; margin: 20px 0;">
-            <a href="https://your-erp-link.com/confirm?id=123" 
-               style="background-color: #3B82F6; 
-                      color: white; 
-                      padding: 12px 25px; 
-                      text-decoration: none; 
-                      border-radius: 5px; 
-                      font-weight: bold; 
-                      display: inline-block;
-                      font-family: Arial, sans-serif;">
-                ПОТВЪРДИ ПОРЪЧКАТА
-            </a>
-        </div>
-    """;
-        String fullHtmlBody = "<h1>Здравейте!</h1>" +
-                "<p>Моля, натиснете бутона отдолу, за да потвърдите вашата поръчка:</p>" +
-                buttonHtml +
-                "<p>Благодарим ви!</p>";
-
-
-        EmailSendRequest emailSendRequest = new EmailSendRequest();
-        emailSendRequest.setConfigId(2L);
-        emailSendRequest.setTo("taurus.ali47@gmail.com");
-//        emailSendRequest.setTo("silyan.silyanov@gmail.com");
-        emailSendRequest.setSubject("TEST");
-        emailSendRequest.setContent(fullHtmlBody);
-//        emailService.sendEmail(emailSendRequest);
     }
 
     private final ChatGptService chatGptService;
