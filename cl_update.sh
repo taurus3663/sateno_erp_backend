@@ -42,13 +42,27 @@ scp -P "$SERVER_PORT" "$LOCAL_JAR" "$SERVER_USER@$SERVER_HOST:$SERVER_DIR/${JAR_
 # 3. DEPLOY (спиране → атомарна замяна → старт)
 # -------------------------
 echo ">>> 3) Замяна и рестартиране..."
-ssh -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" << EOF
+ssh -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" << 'EOF'
+  JAR_NAME="sateno_b-0.0.1-SNAPSHOT.jar"
+  SERVER_DIR="/home/erp-b-sateno"
   cd $SERVER_DIR
 
-  echo ">>> Спиране на сървиса..."
+  echo ">>> Graceful спиране (изчакване на активни задачи, макс. 10 мин)..."
   sudo systemctl stop sateno-backend.service || true
-  fuser -k 9494/tcp || true
-  pgrep -f $JAR_NAME | xargs kill -9 2>/dev/null || true
+
+  # Изчакваме портът да се освободи — макс 600 секунди (10 минути)
+  WAITED=0
+  while fuser 9494/tcp > /dev/null 2>&1; do
+    if [ $WAITED -ge 600 ]; then
+      echo ">>> Таймаут 10 мин! Force-kill..."
+      fuser -k 9494/tcp || true
+      pgrep -f "$JAR_NAME" | xargs kill -9 2>/dev/null || true
+      break
+    fi
+    echo ">>> Чакам процесът да приключи... ($WAITED / 600 сек)"
+    sleep 5
+    WAITED=$((WAITED + 5))
+  done
 
   echo ">>> Атомарна замяна на JAR..."
   mv -f ${JAR_NAME}.new ${JAR_NAME}
