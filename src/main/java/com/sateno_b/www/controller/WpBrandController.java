@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -65,4 +66,10 @@ public class WpBrandController {
 //    public void syncWpBrand(@PathVariable Long siteId){
 //        wpBrandService.syncBrandsToDB(siteId);
 //    }
+
+    @DeleteMapping("/delete")
+    public ResponseEntity<Void> delete(@RequestBody List<Long> ids) {
+        ids.forEach(wpBrandRepository::deleteById);
+        return ResponseEntity.ok().build();
+    }
 }

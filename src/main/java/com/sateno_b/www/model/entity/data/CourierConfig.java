@@ -24,5 +24,6 @@ public class CourierConfig {
     private String city;
     private String postalCode;
     private String address;
+    private String cdPayOptionsTemplate;
 }
 

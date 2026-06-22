@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -57,5 +58,9 @@ public class CustomerController {
                }).orElse(ResponseEntity.notFound().build());
     }
 
-
+    @DeleteMapping("/delete")
+    public ResponseEntity<Void> delete(@RequestBody List<Long> ids) {
+        ids.forEach(customerRepository::deleteById);
+        return ResponseEntity.ok().build();
+    }
 }

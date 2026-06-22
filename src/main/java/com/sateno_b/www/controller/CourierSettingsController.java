@@ -182,4 +182,10 @@ public class CourierSettingsController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @DeleteMapping("/delete")
+    public ResponseEntity<Void> delete(@RequestBody List<Long> ids) {
+        ids.forEach(courierSettingsRepository::deleteById);
+        return ResponseEntity.ok().build();
+    }
 }

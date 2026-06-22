@@ -237,4 +237,9 @@ public class WpAddonController {
 //        return result.isEmpty() ? "val-" + System.currentTimeMillis() : result;
 //    }
 
+    @DeleteMapping("/delete")
+    public ResponseEntity<Void> delete(@RequestBody List<Long> ids) {
+        ids.forEach(wpAddonRepository::deleteById);
+        return ResponseEntity.ok().build();
+    }
 }

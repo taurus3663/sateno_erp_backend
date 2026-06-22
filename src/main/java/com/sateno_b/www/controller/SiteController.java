@@ -157,4 +157,10 @@ public class SiteController {
             return ResponseEntity.ok(null);
         }
     }
+
+    @DeleteMapping("/delete")
+    public ResponseEntity<Void> delete(@RequestBody List<Long> ids) {
+        ids.forEach(siteRepository::deleteById);
+        return ResponseEntity.ok().build();
+    }
 }

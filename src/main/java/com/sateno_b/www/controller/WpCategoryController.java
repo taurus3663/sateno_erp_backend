@@ -139,4 +139,9 @@ public class WpCategoryController {
 //        return wpCategoryAsyncService.syncWpCategoryToSite(siteId);
 //    }
 
+    @DeleteMapping("/delete")
+    public ResponseEntity<Void> delete(@RequestBody List<Long> ids) {
+        ids.forEach(wpCategoryRepository::deleteById);
+        return ResponseEntity.ok().build();
+    }
 }

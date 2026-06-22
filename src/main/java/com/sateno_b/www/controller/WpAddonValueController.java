@@ -196,4 +196,10 @@ public class WpAddonValueController {
         }
         return "";
     }
+
+    @DeleteMapping("/delete")
+    public ResponseEntity<Void> delete(@RequestBody List<Long> ids) {
+        ids.forEach(wpAddonValueRepository::deleteById);
+        return ResponseEntity.ok().build();
+    }
 }

@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -53,5 +54,11 @@ public class LanguageController {
                         LanguageEntity savedEntity = languageRepository.save(entity);
                         return ResponseEntity.ok(modelMapper.map(savedEntity, LanguageDto.class));
                     }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/delete")
+    public ResponseEntity<Void> delete(@RequestBody List<Long> ids) {
+        ids.forEach(languageRepository::deleteById);
+        return ResponseEntity.ok().build();
     }
 }

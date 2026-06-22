@@ -111,43 +111,74 @@ public class EcontService implements ShippingProvider {
 //            return List.of();
 //        }
 //    }
+//    @Override
+//    public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
+//    try {
+//        Map<String, Object> response = getToEcont("https://couriers.lynk.bg/new/bg-cities.txt");
+//        if (response == null) return List.of();
+//
+//        // Филтрираме по nameFilter и flatten-нем структурата
+//        List<ShipmentCityDto> result = response.entrySet().stream()
+//                // филтър по име на града
+//                .filter(entry -> nameFilter == null || nameFilter.isBlank() ||
+//                        entry.getKey().toLowerCase().contains(nameFilter.toLowerCase()))
+//                // flatten zipMap
+//                .flatMap(entry -> {
+//                    Map<String, Object> zipMap = (Map<String, Object>) entry.getValue();
+//                    return zipMap.values().stream()
+//                            .flatMap(listObj -> ((List<Map<String, Object>>) listObj).stream());
+//                })
+//                // map към DTO
+//                .map(c -> {
+//                    ShipmentCityDto dto = new ShipmentCityDto();
+//                    dto.setId(Long.parseLong(c.get("ext_id").toString()));
+//                    dto.setName((String) c.get("name"));
+//                    dto.setPostCode((String) c.get("zip"));
+//                    return dto;
+//                })
+//                // лимит до 10
+//                .limit(10)
+//                .toList();
+//
+//        return result;
+//
+//    } catch (Exception e) {
+//        log.error("Econt getCities error", e);
+//        return List.of();
+//    }
+//}
     @Override
     public List<ShipmentCityDto> getCities(String username, String password, String nameFilter) {
-    try {
-        Map<String, Object> response = getToEcont("https://couriers.lynk.bg/new/bg-cities.txt");
-        if (response == null) return List.of();
+        try {
+            Map<String, Object> body = new HashMap<>();
+            body.put("countryCode", "BGR");
 
-        // Филтрираме по nameFilter и flatten-нем структурата
-        List<ShipmentCityDto> result = response.entrySet().stream()
-                // филтър по име на града
-                .filter(entry -> nameFilter == null || nameFilter.isBlank() ||
-                        entry.getKey().toLowerCase().contains(nameFilter.toLowerCase()))
-                // flatten zipMap
-                .flatMap(entry -> {
-                    Map<String, Object> zipMap = (Map<String, Object>) entry.getValue();
-                    return zipMap.values().stream()
-                            .flatMap(listObj -> ((List<Map<String, Object>>) listObj).stream());
-                })
-                // map към DTO
-                .map(c -> {
-                    ShipmentCityDto dto = new ShipmentCityDto();
-                    dto.setId(Long.parseLong(c.get("ext_id").toString()));
-                    dto.setName((String) c.get("name"));
-                    dto.setPostCode((String) c.get("zip"));
-                    return dto;
-                })
-                // лимит до 10
-                .limit(10)
-                .toList();
+            Map<String, Object> response = postToEcont(
+                    "services/Nomenclatures/NomenclaturesService.getCities.json", body, username, password);
 
-        return result;
+            List<?> cities = (response != null) ? (List<?>) response.get("cities") : null;
+            if (cities == null) return List.of();
 
-    } catch (Exception e) {
-        log.error("Econt getCities error", e);
-        return List.of();
+            String f = (nameFilter == null) ? "" : nameFilter.toLowerCase().trim();
+
+            return cities.stream()
+                    .map(i -> (Map<String, Object>) i)
+                    .filter(c -> f.isBlank() || (c.get("name") != null && c.get("name").toString().toLowerCase().contains(f)))
+                    .map(c -> {
+                        ShipmentCityDto dto = new ShipmentCityDto();
+                        dto.setId(Long.parseLong(c.get("id").toString()));   // ← ИСТИНСКИЯТ Econt cityID
+                        dto.setName((String) c.get("name"));
+                        dto.setPostCode((String) c.get("postCode"));
+                        return dto;
+                    })
+                    .limit(10)
+                    .toList();
+
+        } catch (Exception e) {
+            log.error("Econt getCities грешка", e);
+            return List.of();
+        }
     }
-}
-
     @Override
     public List<ShipmentOfficeDto> getOffices(String username, String password, Long cityId, String nameFilter) {
         Map<String, Object> body = new HashMap<>();
@@ -312,7 +343,10 @@ public class EcontService implements ShippingProvider {
         services.put("cdAmount", Double.parseDouble(order.getTotalPriceFCoutier().toString()));
         services.put("cdCurrency", order.getCurrency());
         services.put("cdType", "get"); // 'get' е стандартната стойност за събиране на сумата
-        services.put("cdPayOptionsTemplate", "CD257894");
+        String cdTemplate = courierSettingsEntity.getConfig().getCdPayOptionsTemplate();
+        if (cdTemplate != null && !cdTemplate.isBlank()) {
+            services.put("cdPayOptionsTemplate", cdTemplate);
+        }
 // 2. Слагаме services в label
         label.put("services", services);
 
@@ -340,7 +374,10 @@ public class EcontService implements ShippingProvider {
         returnParams.put("rejectAction", "return_to_sender"); // какво правим при отказ
         returnParams.put("rejectOriginalParcelPaySide", "receiver");
         returnParams.put("rejectReturnParcelPaySide", "receiver");
-        returnParams.put("template", "CD257894"); // ИМЕТО на шаблона, което си създал в e-Econt
+        String cdTemplateReturn = courierSettingsEntity.getConfig().getCdPayOptionsTemplate();
+        if (cdTemplateReturn != null && !cdTemplateReturn.isBlank()) {
+            returnParams.put("template", cdTemplateReturn); // ИМЕТО на шаблона, което си създал в e-Econt
+        }
 
 // 2. Опаковаме ги в обекта Instruction
         Map<String, Object> instruction = new HashMap<>();
@@ -607,7 +644,10 @@ public double calculatePrice(CheckCourierRequest createLabelDto) {
     services.put("cdCurrency", createLabelDto.getCurrency());
     services.put("cdPaySide", "receiver");
     services.put("cdType", "get"); // 'get' е стандартната стойност за събиране на сумата
-    services.put("cdPayOptionsTemplate", "CD257894");
+    String cdTemplate2 = courierSettingsEntity.getConfig().getCdPayOptionsTemplate();
+    if (cdTemplate2 != null && !cdTemplate2.isBlank()) {
+        services.put("cdPayOptionsTemplate", cdTemplate2);
+    }
 // 2. Слагаме services в label
     label.put("services", services);
       label.put("paySide", "receiver");
