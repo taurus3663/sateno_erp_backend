@@ -858,6 +858,7 @@ public class WpOrderService {
 //            }
             dto.setSavedCourierBilling(entity.getSavedCourierBilling());
             dto.setCourierHistory(entity.getCourierHistory());
+            
 
             if (entity.getSite() != null) {
                 CourierParser.CourierMatch match = CourierParser.parseWithFallback(entity);

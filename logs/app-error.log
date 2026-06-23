@@ -1,1 +1,25 @@
-2026-06-17 16:18:04 [http-nio-9494-exec-8] ERROR c.sateno_b.www.service.EcontService - Econt Error: Query did not return a unique result: 2 results were returned
+2026-06-23 10:19:26 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-23 10:19:28 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт t.br5.xyz: 401 Unauthorized: "{"code":"woocommerce_rest_cannot_view","message":"\u041d\u0435 \u043c\u043e\u0436\u0435\u0442\u0435 \u0434\u0430 \u0440\u0430\u0437\u0433\u043b\u0435\u0436\u0434\u0430\u0442\u0435 \u0440\u0435\u0441\u0443\u0440\u0441\u0438.","data":{"status":401}}"
+2026-06-23 10:19:28 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.ro1: I/O error on GET request for "https://sateno.ro1/wp-json/wc/v3/products": null
+2026-06-23 10:19:28 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.pl1: I/O error on GET request for "https://sateno.pl1/wp-json/wc/v3/products": null
+2026-06-23 10:19:28 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-23 10:19:29 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-23 10:19:31 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт t.br5.xyz: 401 Unauthorized: "{"code":"woocommerce_rest_cannot_view","message":"\u041d\u0435 \u043c\u043e\u0436\u0435\u0442\u0435 \u0434\u0430 \u0440\u0430\u0437\u0433\u043b\u0435\u0436\u0434\u0430\u0442\u0435 \u0440\u0435\u0441\u0443\u0440\u0441\u0438.","data":{"status":401}}"
+2026-06-23 10:19:31 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.ro1: I/O error on GET request for "https://sateno.ro1/wp-json/wc/v3/products": null
+2026-06-23 10:19:31 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.pl1: I/O error on GET request for "https://sateno.pl1/wp-json/wc/v3/products": null
+2026-06-23 10:19:31 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-23 10:21:32 [restartedMain] ERROR o.s.b.d.LoggingFailureAnalysisReporter - 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Parameter 5 of constructor in com.sateno_b.www.controller.CheckOutController required a bean of type 'com.sateno_b.www.service.WpOrderService' that could not be found.
+
+
+Action:
+
+Consider defining a bean of type 'com.sateno_b.www.service.WpOrderService' in your configuration.
+
