@@ -130,7 +130,7 @@ public class WpOrderEntity extends BaseEntity {
         return customShippingTotal == null ? 0D : customShippingTotal;
     }
 
-    @Column(columnDefinition = "double default 0.0", nullable = false)
+    @Column(columnDefinition = "double precision default 0.0", nullable = false)
     private Double customShippingTotal = 0D;
 
     @JdbcTypeCode(SqlTypes.JSON)
