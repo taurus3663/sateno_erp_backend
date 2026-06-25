@@ -615,6 +615,8 @@ public class WpProductService {
         entity.setWeight(dto.getWeight());
         entity.setStatus(dto.getStatus());
         entity.setSaleType(dto.getSaleType());
+        entity.setBuyPrice(dto.getBuyPrice());
+        entity.setTransportPrice(dto.getTransportPrice());
 
         if (entity.getId() == null) {
             entity = wpProductRepository.saveAndFlush(entity);
