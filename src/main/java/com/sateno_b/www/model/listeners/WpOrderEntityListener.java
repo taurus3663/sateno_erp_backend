@@ -29,6 +29,13 @@ public class WpOrderEntityListener {
         this.wpProductServiceProvider = wpProductServiceProvider;
     }
 
+    @PostPersist
+    public void onOrderCreated(WpOrderEntity wpOrderEntity) {
+        notificationServiceProvider.ifAvailable(service ->
+                service.sendUpdate("orders", WsAction.CREATED)
+        );
+    }
+
     @PostUpdate
     public void onOrderChange(WpOrderEntity wpOrderEntity) {
         WpOrderEntity old = wpOrderEntity.getSnapshot();
