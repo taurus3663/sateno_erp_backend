@@ -584,7 +584,8 @@ public class WpOrderService {
 
     wpOrderRepository.save(wpOrderEntity);
 
-        for (WoOrderLineItemDto orderLineItem : dto.getLineItems()) {
+        List<WoOrderLineItemDto> lineItems = dto.getLineItems() != null ? dto.getLineItems() : Collections.emptyList();
+        for (WoOrderLineItemDto orderLineItem : lineItems) {
             if(orderLineItem.getQuantity() > 0){
                 Optional<WpProductEntity> byId = wpProductRepository.findBySku(orderLineItem.getSku());
                 if(byId.isPresent()){
@@ -1306,7 +1307,6 @@ public class WpOrderService {
     }
 
     @Scheduled(cron = "0 0 0 * * *", zone = "Europe/Sofia")
-//@Scheduled(fixedRate = 20, timeUnit = TimeUnit.SECONDS, zone = "Europe/Sofia")
     public void syncMissingOrdersFromWooCommerce() {
         SiteEntity site = siteRepository.findSiteEntityByUrl("sateno.bg");
         if (site == null) {
@@ -1320,8 +1320,8 @@ public class WpOrderService {
 
         ZoneId sofia = ZoneId.of("Europe/Sofia");
         LocalDate yesterday = LocalDate.now(sofia).minusDays(1);
-        String after  = yesterday.atStartOfDay().toString();
-        String before = yesterday.plusDays(1).atStartOfDay().toString();
+        String after  = yesterday.atStartOfDay().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
+        String before = yesterday.plusDays(1).atStartOfDay().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
 
         int page = 1;
         int synced = 0;
