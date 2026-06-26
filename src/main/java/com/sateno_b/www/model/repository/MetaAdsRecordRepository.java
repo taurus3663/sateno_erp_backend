@@ -44,6 +44,14 @@ public interface MetaAdsRecordRepository extends JpaRepository<MetaAdsRecordEnti
             @Param("start") Instant start,
             @Param("end") Instant end
     );
+
+    /**
+     * Сумарен рекламен разход за период. Записите са почасови (Meta breakdown
+     * hourly_stats_aggregated_by_advertiser_time_zone), затова сумирането е коректно.
+     */
+    @Query("SELECT COALESCE(SUM(r.spend), 0) FROM MetaAdsRecordEntity r " +
+            "WHERE r.recordedAt >= :start AND r.recordedAt < :end")
+    double sumSpendBetween(@Param("start") Instant start, @Param("end") Instant end);
 }
 
 
