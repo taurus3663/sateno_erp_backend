@@ -8,7 +8,6 @@ import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.data.OrderShippingAndBilling;
 import com.sateno_b.www.model.enums.CourierType;
 import com.sateno_b.www.model.enums.OrderStatus;
-import com.sateno_b.www.model.enums.WsAction;
 import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.service.*;
 import org.springframework.transaction.annotation.Transactional;
@@ -85,8 +84,6 @@ public class WpOrderController {
     public ResponseEntity<?> patch(@RequestBody WpOrderDto wpOrderDto) {
         try {
             WpOrderDto wpOrder = wpOrderService.patchOrderMain(wpOrderDto);
-            // Уведомяваме дашборда да преизчисли финансите при промяна на поръчка
-            notificationService.sendUpdate("orders", WsAction.UPDATED);
             return  ResponseEntity.ok(wpOrder);
         } catch (Exception e) {
             e.printStackTrace();
@@ -198,11 +195,7 @@ public class WpOrderController {
     @Transactional
     public ResponseEntity<WpOrderDto> saveWpOrder(@RequestBody WpOrderDto wpOrderDto) {
         WpOrderDto wpOrderDto1 = wpOrderService.saveWpOrder(wpOrderDto);
-        if(wpOrderDto1 != null) {
-            // Уведомяваме дашборда да преизчисли финансите при промяна на поръчка
-            notificationService.sendUpdate("orders", WsAction.UPDATED);
-            return ResponseEntity.ok(wpOrderDto1);
-        }
+        if(wpOrderDto1 != null) return ResponseEntity.ok(wpOrderDto1);
         else return ResponseEntity.notFound().build();
 }
 
@@ -228,8 +221,7 @@ public class WpOrderController {
 //                    System.out.println("2");
 //                    log.info("Успешно обработена поръчка #{} от сайт ID: {}", dto.getId(), siteId);
 
-                    // Уведомяваме дашборда да преизчисли финансите при нова поръчка от сайт
-                    notificationService.sendUpdate("orders", WsAction.UPDATED);
+//                    notificationService.sendUpdate("orders", WsAction.UPDATED);
                 } catch (JsonProcessingException e) {
                     log.error("Грешка при парсване на JSON от WooCommerce: {}", e.getMessage());
 

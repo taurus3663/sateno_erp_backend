@@ -13,7 +13,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -71,21 +70,5 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long>, J
     @Query("SELECT o.status, COUNT(o) FROM WpOrderEntity o GROUP BY o.status")
     List<Object[]> countOrdersByStatus();
 
-    /**
-     * Поръчки за финансовия дашборд: филтрирани по статус и по време на поръчката
-     * (с резерва createTime, ако wpOrderTime липсва). orderLine е JSONB колона и се
-     * зарежда заедно с обекта, така че себестойността може да се сметне без допълнителни заявки.
-     */
-    @Query("SELECT o FROM WpOrderEntity o " +
-            "WHERE o.status IN :statuses " +
-            "AND o.site.id IN :siteIds " +
-            "AND COALESCE(o.wpOrderTime, o.createTime) >= :start " +
-            "AND COALESCE(o.wpOrderTime, o.createTime) < :end")
-    List<WpOrderEntity> findForFinancialPeriod(
-            @Param("statuses") List<OrderStatus> statuses,
-            @Param("siteIds") List<Long> siteIds,
-            @Param("start") Instant start,
-            @Param("end") Instant end
-    );
 
 }
