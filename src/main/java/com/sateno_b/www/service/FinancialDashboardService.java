@@ -71,9 +71,12 @@ public class FinancialDashboardService {
      * (статусът ѝ се смени), тя автоматично излиза от изчислението — дори след седмици.
      */
     public static final List<OrderStatus> REVENUE_STATUSES = List.of(
+            OrderStatus.PROCESSING,
             OrderStatus.APPROVED,
+            OrderStatus.WAITING,
             OrderStatus.SENT,
-            OrderStatus.COMPLETED
+            OrderStatus.COMPLETED,
+            OrderStatus.JOINT
     );
 
     @Transactional(readOnly = true)
