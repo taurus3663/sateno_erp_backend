@@ -1,14 +1,23 @@
-2026-06-23 10:19:26 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
-2026-06-23 10:19:28 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт t.br5.xyz: 401 Unauthorized: "{"code":"woocommerce_rest_cannot_view","message":"\u041d\u0435 \u043c\u043e\u0436\u0435\u0442\u0435 \u0434\u0430 \u0440\u0430\u0437\u0433\u043b\u0435\u0436\u0434\u0430\u0442\u0435 \u0440\u0435\u0441\u0443\u0440\u0441\u0438.","data":{"status":401}}"
-2026-06-23 10:19:28 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.ro1: I/O error on GET request for "https://sateno.ro1/wp-json/wc/v3/products": null
-2026-06-23 10:19:28 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.pl1: I/O error on GET request for "https://sateno.pl1/wp-json/wc/v3/products": null
-2026-06-23 10:19:28 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
-2026-06-23 10:19:29 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
-2026-06-23 10:19:31 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт t.br5.xyz: 401 Unauthorized: "{"code":"woocommerce_rest_cannot_view","message":"\u041d\u0435 \u043c\u043e\u0436\u0435\u0442\u0435 \u0434\u0430 \u0440\u0430\u0437\u0433\u043b\u0435\u0436\u0434\u0430\u0442\u0435 \u0440\u0435\u0441\u0443\u0440\u0441\u0438.","data":{"status":401}}"
-2026-06-23 10:19:31 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.ro1: I/O error on GET request for "https://sateno.ro1/wp-json/wc/v3/products": null
-2026-06-23 10:19:31 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.pl1: I/O error on GET request for "https://sateno.pl1/wp-json/wc/v3/products": null
-2026-06-23 10:19:31 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
-2026-06-23 10:21:32 [restartedMain] ERROR o.s.b.d.LoggingFailureAnalysisReporter - 
+2026-06-26 08:55:11 [WooSync-2] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/21203": null
+2026-06-26 08:55:11 [WooSync-3] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/21225": null
+2026-06-26 09:13:36 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-4] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/18641": null
+2026-06-26 09:13:36 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.pl1: I/O error on GET request for "https://sateno.pl1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.pl1: I/O error on GET request for "https://sateno.pl1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.pl1: I/O error on GET request for "https://sateno.pl1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.ro1: I/O error on GET request for "https://sateno.ro1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.ro1: I/O error on GET request for "https://sateno.ro1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.ro1: I/O error on GET request for "https://sateno.ro1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт t.br5.xyz1: I/O error on GET request for "https://t.br5.xyz1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт t.br5.xyz1: I/O error on GET request for "https://t.br5.xyz1/wp-json/wc/v3/products": null
+2026-06-26 09:13:36 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт t.br5.xyz1: I/O error on GET request for "https://t.br5.xyz1/wp-json/wc/v3/products": null
+2026-06-26 09:27:22 [WooSync-1] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/21232": null
+2026-06-26 09:57:46 [restartedMain] ERROR o.s.b.d.LoggingFailureAnalysisReporter - 
 
 ***************************
 APPLICATION FAILED TO START
@@ -16,53 +25,10 @@ APPLICATION FAILED TO START
 
 Description:
 
-Parameter 5 of constructor in com.sateno_b.www.controller.CheckOutController required a bean of type 'com.sateno_b.www.service.WpOrderService' that could not be found.
+Parameter 8 of constructor in com.sateno_b.www.controller.AdsController required a bean of type 'com.sateno_b.www.service.GoogleAdsService' that could not be found.
 
 
 Action:
 
-Consider defining a bean of type 'com.sateno_b.www.service.WpOrderService' in your configuration.
+Consider defining a bean of type 'com.sateno_b.www.service.GoogleAdsService' in your configuration.
 
-2026-06-24 17:59:58 [restartedMain] ERROR o.s.boot.SpringApplication - Application run failed
-java.lang.NoClassDefFoundError: com/sateno_b/www/model/entity/SiteEntity
-	at java.base/java.lang.Class.getDeclaredMethods0(Native Method)
-	at java.base/java.lang.Class.privateGetDeclaredMethods(Class.java:3502)
-	at java.base/java.lang.Class.privateGetPublicMethods(Class.java:3527)
-	at java.base/java.lang.Class.getMethods(Class.java:2112)
-	at org.springframework.data.util.ReactiveWrappers.usesReactiveType(ReactiveWrappers.java:141)
-	at org.springframework.data.repository.core.support.AbstractRepositoryMetadata.isReactiveRepository(AbstractRepositoryMetadata.java:135)
-	at org.springframework.data.repository.config.RepositoryConfigurationExtensionSupport.useRepositoryConfiguration(RepositoryConfigurationExtensionSupport.java:344)
-	at org.springframework.data.repository.config.RepositoryConfigurationExtensionSupport.getRepositoryConfigurations(RepositoryConfigurationExtensionSupport.java:98)
-	at org.springframework.data.repository.config.RepositoryConfigurationDelegate.registerRepositoriesIn(RepositoryConfigurationDelegate.java:170)
-	at org.springframework.boot.autoconfigure.data.AbstractRepositoryConfigurationSourceSupport.registerBeanDefinitions(AbstractRepositoryConfigurationSourceSupport.java:62)
-	at org.springframework.context.annotation.ConfigurationClassBeanDefinitionReader.lambda$loadBeanDefinitionsFromRegistrars$1(ConfigurationClassBeanDefinitionReader.java:409)
-	at java.base/java.util.LinkedHashMap.forEach(LinkedHashMap.java:729)
-	at org.springframework.context.annotation.ConfigurationClassBeanDefinitionReader.loadBeanDefinitionsFromRegistrars(ConfigurationClassBeanDefinitionReader.java:408)
-	at org.springframework.context.annotation.ConfigurationClassBeanDefinitionReader.loadBeanDefinitionsForConfigurationClass(ConfigurationClassBeanDefinitionReader.java:148)
-	at org.springframework.context.annotation.ConfigurationClassBeanDefinitionReader.loadBeanDefinitions(ConfigurationClassBeanDefinitionReader.java:120)
-	at org.springframework.context.annotation.ConfigurationClassPostProcessor.processConfigBeanDefinitions(ConfigurationClassPostProcessor.java:430)
-	at org.springframework.context.annotation.ConfigurationClassPostProcessor.postProcessBeanDefinitionRegistry(ConfigurationClassPostProcessor.java:290)
-	at org.springframework.context.support.PostProcessorRegistrationDelegate.invokeBeanDefinitionRegistryPostProcessors(PostProcessorRegistrationDelegate.java:349)
-	at org.springframework.context.support.PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors(PostProcessorRegistrationDelegate.java:118)
-	at org.springframework.context.support.AbstractApplicationContext.invokeBeanFactoryPostProcessors(AbstractApplicationContext.java:791)
-	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:609)
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
-	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
-	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-	at com.sateno_b.www.SatenoBApplication.main(SatenoBApplication.java:18)
-	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:578)
-	at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:50)
-Caused by: java.lang.ClassNotFoundException: com.sateno_b.www.model.entity.SiteEntity
-	at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:641)
-	at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
-	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:521)
-	at java.base/java.lang.Class.forName0(Native Method)
-	at java.base/java.lang.Class.forName(Class.java:496)
-	at java.base/java.lang.Class.forName(Class.java:475)
-	at org.springframework.boot.devtools.restart.classloader.RestartClassLoader.loadClass(RestartClassLoader.java:121)
-	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:521)
-	... 31 common frames omitted

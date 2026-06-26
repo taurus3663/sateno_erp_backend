@@ -262,11 +262,17 @@ public class GoogleAdsService {
     }
 
 public void triggerBackfillForNewAccount(GoogleAdsEntity account) {
-
     boolean existsRecordByAd = googleAdsRecordRepository.existsGoogleAdsRecordEntityByAd(account);
     if (existsRecordByAd) {
         return;
     }
+    triggerForceBackfill(account);
+}
+
+public void triggerForceBackfill(GoogleAdsEntity account) {
+    log.info("[Google backfill] Стартиран за акаунт {}", account.getLoginCustomerId());
+
+    Instant currentHourStart = Instant.now().truncatedTo(ChronoUnit.HOURS);
 
     GoogleAdsClient googleAdsClient = GoogleAdsClient.newBuilder()
             .setDeveloperToken(account.getDeveloperToken())
@@ -293,8 +299,7 @@ public void triggerBackfillForNewAccount(GoogleAdsEntity account) {
             "metrics.average_cpc, " +
             "metrics.average_cpm " +
             "FROM campaign " +
-            "WHERE segments.date DURING LAST_30_DAYS " +
-            "AND campaign.status = 'ENABLED'";
+            "WHERE segments.date BETWEEN '" + LocalDate.now().minusYears(2) + "' AND '" + LocalDate.now() + "'";
 
     try (GoogleAdsServiceClient googleAdsServiceClient =
                  googleAdsClient.getLatestVersion().createGoogleAdsServiceClient()) {
@@ -326,8 +331,13 @@ public void triggerBackfillForNewAccount(GoogleAdsEntity account) {
             int hour = row.getSegments().getHour();
 
             Instant recordedAt = LocalDateTime.of(LocalDate.parse(dateStr), LocalTime.of(hour, 0))
-                    .atZone(accountZone.get()) // Тук казваме: "Този час е в София"
-                    .toInstant();        // Java го превръща в UTC момента
+                    .atZone(accountZone.get())
+                    .toInstant();
+
+            // Пропуска текущия непълен час
+            if (!recordedAt.isBefore(currentHourStart)) {
+                return;
+            }
 
             GoogleAdsRecordEntity record = googleAdsRecordRepository
                     .findByAdAndCampaignNameAndRecordedAt(account, googleAdsCampaignName, recordedAt)
@@ -344,7 +354,9 @@ public void triggerBackfillForNewAccount(GoogleAdsEntity account) {
             record.setCampaignName(googleAdsCampaignName);
 
             googleAdsRecordRepository.save(record);
+            log.info("[Google backfill] Записан: акаунт={} кампания={} час={}", account.getLoginCustomerId(), campaignName, recordedAt);
         });
+        log.info("[Google backfill] Завършен за акаунт {}", account.getLoginCustomerId());
         if (detectedTimeZone[0] != null && account.getTimeZone() == null) {
             account.setTimeZone(detectedTimeZone[0]);
             googleAdsRepository.save(account);
@@ -374,6 +386,10 @@ public void triggerBackfillForNewAccount(GoogleAdsEntity account) {
 //                String date = lastHour.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 //                int hour = lastHour.getHour();
                 String tzString = account.getTimeZone();
+                if (tzString == null || tzString.isBlank()) {
+                    log.warn("[Google] Акаунт {} няма timezone — пропускам sync", account.getLoginCustomerId());
+                    continue;
+                }
                 ZoneId zone = ZoneId.of(tzString);
 
                 ZonedDateTime lastHour = ZonedDateTime.now(ZoneOffset.UTC).minusHours(1).withZoneSameInstant(zone);
@@ -450,8 +466,7 @@ public void triggerBackfillForNewAccount(GoogleAdsEntity account) {
         }
     }
 
-@Scheduled(cron = "0 0 0/3 * * *")
-//@Scheduled(fixedDelay = 60000)
+@Scheduled(cron = "0 0 23 * * *")
 public void runRecoverySync() {
     syncMissingHours();
 }
@@ -461,7 +476,7 @@ public void runRecoverySync() {
         List<GoogleAdsEntity> activeAccounts = googleAdsRepository.findAll();
 
         Instant now = Instant.now().truncatedTo(ChronoUnit.HOURS)
-                .minus(2, ChronoUnit.HOURS);
+                .minus(1, ChronoUnit.HOURS);
         Instant recoveryFrom = now.minus(24, ChronoUnit.HOURS);
 
         for (GoogleAdsEntity account : activeAccounts) {
@@ -476,7 +491,7 @@ public void runRecoverySync() {
                         log.info("[{}] Наваксване на пропуснат час: {}", account.getLoginCustomerId(), cursor);
                         try {
                             syncInstant(account, cursor);
-                            TimeUnit.MILLISECONDS.sleep(500);
+                            TimeUnit.MILLISECONDS.sleep(100);
                         } catch (Exception e) {
                             log.error("[{}] Грешка при наваксване на {}: {}",
                                     account.getLoginCustomerId(), cursor, e.getMessage());
@@ -494,6 +509,10 @@ public void runRecoverySync() {
 
     private void syncInstant(GoogleAdsEntity account, Instant targetInstant) {
         String tzString = account.getTimeZone();
+        if (tzString == null || tzString.isBlank()) {
+            log.warn("[Google] Акаунт {} няма timezone — пропускам syncInstant", account.getLoginCustomerId());
+            return;
+        }
         ZoneId accountZone = ZoneId.of(tzString);
 
         GoogleAdsClient googleAdsClient = GoogleAdsClient.newBuilder()

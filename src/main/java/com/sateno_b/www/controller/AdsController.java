@@ -103,11 +103,10 @@ public class AdsController {
             @RequestParam List<Long> ids,
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
-            @RequestParam String timeZone
+            @RequestParam(required = false) String timeZone
     ) {
-//        System.out.println(timeZone);
-
-        ZoneId userZone = ZoneId.of(timeZone);
+        // Данните се записват с часовата зона на рекламодателя (Europe/Sofia).
+        ZoneId storeZone = ZoneId.of("Europe/Sofia");
 
         List<MetaAdsCampaignName> campaigns;
         if(ids.isEmpty()) {
@@ -124,11 +123,8 @@ public class AdsController {
                 ? LocalDate.parse(to)
                 : LocalDate.now();
 
-        // 2. Превръщане в Instant, за да работи със заявката ти
-//        Instant start = startLocal.atStartOfDay(ZoneOffset.UTC).toInstant();
-//        Instant end = endLocal.atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC);
-        Instant start = startLocal.atStartOfDay(userZone).toInstant();
-        Instant end = endLocal.atTime(LocalTime.MAX).atZone(userZone).toInstant();
+        Instant start = startLocal.atStartOfDay(storeZone).toInstant();
+        Instant end = endLocal.atTime(LocalTime.MAX).atZone(storeZone).toInstant();
 
         List<MetaAdsRecordEntity> records = metaAdsRecordRepository.findByCampaignAndDateRange(campaigns, start, end);
 
@@ -138,20 +134,15 @@ public class AdsController {
         // 3. Иначе -> "yyyy-MM-dd"
         Map<String, List<MetaAdsRecordEntityDto>> grouped = records.stream()
                 .collect(Collectors.groupingBy(r -> {
-                    ZonedDateTime zonedDateTime = r.getRecordedAt().atZone(userZone);
-                    LocalDate localDate = zonedDateTime.toLocalDate();
-
-                    // Превърни Instant-ите в LocalDate за сравнение
-                    LocalDate startDate = start.atZone(userZone).toLocalDate();
-                    LocalDate endDate = end.atZone(userZone).toLocalDate();
+                    ZonedDateTime zonedDateTime = r.getRecordedAt().atZone(storeZone);
 
                     // 1. Ако началната и крайната дата са еднакви -> HH:mm
-                    if (startDate.equals(endDate)) {
+                    if (startLocal.equals(endLocal)) {
                         return zonedDateTime.format(DateTimeFormatter.ofPattern("HH:mm"));
                     }
 
                     // 2. Ако периодът обхваща повече от 31 дни -> yyyy-MM
-                    if (ChronoUnit.DAYS.between(startDate, endDate) > 31) {
+                    if (ChronoUnit.DAYS.between(startLocal, endLocal) > 31) {
                         return zonedDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM"));
                     }
 
@@ -258,13 +249,15 @@ public class AdsController {
             @RequestParam List<Long> ids,
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
-            @RequestParam String timeZone
+            @RequestParam(required = false) String timeZone
     ) {
         if (ids.isEmpty()) {
             return ResponseEntity.ok(Collections.emptyMap());
         }
 
-        ZoneId userZone = ZoneId.of(timeZone);
+        ZoneId storeZone = (timeZone != null && !timeZone.isEmpty())
+                ? ZoneId.of(timeZone)
+                : ZoneId.of("Europe/Sofia");
 
         List<GoogleAdsCampaignName> campaigns = googleAdsCampaignNameRepository.findAllById(ids);
 
@@ -276,21 +269,19 @@ public class AdsController {
                 ? LocalDate.parse(to)
                 : LocalDate.now();
 
-        Instant start = startLocal.atStartOfDay(userZone).toInstant();
-        Instant end = endLocal.atTime(LocalTime.MAX).atZone(userZone).toInstant();
+        Instant start = startLocal.atStartOfDay(storeZone).toInstant();
+        Instant end = endLocal.atTime(LocalTime.MAX).atZone(storeZone).toInstant();
 
         List<GoogleAdsRecordEntity> records = googleAdsRecordRepository.findByCampaignAndDateRange(campaigns, start, end);
         Map<String, List<GoogleAdsRecordEntityDto>> grouped = records.stream()
                 .collect(Collectors.groupingBy(
                         r -> {
-                            ZonedDateTime zdt = r.getRecordedAt().atZone(userZone);
-                            LocalDate startDate = start.atZone(userZone).toLocalDate();
-                            LocalDate endDate = end.atZone(userZone).toLocalDate();
+                            ZonedDateTime zdt = r.getRecordedAt().atZone(storeZone);
 
-                            if (startDate.equals(endDate)) {
+                            if (startLocal.equals(endLocal)) {
                                 return zdt.format(DateTimeFormatter.ofPattern("HH:mm"));
                             }
-                            if (ChronoUnit.DAYS.between(startDate, endDate) > 31) {
+                            if (ChronoUnit.DAYS.between(startLocal, endLocal) > 31) {
                                 return zdt.format(DateTimeFormatter.ofPattern("yyyy-MM"));
                             }
                             return zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
@@ -326,5 +317,17 @@ public class AdsController {
         return zonedDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
     }
 
+    @PostMapping("/meta/resync")
+    public ResponseEntity<String> resyncMeta() {
+        metaAdsService.syncMissingHours();
+        return ResponseEntity.ok("Meta resync завършен");
+    }
+
+    @PostMapping("/google/resync")
+    public ResponseEntity<String> resyncGoogle() {
+        googleAdsRecordRepository.deleteAll();
+        googleAdsService.syncMissingHours();
+        return ResponseEntity.ok("Google resync завършен");
+    }
 
 }
