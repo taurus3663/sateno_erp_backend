@@ -33,4 +33,9 @@ public interface GoogleAdsRecordRepository extends JpaRepository<GoogleAdsRecord
 
     @Query("SELECT DISTINCT r.recordedAt FROM GoogleAdsRecordEntity r WHERE r.ad = :ad AND r.recordedAt >= :start AND r.recordedAt <= :end")
     List<Instant> findDistinctRecordedAtInRange(@Param("ad") GoogleAdsEntity ad, @Param("start") Instant start, @Param("end") Instant end);
+
+    /** Сумарен Google Ads разход за период (почасови записи). */
+    @Query("SELECT COALESCE(SUM(r.spend), 0) FROM GoogleAdsRecordEntity r " +
+            "WHERE r.recordedAt >= :start AND r.recordedAt < :end")
+    double sumSpendBetween(@Param("start") Instant start, @Param("end") Instant end);
 }
