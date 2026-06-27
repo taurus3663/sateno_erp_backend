@@ -32,13 +32,15 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_deploy
+          printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_deploy
+          sed -i 's/\r$//' ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
           if [ -n "${{ secrets.SERVER_KNOWN_HOSTS }}" ]; then
-            echo "${{ secrets.SERVER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+            printf '%s\n' "${{ secrets.SERVER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           else
             ssh-keyscan -p "${{ secrets.SERVER_PORT }}" -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
           fi
+          sed -i 's/\r$//' ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
           echo "SSH=ssh -i $HOME/.ssh/id_deploy -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" >> $GITHUB_ENV
 

@@ -69,15 +69,18 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_deploy
+          # printf + чистене на CRLF: устойчиво на копиране от Windows/Notepad
+          printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_deploy
+          sed -i 's/\r$//' ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
           # Закотвяне на host key (по-сигурно от accept-new). Подай SERVER_KNOWN_HOSTS
           # като secret; ако липсва — fallback към keyscan (по-малко сигурно).
           if [ -n "${{ secrets.SERVER_KNOWN_HOSTS }}" ]; then
-            echo "${{ secrets.SERVER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+            printf '%s\n' "${{ secrets.SERVER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           else
             ssh-keyscan -p "${{ secrets.SERVER_PORT }}" -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
           fi
+          sed -i 's/\r$//' ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
       - name: Define SSH/SCP helpers
