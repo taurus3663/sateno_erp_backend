@@ -69,9 +69,8 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          # printf + чистене на CRLF: устойчиво на копиране от Windows/Notepad
-          printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_deploy
-          sed -i 's/\r$//' ~/.ssh/id_deploy
+          # SERVER_SSH_KEY е base64 (един ред) — разкодираме; устойчиво на копиране
+          printf '%s' "${{ secrets.SERVER_SSH_KEY }}" | tr -d '[:space:]' | base64 -d > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
           # Закотвяне на host key (по-сигурно от accept-new). Подай SERVER_KNOWN_HOSTS
           # като secret; ако липсва — fallback към keyscan (по-малко сигурно).
