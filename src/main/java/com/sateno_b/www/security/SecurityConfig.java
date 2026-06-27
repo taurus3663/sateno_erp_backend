@@ -31,6 +31,7 @@ public class SecurityConfig {
                         }))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/actuator/health",
                                 "/erp/auth/login",
                                 "/error",
                                 "/media/**",
