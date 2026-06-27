@@ -468,7 +468,10 @@ public class WpOrderService {
         wpOrderEntity.setStatus(dto.getStatus());
         wpOrderEntity.setCustomerIp(dto.getCustomerIpAddress());
         wpOrderEntity.setCustomerAgent(dto.getCustomerUserAgent());
-        wpOrderEntity.setTotalPrice(isPayed? new BigDecimal(0): new BigDecimal(totalPriceRs.get()));
+        // FIX: реалната стойност на поръчката се пази ВИНАГИ (и за платени с карта),
+        // за да я отчита финансовият дашборд. Наложеният платеж за куриера
+        // (totalPriceFCoutier) остава 0 за платените — товарителницата е непроменена.
+        wpOrderEntity.setTotalPrice(new BigDecimal(totalPriceRs.get()));
         wpOrderEntity.setTotalPriceFCoutier(isPayed? new BigDecimal(0): new BigDecimal(totalPriceRs.get()));
         wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
         wpOrderEntity.setTransactionId(dto.getTransactionId());
