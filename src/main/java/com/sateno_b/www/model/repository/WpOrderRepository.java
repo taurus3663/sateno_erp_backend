@@ -88,4 +88,15 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long>, J
             @Param("end") Instant end
     );
 
+    /** Всички поръчки за периода без филтър по статус — за продуктов анализ. */
+    @Query("SELECT o FROM WpOrderEntity o " +
+            "WHERE o.site.id IN :siteIds " +
+            "AND COALESCE(o.wpOrderTime, o.createTime) >= :start " +
+            "AND COALESCE(o.wpOrderTime, o.createTime) < :end")
+    List<WpOrderEntity> findAllForPeriod(
+            @Param("siteIds") List<Long> siteIds,
+            @Param("start") Instant start,
+            @Param("end") Instant end
+    );
+
 }
