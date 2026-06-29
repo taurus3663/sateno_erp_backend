@@ -8,6 +8,7 @@ import com.sateno_b.www.model.entity.WpOrderEntity;
 import com.sateno_b.www.model.entity.WpProductEntity;
 import com.sateno_b.www.model.entity.data.OrderLineItem;
 import com.sateno_b.www.model.entity.data.OrderSavedCourierSettings;
+import com.sateno_b.www.shared.Shared;
 import com.sateno_b.www.model.enums.CourierShipmentType;
 import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
@@ -200,7 +201,16 @@ public class FinancialDashboardService {
         long productsSold = 0L;
 
         for (WpOrderEntity order : orders) {
-            revenue += order.getTotalPrice() != null ? order.getTotalPrice().doubleValue() : 0d;
+            // Ако totalPrice == 0 (карта-платена поръчка редактирана преди fix-а),
+            // преизчисляваме от редовете за да не влиза с 0 в приходите.
+            BigDecimal orderTotalPrice = order.getTotalPrice();
+            if (orderTotalPrice != null && orderTotalPrice.compareTo(BigDecimal.ZERO) > 0) {
+                revenue += orderTotalPrice.doubleValue();
+            } else if (order.getOrderLine() != null) {
+                for (OrderLineItem line : order.getOrderLine()) {
+                    revenue += Shared.computeEffectiveLineTotal(line).doubleValue();
+                }
+            }
 
             if (order.getOrderLine() != null) {
                 for (OrderLineItem line : order.getOrderLine()) {

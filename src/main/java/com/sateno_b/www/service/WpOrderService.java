@@ -10,6 +10,7 @@ import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.CourierParser;
 import com.sateno_b.www.shared.Shared;
+import com.sateno_b.www.model.dto.OrderLineItemDto;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.Expression;
@@ -862,7 +863,7 @@ public class WpOrderService {
 //            }
             dto.setSavedCourierBilling(entity.getSavedCourierBilling());
             dto.setCourierHistory(entity.getCourierHistory());
-            
+            enrichOrderDto(dto, entity);
 
             if (entity.getSite() != null) {
                 CourierParser.CourierMatch match = CourierParser.parseWithFallback(entity);
@@ -932,6 +933,7 @@ public class WpOrderService {
 
             dto.setSavedCourierBilling(entity.getSavedCourierBilling());
             dto.setCourierHistory(entity.getCourierHistory());
+            enrichOrderDto(dto, entity);
             return dto;
         }
         return null;
@@ -1148,12 +1150,17 @@ public class WpOrderService {
                 }
 
                 // 4. Изчисляваме финалния тотал на база всички продукти (оригинални + мерднати)
-                BigDecimal totalAmount = order.getOrderLine().stream()
+                // totalPrice = реален приход (price*qty+addons когато totalPrice==0 за карта)
+                BigDecimal revenueTotal = order.getOrderLine().stream()
+                        .map(Shared::computeEffectiveLineTotal)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                // totalPriceFCoutier = наложен платеж за куриера (остава 0 за карта-платени)
+                BigDecimal codTotal = order.getOrderLine().stream()
                         .map(line -> line.getTotalPrice() != null ? line.getTotalPrice() : BigDecimal.ZERO)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                order.setTotalPrice(totalAmount);
-                order.setTotalPriceFCoutier(totalAmount);
+                order.setTotalPrice(revenueTotal);
+                order.setTotalPriceFCoutier(codTotal);
 
                 // 5. Проверка на сайта
                 if (wpOrderDto.getSite() != null && !Objects.equals(wpOrderDto.getSite().getId(), order.getSite().getId())) {
@@ -1307,6 +1314,23 @@ public class WpOrderService {
 //                }
             }
         }
+    }
+
+    /**
+     * Попълва effectiveTotalPrice на всеки ред и на поръчката (сума на редовете).
+     * Извиква се след modelMapper.map() за getAll и getById.
+     */
+    private void enrichOrderDto(WpOrderDto dto, WpOrderEntity entity) {
+        if (entity.getOrderLine() == null || dto.getOrderLine() == null) return;
+        BigDecimal orderEffective = BigDecimal.ZERO;
+        List<OrderLineItem> entityLines = entity.getOrderLine();
+        List<OrderLineItemDto> dtoLines = dto.getOrderLine();
+        for (int i = 0; i < Math.min(entityLines.size(), dtoLines.size()); i++) {
+            BigDecimal eff = Shared.computeEffectiveLineTotal(entityLines.get(i));
+            dtoLines.get(i).setEffectiveTotalPrice(eff);
+            orderEffective = orderEffective.add(eff);
+        }
+        dto.setEffectiveTotalPrice(orderEffective);
     }
 
     @Scheduled(cron = "0 0 0 * * *", zone = "Europe/Sofia")

@@ -21,4 +21,7 @@ public class OrderLineItemDto {
 
     private String weight;
     private DimensionsDto dimensions;
+
+    /** totalPrice > 0 → totalPrice; иначе price*qty + addon rawPrices (за карта-платени редове) */
+    private BigDecimal effectiveTotalPrice;
 }

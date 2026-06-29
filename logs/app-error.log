@@ -1,34 +1,13 @@
-2026-06-26 08:55:11 [WooSync-2] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/21203": null
-2026-06-26 08:55:11 [WooSync-3] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/21225": null
-2026-06-26 09:13:36 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-4] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/18641": null
-2026-06-26 09:13:36 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.pl1: I/O error on GET request for "https://sateno.pl1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.pl1: I/O error on GET request for "https://sateno.pl1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.pl1: I/O error on GET request for "https://sateno.pl1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.ro1: I/O error on GET request for "https://sateno.ro1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.ro1: I/O error on GET request for "https://sateno.ro1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.ro1: I/O error on GET request for "https://sateno.ro1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-1] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт t.br5.xyz1: I/O error on GET request for "https://t.br5.xyz1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-2] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт t.br5.xyz1: I/O error on GET request for "https://t.br5.xyz1/wp-json/wc/v3/products": null
-2026-06-26 09:13:36 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт t.br5.xyz1: I/O error on GET request for "https://t.br5.xyz1/wp-json/wc/v3/products": null
-2026-06-26 09:27:22 [WooSync-1] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/21232": null
-2026-06-26 09:57:46 [restartedMain] ERROR o.s.b.d.LoggingFailureAnalysisReporter - 
-
-***************************
-APPLICATION FAILED TO START
-***************************
-
-Description:
-
-Parameter 8 of constructor in com.sateno_b.www.controller.AdsController required a bean of type 'com.sateno_b.www.service.GoogleAdsService' that could not be found.
-
-
-Action:
-
-Consider defining a bean of type 'com.sateno_b.www.service.GoogleAdsService' in your configuration.
-
+2026-06-29 10:59:22 [WooSync-1] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/null": null
+2026-06-29 10:59:22 [WooSync-2] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/21246": null
+2026-06-29 10:59:22 [WooSync-5] ERROR c.s.www.service.WpOrderAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/orders/21174": null
+2026-06-29 10:59:22 [WooSync-4] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-29 10:59:22 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-29 10:59:22 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.pl1: I/O error on GET request for "https://sateno.pl1/wp-json/wc/v3/products": null
+2026-06-29 10:59:22 [WooSync-4] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.pl1: I/O error on GET request for "https://sateno.pl1/wp-json/wc/v3/products": null
+2026-06-29 10:59:22 [WooSync-4] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-29 10:59:22 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.bg1: I/O error on GET request for "https://sateno.bg1/wp-json/wc/v3/products": null
+2026-06-29 10:59:22 [WooSync-4] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.ro1: I/O error on GET request for "https://sateno.ro1/wp-json/wc/v3/products": null
+2026-06-29 10:59:22 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт sateno.ro1: I/O error on GET request for "https://sateno.ro1/wp-json/wc/v3/products": null
+2026-06-29 10:59:22 [WooSync-4] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт t.br5.xyz1: I/O error on GET request for "https://t.br5.xyz1/wp-json/wc/v3/products": null
+2026-06-29 10:59:22 [WooSync-3] ERROR c.s.w.service.WpProductAsyncService - Грешка при обновяване на сайт t.br5.xyz1: I/O error on GET request for "https://t.br5.xyz1/wp-json/wc/v3/products": null

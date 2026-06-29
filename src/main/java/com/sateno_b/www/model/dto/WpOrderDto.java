@@ -61,4 +61,7 @@ public class WpOrderDto {
     private List<WpOrderCourierHistory> courierHistory =  new ArrayList<>();
     private BigDecimal totalPriceFCoutier;
     private boolean freeDelivery = false;
+
+    /** Реален приход: sum(effectiveTotalPrice по редове) — винаги > 0, дори за карта-платени */
+    private BigDecimal effectiveTotalPrice;
 }
