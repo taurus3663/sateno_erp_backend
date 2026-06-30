@@ -85,6 +85,9 @@ public class WpProductService {
     private final WpCategorySiteMappingRepository wpCategorySiteMappingRepository;
     private final WpProductCleanupService wpProductCleanupService;
     private final WpAttributeValueRepository wpAttributeValueRepository;
+    private final WpAttributeTypeRepository wpAttributeTypeRepository;
+    private final WpAttributeValueTranslationRepository wpAttributeValueTranslationRepository;
+    private final WpAttributeTypeTranslationRepository wpAttributeTypeTranslationRepository;
 
 
     @Transactional
@@ -314,60 +317,48 @@ public class WpProductService {
     }
 
     private void processSingleProduct(WooProductDto dto, SiteEntity site, LanguageEntity lang) {
+        if (dto.getSku() == null || dto.getSku().isBlank()) return;
 
+        // 1. Намираме или СЪЗДАВАМЕ глобалния продукт по SKU
+        WpProductEntity product = wpProductRepository.findBySku(dto.getSku())
+                .orElseGet(WpProductEntity::new);
 
-    // 1. Намираме или създаваме Глобалния продукт по SKU
-//        WpProductEntity product = wpProductRepository.findBySkuAndSite(dto.getSku(), site.getId())
-//                .orElseGet(() -> wpProductRepository.save(new WpProductEntity()));
+        // 2. Основни данни
+        product.setSku(dto.getSku());
+        product.setStockQuantity(dto.getStock_quantity() != null ? dto.getStock_quantity() : 0);
+        product.setWeight(dto.getWeight());
+        if (dto.getStatus() != null) product.setStatus(dto.getStatus());
+        product.setSaleType(dto.isManage_stock() ? ProductSaleType.LIMITED : ProductSaleType.UNLIMITED);
 
-        Optional<WpProductEntity> existingProduct = wpProductRepository.findBySkuAndSite(dto.getSku(), site.getId());
-        if (existingProduct.isPresent()) {
-//            return;
-            syncImagesForProduct(existingProduct.get(), dto.getImages(), site);
+        // 3. Бранд
+        if (dto.getBrands() != null && !dto.getBrands().isEmpty()) {
+            wpBrandRepository.findBySlug(SlugTool.decodeSlug(dto.getBrands().get(0).getSlug()))
+                    .ifPresent(product::setBrand);
         }
 
-//        WpProductEntity product = new WpProductEntity();
-//        // 2. Обновяваме Глобалните данни (технически)
-//        product.setStockQuantity(dto.getStock_quantity() == null? 0: dto.getStock_quantity());
-//        product.setWeight(dto.getWeight());
-//        product.setStatus(dto.getStatus());
-//        product.setSaleType(dto.isManage_stock() ? ProductSaleType.LIMITED: ProductSaleType.UNLIMITED);
-//        product.setManage_stock(dto.isManage_stock());
-//        product.setSku(dto.getSku());
-//        product.setStock_status(dto.getStock_status());
-//        product.setType(dto.getType());
-//        product.setFeatured(dto.isFeatured());
-//        product.setCatalog_visibility(dto.getCatalog_visibility());
-//        product.setDimensions(dto.getDimensions());
-//        // 3. Свързваме Бранд (вече синхронизиран)
-//        if (dto.getBrands() != null && !dto.getBrands().isEmpty()) {
-//            wpBrandRepository.findBySlug(SlugTool.decodeSlug(dto.getBrands().get(0).getSlug()))
-//                    .ifPresent(product::setBrand);
-//        }
-//
-//        // 4. Свързваме Категории и Подкатегории (ManyToMany)
-//        if (dto.getCategories() != null) {
-//            product.getCategories().clear(); // Махаме старите, слагаме новите от WP
-//            for (WooProductCategoryDto catDto : dto.getCategories()) {
-//                wpCategoryRepository.findBySlug(SlugTool.decodeSlug(catDto.getSlug()))
-//                        .ifPresent(product.getCategories()::add);
-//            }
-//        }
-//
-//        product = wpProductRepository.save(product);
+        // 4. Категории
+        if (dto.getCategories() != null) {
+            product.getCategories().clear();
+            for (WooProductCategoryDto catDto : dto.getCategories()) {
+                wpCategoryRepository.findBySlug(SlugTool.decodeSlug(catDto.getSlug()))
+                        .ifPresent(product.getCategories()::add);
+            }
+        }
 
-        // 5. ЗАПИС НА ЦЕНИ И ТЕКСТОВЕ (Translation)
-//        updateTranslation(product, dto, site, lang);
+        // 5. Запис
+        product = wpProductRepository.save(product);
 
-        // 5a запис на цени
-//        updateSiteConfig(product, dto, site);
+        // 6. Превод (name, description, shortDescription)
+        updateTranslation(product, dto, site, lang);
 
-        // 6. СНИМКИ (Локално сваляне)
-//        syncImagesForProduct(existingProduct.get(), dto.getImages(), site);
+        // 7. Конфигурация за сайта (цени, slug, wpProductId)
+        updateSiteConfig(product, dto, site);
 
-        // 7. АДОНИ (Специфични за продукта и сайта)
-//        syncAddonsForProduct(product, dto.getAddons(), site, lang);
+        // 8. Снимки — без дублиране
+        syncImagesForProduct(product, dto.getImages(), site);
 
+        // 9. Адони
+        syncAddonsForProduct(product, dto.getAddons(), site, lang);
     }
 
     private void updateTranslation(WpProductEntity product, WooProductDto dto, SiteEntity site, LanguageEntity lang) {
@@ -418,43 +409,35 @@ public class WpProductService {
         if (wooImages == null) return;
 
         for (WooProductImageDto wooImg : wooImages) {
-            // Проверяваме дали тази снимка (по WP Media ID) вече е свалена за ТОЗИ сайт
-//            boolean alreadyExists = wpProductImageSiteMappingRepository.existsByWpMediaIdAndSite(wooImg.getId(), site);
+            if (wooImg.getId() == null) continue;
 
+            boolean alreadyExists = wpProductImageSiteMappingRepository.existsByWpMediaIdAndSite(wooImg.getId(), site);
+            if (alreadyExists) continue;
 
-//            if (!alreadyExists) {
+            try {
+                byte[] imageBytes = restClient.get()
+                        .uri(wooImg.getSrc())
+                        .retrieve()
+                        .body(byte[].class);
 
+                if (imageBytes != null) {
+                    String localPath = FileStorageService.saveProductImage(imageBytes, product.getId(), wooImg.getId(), wooImg.getSrc());
 
-                try {
-                    // 1. Теглим байтовете на снимката
-                    byte[] imageBytes = restClient.get()
-                            .uri(wooImg.getSrc())
-                            .retrieve()
-                            .body(byte[].class);
+                    WpProductImageEntity imageEntity = new WpProductImageEntity();
+                    imageEntity.setProduct(product);
+                    imageEntity.setLocalSrc(localPath);
+                    imageEntity = wpProductImageRepository.save(imageEntity);
 
-
-                    if (imageBytes != null) {
-                        // 2. Записваме на диска чрез FileStorageService
-                        String localPath = FileStorageService.saveProductImage(imageBytes, product.getId(), wooImg.getId(), wooImg.getSrc());
-
-                        // 3. Създаваме глобален обект за снимката
-                        WpProductImageEntity imageEntity = new WpProductImageEntity();
-                        imageEntity.setProduct(product);
-                        imageEntity.setLocalSrc(localPath);
-                        imageEntity = wpProductImageRepository.save(imageEntity);
-
-                        // 4. Създаваме мапинг за конкретния сайт (за да знаем, че вече я имаме)
-                        WpProductImageSiteMappingEntity mapping = new WpProductImageSiteMappingEntity();
-                        mapping.setProductImage(imageEntity);
-                        mapping.setSite(site);
-                        mapping.setWpMediaId(wooImg.getId());
-                        mapping.setWpUrl(wooImg.getSrc());
-                        wpProductImageSiteMappingRepository.save(mapping);
-                    }
-                } catch (Exception e) {
-                    log.error("Грешка при теглене на снимка {}: {}", wooImg.getSrc(), e.getMessage());
+                    WpProductImageSiteMappingEntity mapping = new WpProductImageSiteMappingEntity();
+                    mapping.setProductImage(imageEntity);
+                    mapping.setSite(site);
+                    mapping.setWpMediaId(wooImg.getId());
+                    mapping.setWpUrl(wooImg.getSrc());
+                    wpProductImageSiteMappingRepository.save(mapping);
                 }
-//            }
+            } catch (Exception e) {
+                log.error("Грешка при теглене на снимка {}: {}", wooImg.getSrc(), e.getMessage());
+            }
         }
     }
 

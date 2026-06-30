@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Финансов дашборд — основен финансов екран на ERP-то.
@@ -30,20 +31,22 @@ public class FinancialDashboardController {
 
     @GetMapping("/dashboard")
     public ResponseEntity<FinancialDashboardDto> getDashboard(
-            @RequestParam(required = false) String timeZone) {
-        return ResponseEntity.ok(financialDashboardService.getDashboard(timeZone));
+            @RequestParam(required = false) String timeZone,
+            @RequestParam(required = false) List<Long> siteIds) {
+        return ResponseEntity.ok(financialDashboardService.getDashboard(timeZone, siteIds));
     }
 
     /**
      * Карта за произволен период.
-     * GET /financial/period?from=2026-06-01&to=2026-06-08&timeZone=Europe/Sofia
+     * GET /financial/period?from=2026-06-01&to=2026-06-08&timeZone=Europe/Sofia&siteIds=6
      */
     @GetMapping("/period")
     public ResponseEntity<FinancialCardDto> getPeriod(
             @RequestParam String from,
             @RequestParam String to,
-            @RequestParam(required = false) String timeZone) {
+            @RequestParam(required = false) String timeZone,
+            @RequestParam(required = false) List<Long> siteIds) {
         return ResponseEntity.ok(
-                financialDashboardService.getPeriodCard(LocalDate.parse(from), LocalDate.parse(to), timeZone));
+                financialDashboardService.getPeriodCard(LocalDate.parse(from), LocalDate.parse(to), timeZone, siteIds));
     }
 }

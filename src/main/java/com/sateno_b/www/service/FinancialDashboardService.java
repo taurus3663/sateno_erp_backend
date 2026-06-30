@@ -14,6 +14,7 @@ import com.sateno_b.www.model.enums.OrderStatus;
 import com.sateno_b.www.model.repository.CourierSettingsRepository;
 import com.sateno_b.www.model.repository.GoogleAdsRecordRepository;
 import com.sateno_b.www.model.repository.MetaAdsRecordRepository;
+import com.sateno_b.www.model.repository.SiteRepository;
 import com.sateno_b.www.model.repository.WpOrderRepository;
 import com.sateno_b.www.model.repository.WpProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +58,7 @@ public class FinancialDashboardService {
     private final CourierSettingsRepository courierSettingsRepository;
     private final MetaAdsRecordRepository metaAdsRecordRepository;
     private final GoogleAdsRecordRepository googleAdsRecordRepository;
+    private final SiteRepository siteRepository;
 
     /** Часова зона по подразбиране (България). */
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Europe/Sofia");
@@ -80,8 +82,14 @@ public class FinancialDashboardService {
             OrderStatus.JOINT
     );
 
+    private List<Long> resolveSiteIds(List<Long> siteIds) {
+        if (siteIds != null && !siteIds.isEmpty()) return siteIds;
+        return siteRepository.findAll().stream().map(s -> s.getId()).toList();
+    }
+
     @Transactional(readOnly = true)
-    public FinancialDashboardDto getDashboard(String timeZone) {
+    public FinancialDashboardDto getDashboard(String timeZone, List<Long> siteIds) {
+        List<Long> sites = resolveSiteIds(siteIds);
         ZoneId zone = resolveZone(timeZone);
         Instant now = Instant.now();
 
@@ -100,14 +108,16 @@ public class FinancialDashboardService {
         FinancialCardDto todayCard = buildCard(
                 "TODAY",
                 todayStart, now,
-                todayStart.minus(Duration.ofDays(1)), now.minus(Duration.ofDays(1))
+                todayStart.minus(Duration.ofDays(1)), now.minus(Duration.ofDays(1)),
+                sites
         );
 
         // 2. ВЧЕРА: целият предходен ден. Предходен период: денят преди вчера.
         FinancialCardDto yesterdayCard = buildCard(
                 "YESTERDAY",
                 yesterdayStart, todayStart,
-                yesterdayStart.minus(Duration.ofDays(1)), todayStart.minus(Duration.ofDays(1))
+                yesterdayStart.minus(Duration.ofDays(1)), todayStart.minus(Duration.ofDays(1)),
+                sites
         );
 
         // 2б. ОНЯ ДЕН (денят преди вчера). Предходен период: денят преди него.
@@ -115,14 +125,16 @@ public class FinancialDashboardService {
         FinancialCardDto dayBeforeCard = buildCard(
                 "DAY_BEFORE",
                 dayBeforeStart, yesterdayStart,
-                dayBeforeStart.minus(Duration.ofDays(1)), yesterdayStart.minus(Duration.ofDays(1))
+                dayBeforeStart.minus(Duration.ofDays(1)), yesterdayStart.minus(Duration.ofDays(1)),
+                sites
         );
 
         // 3. ПОСЛЕДНАТА ПЪЛНА СЕДМИЦА (понеделник–неделя). Предходен период: седмицата преди нея.
         FinancialCardDto last7Card = buildCard(
                 "LAST_7_DAYS",
                 weekStart, weekEnd,
-                prevWeekStart, weekStart
+                prevWeekStart, weekStart,
+                sites
         );
 
         // 4. МИНАЛ МЕСЕЦ (1-во до последния ден). Предходен период: месецът преди него.
@@ -134,7 +146,8 @@ public class FinancialDashboardService {
         FinancialCardDto lastMonthCard = buildCard(
                 "LAST_MONTH",
                 monthStart, monthEnd,
-                prevMonthStart, monthStart
+                prevMonthStart, monthStart,
+                sites
         );
 
         FinancialDashboardDto dto = new FinancialDashboardDto();
@@ -153,7 +166,8 @@ public class FinancialDashboardService {
      * сравнена с предходния равен по дължина период.
      */
     @Transactional(readOnly = true)
-    public FinancialCardDto getPeriodCard(LocalDate from, LocalDate to, String timeZone) {
+    public FinancialCardDto getPeriodCard(LocalDate from, LocalDate to, String timeZone, List<Long> siteIds) {
+        List<Long> sites = resolveSiteIds(siteIds);
         ZoneId zone = resolveZone(timeZone);
         if (to.isBefore(from)) {
             LocalDate tmp = from;
@@ -161,32 +175,33 @@ public class FinancialDashboardService {
             to = tmp;
         }
         Instant start = from.atStartOfDay(zone).toInstant();
-        Instant end = to.plusDays(1).atStartOfDay(zone).toInstant(); // крайната дата е включена
+        Instant end = to.plusDays(1).atStartOfDay(zone).toInstant();
         Duration len = Duration.between(start, end);
-        return buildCard("CUSTOM", start, end, start.minus(len), start);
+        return buildCard("CUSTOM", start, end, start.minus(len), start, sites);
     }
 
     /** Построява една карта (текущ + предходен период). */
     public FinancialCardDto buildCard(String period,
                                       Instant from, Instant to,
-                                      Instant prevFrom, Instant prevTo) {
+                                      Instant prevFrom, Instant prevTo,
+                                      List<Long> siteIds) {
         FinancialCardDto card = new FinancialCardDto();
         card.setPeriod(period);
         card.setFrom(from);
         card.setTo(to);
-        card.setCurrent(computeMetrics(from, to));
-        card.setPrevious(computeMetrics(prevFrom, prevTo));
+        card.setCurrent(computeMetrics(from, to, siteIds));
+        card.setPrevious(computeMetrics(prevFrom, prevTo, siteIds));
         return card;
     }
 
     /**
      * Изчислява всички показатели за период [from, to).
      */
-    public FinancialMetricsDto computeMetrics(Instant from, Instant to) {
+    public FinancialMetricsDto computeMetrics(Instant from, Instant to, List<Long> siteIds) {
         FinancialMetricsDto m = new FinancialMetricsDto();
 
         List<WpOrderEntity> orders =
-                wpOrderRepository.findForFinancialPeriod(REVENUE_STATUSES, dashboardSiteIds, from, to);
+                wpOrderRepository.findForFinancialPeriod(REVENUE_STATUSES, siteIds, from, to);
 
         // --- Карта SKU -> себестойност за единица (покупна цена + транспортен разход) ---
         Map<String, Double> unitCostBySku = buildUnitCostMap(orders);
