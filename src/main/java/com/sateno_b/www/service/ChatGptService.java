@@ -37,7 +37,14 @@ public class ChatGptService {
         return ChatClient.create(new OpenAiChatModel(openAiApi, options));
     }
 
+    public boolean isConfigured() {
+        Map<String, String> config = appSettingsService.getConfig(TYPE);
+        String apiKey = config.getOrDefault("apiKey", "");
+        return !apiKey.isBlank();
+    }
+
     public String translateText(String text, String instruction) {
+        if (!isConfigured()) return null;
         return buildClient().prompt()
                 .system(instruction)
                 .user(text)

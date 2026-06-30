@@ -59,16 +59,18 @@ public class WpCategoryAsyncService {
                             .orElse(null);
 
                     if(translatedName == null){
-                        String Instruction = String.format("Превод от %s към %s", baseLanguage.getName(), siteLanguage.getName());
-                        System.out.println(Instruction);
-                        translatedName = chatGptService.translateText(baseTranslation.getName(), Instruction);
-                        System.out.println(translatedName);
-                        WpCategoryTranslationEntity newTranslation = new WpCategoryTranslationEntity();
-                        newTranslation.setName(translatedName);
-                        newTranslation.setLanguage(siteLanguage);
-                        newTranslation.setWpCategory(wpCategoryEntity);
-                        wpCategoryTranslationRepository.save(newTranslation);
-                        wpCategoryEntity.getTranslations().add(newTranslation);
+                        if (chatGptService.isConfigured()) {
+                            String Instruction = String.format("Превод от %s към %s", baseLanguage.getName(), siteLanguage.getName());
+                            translatedName = chatGptService.translateText(baseTranslation.getName(), Instruction);
+                            if (translatedName != null) {
+                                WpCategoryTranslationEntity newTranslation = new WpCategoryTranslationEntity();
+                                newTranslation.setName(translatedName);
+                                newTranslation.setLanguage(siteLanguage);
+                                newTranslation.setWpCategory(wpCategoryEntity);
+                                wpCategoryTranslationRepository.save(newTranslation);
+                                wpCategoryEntity.getTranslations().add(newTranslation);
+                            }
+                        }
                     }
                 }
 
@@ -220,15 +222,17 @@ public class WpCategoryAsyncService {
                 .findFirst()
                 .orElse(null);
 
-        if (translated == null) {
+        if (translated == null && chatGptService.isConfigured()) {
             String instruction = String.format("Translate from %s to %s", baseLang.getName(), siteLang.getName());
             translated = chatGptService.translateText(base.getName(), instruction);
 
-            WpCategoryTranslationEntity newT = new WpCategoryTranslationEntity();
-            newT.setName(translated);
-            newT.setLanguage(siteLang);
-            newT.setWpCategory(entity);
-            wpCategoryTranslationRepository.save(newT);
+            if (translated != null) {
+                WpCategoryTranslationEntity newT = new WpCategoryTranslationEntity();
+                newT.setName(translated);
+                newT.setLanguage(siteLang);
+                newT.setWpCategory(entity);
+                wpCategoryTranslationRepository.save(newT);
+            }
         }
         return translated;
     }
@@ -264,42 +268,36 @@ public class WpCategoryAsyncService {
                 String targetName = "";
 
                 if (translation == null || translation.getName() == null || translation.getName().isEmpty()) {
-                    log.info("Преводът липсва за категория ID {} на език {}. Стартиране на ChatGPT превод...",
-                            wpCategoryEntity.getId(), site.getLanguage().getName());
+                    if (chatGptService.isConfigured()) {
+                        WpCategoryTranslationEntity base = wpCategoryEntity.getTranslations().stream()
+                                .filter(t -> t.getLanguage().getId() == 1L)
+                                .findFirst()
+                                .orElse(wpCategoryEntity.getTranslations().isEmpty() ? null : wpCategoryEntity.getTranslations().get(0));
 
-                    // Вземаме базата (Български, ID 1) от sateno.bg
-                    WpCategoryTranslationEntity base = wpCategoryEntity.getTranslations().stream()
-                            .filter(t -> t.getLanguage().getId() == 1L)
-                            .findFirst()
-                            .orElse(wpCategoryEntity.getTranslations().get(0)); // Фалбек към първия наличен
-
-                    String targetLang = site.getLanguage().getName();
-                    String sourceLang = base.getLanguage().getName();
-
-                    String namePrompt = String.format(
-                            "Извърши буквален (дума по дума) превод на това име на категория за електронна търговия от %s на %s: '%s'. " +
-                                    "ВАЖНО: Върни САМО преведения низ. Не включвай никакви кавички, обяснения или уводни текстове. " +
-                                    "Запази буквалното значение на всяка дума, дори ако звучи неестествено на целевия език.",
-                            sourceLang, targetLang, base.getName()
-                    );
-
-                    targetName = chatGptService.translateText(base.getName(), namePrompt);
-
-                    // Записваме новия превод в базата данни
-                    if (translation == null) {
-                        translation = new WpCategoryTranslationEntity();
-                        translation.setWpCategory(wpCategoryEntity); // Увери се, че сетърът се казва setWpCategory (или setCategory)
-                        translation.setLanguage(site.getLanguage());
+                        if (base != null) {
+                            String targetLang = site.getLanguage().getName();
+                            String sourceLang = base.getLanguage().getName();
+                            String namePrompt = String.format(
+                                    "Извърши буквален (дума по дума) превод на това ime на категория за електронна търговия от %s на %s: '%s'. " +
+                                            "ВАЖНО: Върни САМО преведения низ. Не включвай никакви кавички, обяснения или уводни текстове. " +
+                                            "Запази буквалното значение на всяка дума, дори ако звучи неестествено на целевия език.",
+                                    sourceLang, targetLang, base.getName()
+                            );
+                            String translated = chatGptService.translateText(base.getName(), namePrompt);
+                            if (translated != null) {
+                                if (translation == null) {
+                                    translation = new WpCategoryTranslationEntity();
+                                    translation.setWpCategory(wpCategoryEntity);
+                                    translation.setLanguage(site.getLanguage());
+                                }
+                                translation.setName(translated);
+                                wpCategoryTranslationRepository.save(translation);
+                                wpCategoryEntity.getTranslations().add(translation);
+                                targetName = translated;
+                                log.info("Успешен превод за категория ID {}: {}", wpCategoryEntity.getId(), translated);
+                            }
+                        }
                     }
-                    translation.setName(targetName);
-
-                    // ЗАБЕЛЕЖКА: Трябва да имаш wpCategoryTranslationRepository инжектирано в сървиса
-                    wpCategoryTranslationRepository.save(translation);
-
-                    // Добавяме го и в паметта
-                    wpCategoryEntity.getTranslations().add(translation);
-
-                    log.info("Успешен превод за категория ID {}: {}", wpCategoryEntity.getId(), targetName);
                 } else {
                     targetName = translation.getName();
                 }

@@ -117,7 +117,7 @@ public class WpProductAsyncService {
                         .findFirst()
                         .orElse(null);
 
-                if (translation == null || translation.getName().isEmpty()) {
+                if ((translation == null || translation.getName().isEmpty()) && chatGptService.isConfigured()) {
                     log.info("Преводът липсва за SKU {} на език {}. Стартиране на ChatGPT превод...",
                             product.getSku(), site.getLanguage().getName());
 
@@ -126,48 +126,54 @@ public class WpProductAsyncService {
                             .findFirst()
                             .orElse(null);
 
-                    String targetLang = site.getLanguage().getName();
-                    String sourceLang = base.getLanguage().getName();
+                    if (base != null) {
+                        String targetLang = site.getLanguage().getName();
+                        String sourceLang = base.getLanguage().getName();
 
-                    String namePrompt = String.format(
-                            "Translate this e-commerce product name from %s to %s: '%s'. " +
-                                    "IMPORTANT: Return ONLY the translated string. Do not include any quotes, explanations, or introductory text.",
-                            sourceLang, targetLang, base.getName()
-                    );
-                    String translatedName = chatGptService.translateText(base.getName(), namePrompt);
+                        String namePrompt = String.format(
+                                "Translate this e-commerce product name from %s to %s: '%s'. " +
+                                        "IMPORTANT: Return ONLY the translated string. Do not include any quotes, explanations, or introductory text.",
+                                sourceLang, targetLang, base.getName()
+                        );
+                        String translatedName = chatGptService.translateText(base.getName(), namePrompt);
 
-                    String translatedShort = "";
-                    if (base.getShortDescription() != null && !base.getShortDescription().isEmpty()) {
-                        String shortPrompt = String.format("Translate this product short description from %s to %s. Keep it concise: '%s'",
-                                sourceLang, targetLang, base.getShortDescription());
-                        translatedShort = chatGptService.translateText(base.getShortDescription(), shortPrompt);
+                        if (translatedName != null) {
+                            String translatedShort = "";
+                            if (base.getShortDescription() != null && !base.getShortDescription().isEmpty()) {
+                                String shortPrompt = String.format("Translate this product short description from %s to %s. Keep it concise: '%s'",
+                                        sourceLang, targetLang, base.getShortDescription());
+                                String r = chatGptService.translateText(base.getShortDescription(), shortPrompt);
+                                if (r != null) translatedShort = r;
+                            }
+
+                            String translatedDesc = "";
+                            if (base.getDescription() != null && !base.getDescription().isEmpty()) {
+                                String descPrompt = String.format("Translate this product description from %s to %s. IMPORTANT: Preserve all HTML tags and structure exactly as they are.",
+                                        sourceLang, targetLang);
+                                String r = chatGptService.translateText(base.getDescription(), descPrompt);
+                                if (r != null) translatedDesc = r;
+                            }
+
+                            if (translation == null) {
+                                translation = new WpProductTranslationEntity();
+                            }
+                            translation.setProduct(product);
+                            translation.setLanguage(site.getLanguage());
+                            translation.setName(translatedName);
+                            translation.setShortDescription(translatedShort);
+                            translation.setDescription(translatedDesc);
+
+                            wpProductTranslationRepository.save(translation);
+                            product.getTranslations().add(translation);
+
+                            log.info("Успешен превод за SKU {} на език {}", product.getSku(), targetLang);
+                        }
                     }
-
-                    String translatedDesc = "";
-                    if (base.getDescription() != null && !base.getDescription().isEmpty()) {
-                        String descPrompt = String.format("Translate this product description from %s to %s. IMPORTANT: Preserve all HTML tags and structure exactly as they are.",
-                                sourceLang, targetLang);
-                        translatedDesc = chatGptService.translateText(base.getDescription(), descPrompt);
-                    }
-
-                    if(translation == null) {
-                        translation = new WpProductTranslationEntity();
-                    }
-                    translation.setProduct(product);
-                    translation.setLanguage(site.getLanguage());
-                    translation.setName(translatedName);
-                    translation.setShortDescription(translatedShort);
-                    translation.setDescription(translatedDesc);
-
-                    wpProductTranslationRepository.save(translation);
-                    product.getTranslations().add(translation);
-
-                    log.info("Успешен превод за SKU {} на език {}", product.getSku(), targetLang);
                 }
 
-                updateBody.put("name", translation.getName());
-                updateBody.put("short_description", cleanHtml(translation.getShortDescription()));
-                updateBody.put("description", cleanHtml(translation.getDescription()));
+                updateBody.put("name", translation != null ? translation.getName() : "");
+                updateBody.put("short_description", cleanHtml(translation != null ? translation.getShortDescription() : ""));
+                updateBody.put("description", cleanHtml(translation != null ? translation.getDescription() : ""));
 
 
                 // PRICE
@@ -1539,7 +1545,7 @@ public class WpProductAsyncService {
                         .findFirst()
                         .orElse(null);
 
-                if (translation == null || translation.getName().isEmpty()) {
+                if ((translation == null || translation.getName().isEmpty()) && chatGptService.isConfigured()) {
                     log.info("Преводът липсва за SKU {} на език {}. Стартиране на ChatGPT превод...",
                             product.getSku(), site.getLanguage().getName());
 
@@ -1548,48 +1554,54 @@ public class WpProductAsyncService {
                             .findFirst()
                             .orElse(null);
 
-                    String targetLang = site.getLanguage().getName();
-                    String sourceLang = base.getLanguage().getName();
+                    if (base != null) {
+                        String targetLang = site.getLanguage().getName();
+                        String sourceLang = base.getLanguage().getName();
 
-                    String namePrompt = String.format(
-                            "Translate this e-commerce product name from %s to %s: '%s'. " +
-                                    "IMPORTANT: Return ONLY the translated string. Do not include any quotes, explanations, or introductory text.",
-                            sourceLang, targetLang, base.getName()
-                    );
-                    String translatedName = chatGptService.translateText(base.getName(), namePrompt);
+                        String namePrompt = String.format(
+                                "Translate this e-commerce product name from %s to %s: '%s'. " +
+                                        "IMPORTANT: Return ONLY the translated string. Do not include any quotes, explanations, or introductory text.",
+                                sourceLang, targetLang, base.getName()
+                        );
+                        String translatedName = chatGptService.translateText(base.getName(), namePrompt);
 
-                    String translatedShort = "";
-                    if (base.getShortDescription() != null && !base.getShortDescription().isEmpty()) {
-                        String shortPrompt = String.format("Translate this product short description from %s to %s. Keep it concise: '%s'",
-                                sourceLang, targetLang, base.getShortDescription());
-                        translatedShort = chatGptService.translateText(base.getShortDescription(), shortPrompt);
+                        if (translatedName != null) {
+                            String translatedShort = "";
+                            if (base.getShortDescription() != null && !base.getShortDescription().isEmpty()) {
+                                String shortPrompt = String.format("Translate this product short description from %s to %s. Keep it concise: '%s'",
+                                        sourceLang, targetLang, base.getShortDescription());
+                                String r = chatGptService.translateText(base.getShortDescription(), shortPrompt);
+                                if (r != null) translatedShort = r;
+                            }
+
+                            String translatedDesc = "";
+                            if (base.getDescription() != null && !base.getDescription().isEmpty()) {
+                                String descPrompt = String.format("Translate this product description from %s to %s. IMPORTANT: Preserve all HTML tags and structure exactly as they are.",
+                                        sourceLang, targetLang);
+                                String r = chatGptService.translateText(base.getDescription(), descPrompt);
+                                if (r != null) translatedDesc = r;
+                            }
+
+                            if (translation == null) {
+                                translation = new WpProductTranslationEntity();
+                            }
+                            translation.setProduct(product);
+                            translation.setLanguage(site.getLanguage());
+                            translation.setName(translatedName);
+                            translation.setShortDescription(translatedShort);
+                            translation.setDescription(translatedDesc);
+
+                            wpProductTranslationRepository.save(translation);
+                            product.getTranslations().add(translation);
+
+                            log.info("Успешен превод за SKU {} на език {}", product.getSku(), targetLang);
+                        }
                     }
-
-                    String translatedDesc = "";
-                    if (base.getDescription() != null && !base.getDescription().isEmpty()) {
-                        String descPrompt = String.format("Translate this product description from %s to %s. IMPORTANT: Preserve all HTML tags and structure exactly as they are.",
-                                sourceLang, targetLang);
-                        translatedDesc = chatGptService.translateText(base.getDescription(), descPrompt);
-                    }
-
-                    if(translation == null) {
-                        translation = new WpProductTranslationEntity();
-                    }
-                    translation.setProduct(product);
-                    translation.setLanguage(site.getLanguage());
-                    translation.setName(translatedName);
-                    translation.setShortDescription(translatedShort);
-                    translation.setDescription(translatedDesc);
-
-                    wpProductTranslationRepository.save(translation);
-                    product.getTranslations().add(translation);
-
-                    log.info("Успешен превод за SKU {} на език {}", product.getSku(), targetLang);
                 }
 
-                updateBody.put("name", translation.getName());
-                updateBody.put("short_description", cleanHtml(translation.getShortDescription()));
-                updateBody.put("description", cleanHtml(translation.getDescription()));
+                updateBody.put("name", translation != null ? translation.getName() : "");
+                updateBody.put("short_description", cleanHtml(translation != null ? translation.getShortDescription() : ""));
+                updateBody.put("description", cleanHtml(translation != null ? translation.getDescription() : ""));
 
 
                 // PRICE
