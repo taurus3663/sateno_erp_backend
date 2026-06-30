@@ -58,6 +58,16 @@ public interface WpProductRepository extends JpaRepository<WpProductEntity,Long>
 
     List<WpProductEntity> findAllBySkuIn(List<String> skuList);
 
+    /** Всички продукти с попълнен SKU — sku + българско име (или първо налично). */
+    @Query("SELECT p.sku, " +
+            "MAX(CASE WHEN t.language.code = 'bg' THEN t.name ELSE NULL END), " +
+            "MIN(t.name) " +
+            "FROM WpProductEntity p " +
+            "LEFT JOIN p.translations t " +
+            "WHERE p.sku IS NOT NULL AND p.sku <> '' " +
+            "GROUP BY p.sku")
+    List<Object[]> findAllSkusWithName();
+
 
 //    @EntityGraph(attributePaths = {"brand"})
 //    @Query("SELECT p FROM WpProductEntity p")

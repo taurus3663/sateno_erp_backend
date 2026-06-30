@@ -4,6 +4,7 @@ import com.sateno_b.www.model.enums.ProductSaleType;
 import com.sateno_b.www.model.enums.ProductStatus;
 import org.springframework.beans.factory.annotation.Value;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 
@@ -13,6 +14,8 @@ public interface WpProductMinified {
     Integer getStockQuantity();
     ProductStatus getStatus();
     ProductSaleType getSaleType();
+    BigDecimal getBuyPrice();
+    BigDecimal getTransportPrice();
 
     // Коригираният SpEL израз:
     // 1. target.translations.![name] -> прави списък само от имената

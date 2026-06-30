@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class MetaAdsService {
 
-    private static final ZoneId META_ZONE = ZoneId.of("UTC");
+    private static final ZoneId META_ZONE = ZoneId.of("Europe/Sofia");
     private final RestClient restClient;
     private static final String API_VERSION = "v25.0";
     private static final String BASE_URL = "https://graph.facebook.com/" + API_VERSION + "/";
@@ -141,31 +141,31 @@ public class MetaAdsService {
 
 
     // ===================================================
-    // НОВ АКАУНТ — backfill 90 дни назад
+    // НОВ АКАУНТ / RESYNC — backfill ден по ден (1 API call на ден, всички часове)
     // ===================================================
     public void triggerBackfillForNewAccount(MetaAdsEntity account) {
-        log.info("[{}] Стартиран backfill за 90 дни назад", account.getName());
+        LocalDate today = LocalDate.now(META_ZONE);
+        LocalDate from = today.minusYears(3);
+        log.info("[{}] Стартиран backfill от {} до {}", account.getName(), from, today.minusDays(1));
 
-        Instant now = Instant.now();
-
-        // От 90 дни назад
-        Instant from = now.minus(90, ChronoUnit.DAYS).truncatedTo(ChronoUnit.DAYS);
-
-        // До предишния час включително (сега е 13:42 → вземаме до 12:00)
-        Instant lastCompletedHour = now.truncatedTo(ChronoUnit.HOURS).minus(1, ChronoUnit.HOURS);
-
-        Instant cursor = from;
-        while (!cursor.isAfter(lastCompletedHour)) {
+        for (LocalDate date = from; date.isBefore(today); date = date.plusDays(1)) {
             try {
-                syncInstant(account, cursor);
-                log.info("[{}] Запълнен: {}", account.getName(), cursor);
-                cursor = cursor.plus(1, ChronoUnit.HOURS); // час по час
+                Map<String, Object> response = getInsightsForDate(account, date.toString());
+                List<Map<String, Object>> dataList = (List<Map<String, Object>>) response.get("data");
+                if (dataList != null && !dataList.isEmpty()) {
+                    for (Map<String, Object> row : dataList) {
+                        int hour = parseHour((String) row.get("hourly_stats_aggregated_by_advertiser_time_zone"));
+                        Instant recordedAt = date.atStartOfDay(META_ZONE).plusHours(hour).toInstant();
+                        saveRecord(account, row, recordedAt);
+                    }
+                }
+                log.info("[{}] Запълнен ден: {}", account.getName(), date);
                 TimeUnit.MILLISECONDS.sleep(300);
             } catch (Exception e) {
-                log.error("[{}] Грешка за {}: {}", account.getName(), cursor, e.getMessage());
-                break;
+                log.error("[{}] Грешка за {}: {}", account.getName(), date, e.getMessage());
             }
         }
+        log.info("[{}] Backfill завършен", account.getName());
     }
 
     // ===================================================
@@ -191,7 +191,7 @@ public class MetaAdsService {
     }
 
     // "Чистач" на пропуски (на всеки 30 минути)
-    @Scheduled(cron = "0 0 0/3 * * *")
+    @Scheduled(cron = "0 0 23 * * *")
     public void runRecoverySync() {
         syncMissingHours();
     }
@@ -329,7 +329,7 @@ public class MetaAdsService {
                     log.info("[{}] Наваксване на пропуснат час: {}", account.getName(), cursor);
                     try {
                         syncInstant(account, cursor);
-                        TimeUnit.MILLISECONDS.sleep(500);
+                        TimeUnit.MILLISECONDS.sleep(100);
                     } catch (Exception e) {
                         log.error("[{}] Грешка при наваксване на {}: {}",
                                 account.getName(), cursor, e.getMessage());

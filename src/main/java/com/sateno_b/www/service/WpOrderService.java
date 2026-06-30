@@ -10,6 +10,7 @@ import com.sateno_b.www.model.repository.*;
 import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.CourierParser;
 import com.sateno_b.www.shared.Shared;
+import com.sateno_b.www.model.dto.OrderLineItemDto;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.Expression;
@@ -466,7 +467,10 @@ public class WpOrderService {
         wpOrderEntity.setStatus(dto.getStatus());
         wpOrderEntity.setCustomerIp(dto.getCustomerIpAddress());
         wpOrderEntity.setCustomerAgent(dto.getCustomerUserAgent());
-        wpOrderEntity.setTotalPrice(isPayed? new BigDecimal(0): new BigDecimal(totalPriceRs.get()));
+        // FIX: реалната стойност на поръчката се пази ВИНАГИ (и за платени с карта),
+        // за да я отчита финансовият дашборд. Наложеният платеж за куриера
+        // (totalPriceFCoutier) остава 0 за платените — товарителницата е непроменена.
+        wpOrderEntity.setTotalPrice(new BigDecimal(totalPriceRs.get()));
         wpOrderEntity.setTotalPriceFCoutier(isPayed? new BigDecimal(0): new BigDecimal(totalPriceRs.get()));
         wpOrderEntity.setPaymentMethod(dto.getPaymentMethod());
         wpOrderEntity.setTransactionId(dto.getTransactionId());
@@ -555,7 +559,8 @@ public class WpOrderService {
 
     wpOrderRepository.save(wpOrderEntity);
 
-        for (WoOrderLineItemDto orderLineItem : dto.getLineItems()) {
+        List<WoOrderLineItemDto> lineItems = dto.getLineItems() != null ? dto.getLineItems() : Collections.emptyList();
+        for (WoOrderLineItemDto orderLineItem : lineItems) {
             if(orderLineItem.getQuantity() > 0){
                 Optional<WpProductEntity> byId = wpProductRepository.findBySku(orderLineItem.getSku());
                 if(byId.isPresent()){
@@ -829,7 +834,7 @@ public class WpOrderService {
 //            }
             dto.setSavedCourierBilling(entity.getSavedCourierBilling());
             dto.setCourierHistory(entity.getCourierHistory());
-            
+            enrichOrderDto(dto, entity);
 
             if (entity.getSite() != null) {
                 CourierParser.CourierMatch match = CourierParser.parseWithFallback(entity);
@@ -899,6 +904,7 @@ public class WpOrderService {
 
             dto.setSavedCourierBilling(entity.getSavedCourierBilling());
             dto.setCourierHistory(entity.getCourierHistory());
+            enrichOrderDto(dto, entity);
             return dto;
         }
         return null;
@@ -1115,12 +1121,17 @@ public class WpOrderService {
                 }
 
                 // 4. Изчисляваме финалния тотал на база всички продукти (оригинални + мерднати)
-                BigDecimal totalAmount = order.getOrderLine().stream()
+                // totalPrice = реален приход (price*qty+addons когато totalPrice==0 за карта)
+                BigDecimal revenueTotal = order.getOrderLine().stream()
+                        .map(Shared::computeEffectiveLineTotal)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                // totalPriceFCoutier = наложен платеж за куриера (остава 0 за карта-платени)
+                BigDecimal codTotal = order.getOrderLine().stream()
                         .map(line -> line.getTotalPrice() != null ? line.getTotalPrice() : BigDecimal.ZERO)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                order.setTotalPrice(totalAmount);
-                order.setTotalPriceFCoutier(totalAmount);
+                order.setTotalPrice(revenueTotal);
+                order.setTotalPriceFCoutier(codTotal);
 
                 // 5. Проверка на сайта
                 if (wpOrderDto.getSite() != null && !Objects.equals(wpOrderDto.getSite().getId(), order.getSite().getId())) {
@@ -1276,8 +1287,24 @@ public class WpOrderService {
         }
     }
 
+    /**
+     * Попълва effectiveTotalPrice на всеки ред и на поръчката (сума на редовете).
+     * Извиква се след modelMapper.map() за getAll и getById.
+     */
+    private void enrichOrderDto(WpOrderDto dto, WpOrderEntity entity) {
+        if (entity.getOrderLine() == null || dto.getOrderLine() == null) return;
+        BigDecimal orderEffective = BigDecimal.ZERO;
+        List<OrderLineItem> entityLines = entity.getOrderLine();
+        List<OrderLineItemDto> dtoLines = dto.getOrderLine();
+        for (int i = 0; i < Math.min(entityLines.size(), dtoLines.size()); i++) {
+            BigDecimal eff = Shared.computeEffectiveLineTotal(entityLines.get(i));
+            dtoLines.get(i).setEffectiveTotalPrice(eff);
+            orderEffective = orderEffective.add(eff);
+        }
+        dto.setEffectiveTotalPrice(orderEffective);
+    }
+
     @Scheduled(cron = "0 0 0 * * *", zone = "Europe/Sofia")
-//@Scheduled(fixedRate = 20, timeUnit = TimeUnit.SECONDS, zone = "Europe/Sofia")
     public void syncMissingOrdersFromWooCommerce() {
         SiteEntity site = siteRepository.findSiteEntityByUrl("sateno.bg");
         if (site == null) {
@@ -1291,8 +1318,8 @@ public class WpOrderService {
 
         ZoneId sofia = ZoneId.of("Europe/Sofia");
         LocalDate yesterday = LocalDate.now(sofia).minusDays(1);
-        String after  = yesterday.atStartOfDay().toString();
-        String before = yesterday.plusDays(1).atStartOfDay().toString();
+        String after  = yesterday.atStartOfDay().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
+        String before = yesterday.plusDays(1).atStartOfDay().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
 
         int page = 1;
         int synced = 0;
