@@ -1,0 +1,129 @@
+package com.sateno_b.www.controller;
+
+import com.sateno_b.www.model.dto.LiveEventDto;
+import com.sateno_b.www.model.dto.LiveSnapshotDto;
+import com.sateno_b.www.model.entity.LiveAbandonedCheckoutEntity;
+import com.sateno_b.www.model.repository.LiveAbandonedCheckoutRepository;
+import com.sateno_b.www.model.repository.LiveProductStatRepository;
+import com.sateno_b.www.service.LiveTrackingService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Live проследяване — REST + прием на събития.
+ * Реалният път е с префикс /erp (виж Webconfig): напр. /erp/live/event.
+ */
+@RestController
+@RequiredArgsConstructor
+@Log4j2
+@RequestMapping("/live")
+public class LiveController {
+
+    private static final ZoneId ZONE = ZoneId.of("Europe/Sofia");
+
+    private final LiveTrackingService liveService;
+    private final LiveProductStatRepository statRepository;
+    private final LiveAbandonedCheckoutRepository abandonedRepository;
+    private final ObjectMapper objectMapper;
+
+    /**
+     * Публичен endpoint — приема събития от tracker-а на сайта.
+     * Приема и application/json, и text/plain (navigator.sendBeacon праща text/plain),
+     * затова четем суровото тяло и го парсваме ръчно.
+     */
+    @PostMapping(value = "/event", consumes = MediaType.ALL_VALUE)
+    public ResponseEntity<Void> event(@RequestBody(required = false) String body) {
+        if (body != null && !body.isBlank()) {
+            try {
+                LiveEventDto dto = objectMapper.readValue(body, LiveEventDto.class);
+                liveService.handleEvent(dto);
+            } catch (Exception ex) {
+                log.debug("Live: невалидно тяло на събитие: {}", ex.getMessage());
+            }
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Снапшот на живото състояние (за първоначално зареждане/polling fallback). */
+    @GetMapping("/snapshot")
+    public LiveSnapshotDto snapshot() {
+        return liveService.buildSnapshot();
+    }
+
+    /** Най-разглеждани продукти за период. period = today | yesterday | 7d | month | custom */
+    @GetMapping("/products/most-viewed")
+    public List<MostViewedProduct> mostViewed(
+            @RequestParam(defaultValue = "7d") String period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+
+        LocalDate today = LocalDate.now(ZONE);
+        LocalDate f, t;
+        switch (period) {
+            case "today" -> { f = today; t = today; }
+            case "yesterday" -> { f = today.minusDays(1); t = today.minusDays(1); }
+            case "month" -> { f = today.withDayOfMonth(1); t = today; }
+            case "custom" -> { f = from != null ? from : today; t = to != null ? to : today; }
+            default -> { f = today.minusDays(6); t = today; } // 7d
+        }
+
+        List<MostViewedProduct> out = new ArrayList<>();
+        int rank = 1;
+        for (LiveProductStatRepository.ProductStatAggregate a : statRepository.aggregateForPeriod(f, t)) {
+            MostViewedProduct p = new MostViewedProduct();
+            p.setRank(rank++);
+            p.setProductWpId(a.getProductWpId());
+            p.setSku(a.getSku());
+            p.setName(a.getName());
+            p.setImageUrl(a.getImageUrl());
+            p.setViews(nz(a.getViews()));
+            p.setAddToCart(nz(a.getAddToCart()));
+            p.setCheckoutStarts(nz(a.getCheckoutStarts()));
+            p.setOrders(nz(a.getOrders()));
+            out.add(p);
+        }
+        return out;
+    }
+
+    /** Напуснати каси (lead-ове) за период. По подразбиране — днес. */
+    @GetMapping("/abandoned")
+    public List<LiveAbandonedCheckoutEntity> abandoned(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        if (from == null && to == null) {
+            Instant start = LocalDate.now(ZONE).atStartOfDay(ZONE).toInstant();
+            return abandonedRepository.findByAbandonedAtGreaterThanEqualOrderByAbandonedAtDesc(start);
+        }
+        LocalDate today = LocalDate.now(ZONE);
+        Instant f = (from != null ? from : today).atStartOfDay(ZONE).toInstant();
+        Instant t = (to != null ? to : today).plusDays(1).atStartOfDay(ZONE).toInstant();
+        return abandonedRepository.findByAbandonedAtBetweenOrderByAbandonedAtDesc(f, t);
+    }
+
+    private long nz(Long v) { return v != null ? v : 0L; }
+
+    @Data
+    public static class MostViewedProduct {
+        private int rank;
+        private Long productWpId;
+        private String sku;
+        private String name;
+        private String imageUrl;
+        private long views;
+        private long addToCart;
+        private long checkoutStarts;
+        private long orders;
+    }
+}

@@ -36,6 +36,7 @@ public class SecurityConfig {
                                 "/error",
                                 "/media/**",
                                 "/erp/wp_order/create",
+                                "/erp/live/event",
                                 "/ws/**",
                                 "/erp/checkout/**",
                                 "/erp/email/seen/**",
