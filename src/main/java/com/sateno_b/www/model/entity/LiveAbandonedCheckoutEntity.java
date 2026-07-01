@@ -69,4 +69,16 @@ public class LiveAbandonedCheckoutEntity extends BaseEntity {
     /** Свързали ли сме се вече с клиента. */
     @Column(columnDefinition = "boolean default false")
     private boolean contacted = false;
+
+    /**
+     * Ръчно скрит от таблото „Напуснати каси" (бутон „Отказ").
+     * Данните се ПАЗЯТ — записът само не се показва повече и не се връща след опресняване.
+     * Добавяща колона — старият код не я ползва, rollback е безопасен.
+     */
+    @Column(columnDefinition = "boolean default false")
+    private boolean dismissed = false;
+
+    /** Кога е бил скрит (за история/справка). */
+    @Column(name = "dismissed_at")
+    private Instant dismissedAt;
 }

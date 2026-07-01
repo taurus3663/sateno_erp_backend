@@ -287,7 +287,7 @@ public class LiveTrackingService {
         checkouts.sort(Comparator.comparingInt(LiveSnapshotDto.CheckoutView::getId));
 
         List<LiveSnapshotDto.AbandonedView> abandoned = abandonedRepository
-                .findByAbandonedAtGreaterThanEqualOrderByAbandonedAtDesc(startOfToday())
+                .findByAbandonedAtGreaterThanEqualAndDismissedFalseOrderByAbandonedAtDesc(startOfToday())
                 .stream()
                 .map(a -> new LiveSnapshotDto.AbandonedView(
                         a.getId(), a.getSiteId(),

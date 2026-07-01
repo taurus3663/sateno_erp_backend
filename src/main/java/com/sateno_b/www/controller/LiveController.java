@@ -127,6 +127,21 @@ public class LiveController {
         return abandonedRepository.findByAbandonedAtBetweenOrderByAbandonedAtDesc(f, t);
     }
 
+    /**
+     * „Отказ" от таблото — трайно скрива напусната каса (soft-dismiss).
+     * ВАЖНО: НЕ трие данните — само вдига флага dismissed, така че записът
+     * да не се връща след опресняване. Ако id-то не съществува, тихо 204.
+     */
+    @PostMapping("/abandoned/{id}/dismiss")
+    public ResponseEntity<Void> dismissAbandoned(@PathVariable Long id) {
+        abandonedRepository.findById(id).ifPresent(a -> {
+            a.setDismissed(true);
+            a.setDismissedAt(Instant.now());
+            abandonedRepository.save(a);
+        });
+        return ResponseEntity.noContent().build();
+    }
+
     private long nz(Long v) { return v != null ? v : 0L; }
 
     @Data

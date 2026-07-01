@@ -13,6 +13,9 @@ public interface LiveAbandonedCheckoutRepository extends JpaRepository<LiveAband
 
     List<LiveAbandonedCheckoutEntity> findByAbandonedAtGreaterThanEqualOrderByAbandonedAtDesc(Instant from);
 
+    /** Като горния, но пропуска ръчно скритите (dismissed) — за таблото „Напуснати каси". */
+    List<LiveAbandonedCheckoutEntity> findByAbandonedAtGreaterThanEqualAndDismissedFalseOrderByAbandonedAtDesc(Instant from);
+
     List<LiveAbandonedCheckoutEntity> findByAbandonedAtBetweenOrderByAbandonedAtDesc(Instant from, Instant to);
 
     /** Съществуващ lead за уникален клиент (сайт + сесиен токен) — за дедупликация/натрупване. */
