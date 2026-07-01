@@ -179,6 +179,10 @@ public class LiveTrackingService {
                 incrementOrdersForItems(site.getId(), s, e);
                 addActivity("order", "Поръчка завършена",
                         (e.getOrderId() != null ? "#" + e.getOrderId() + " – " : "") + money(s.cartValue, s.currency));
+                // Ако клиентът е бил записан като „напусната каса" преди да завърши поръчката, изтриваме записа.
+                if (e.getSession() != null) {
+                    abandonedRepository.deleteBySiteIdAndSessionToken(site.getId(), e.getSession());
+                }
                 sessions.remove(e.getSession()); // завършена — не е напусната
             }
             case "leave" -> {

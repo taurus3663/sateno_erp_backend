@@ -17,4 +17,7 @@ public interface LiveAbandonedCheckoutRepository extends JpaRepository<LiveAband
 
     /** Съществуващ lead за уникален клиент (сайт + сесиен токен) — за дедупликация/натрупване. */
     Optional<LiveAbandonedCheckoutEntity> findFirstBySiteIdAndSessionTokenOrderByAbandonedAtDesc(Long siteId, String sessionToken);
+
+    /** Изтрива напуснатите каси за дадена сесия — при завършена поръчка. */
+    void deleteBySiteIdAndSessionToken(Long siteId, String sessionToken);
 }
