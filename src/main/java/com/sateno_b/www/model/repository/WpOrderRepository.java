@@ -99,4 +99,21 @@ public interface WpOrderRepository extends JpaRepository<WpOrderEntity, Long>, J
             @Param("end") Instant end
     );
 
+    /** Проекция за агрегати по клиент — за Lead Score (Фаза 2 на AI Sales Assistant). */
+    interface CustomerOrderAggregate {
+        Long getCustomerId();
+        Long getOrdersCount();
+        java.math.BigDecimal getOrdersValue();
+        java.time.Instant getLastOrderAt();
+    }
+
+    /** Брой/стойност/последна дата на поръчките по клиент (само подадените статуси). */
+    @Query("SELECT o.customer.id as customerId, COUNT(o) as ordersCount, " +
+            "COALESCE(SUM(o.totalPrice), 0) as ordersValue, " +
+            "MAX(COALESCE(o.wpOrderTime, o.createTime)) as lastOrderAt " +
+            "FROM WpOrderEntity o " +
+            "WHERE o.customer IS NOT NULL AND o.status IN :statuses " +
+            "GROUP BY o.customer.id")
+    List<CustomerOrderAggregate> aggregateByCustomer(@Param("statuses") List<OrderStatus> statuses);
+
 }

@@ -16,4 +16,9 @@ public interface CustomerRepository extends JpaRepository<CustomerEntity, Long> 
 
     @Query("SELECT c FROM CustomerEntity c WHERE c.phone LIKE %:suffix ORDER BY c.id DESC")
     List<CustomerEntity> findByPhoneSuffix(@Param("suffix") String suffix);
+
+    /** Слой за идентичност: намиране на клиент по имейл (case-insensitive), най-новият. */
+    @Query(value = "SELECT * FROM customer c WHERE lower(c.email) = lower(:email) ORDER BY c.create_time DESC LIMIT 1",
+            nativeQuery = true)
+    Optional<CustomerEntity> findByEmailLatest(@Param("email") String email);
 }

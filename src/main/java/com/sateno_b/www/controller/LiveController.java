@@ -44,16 +44,31 @@ public class LiveController {
      * затова четем суровото тяло и го парсваме ръчно.
      */
     @PostMapping(value = "/event", consumes = MediaType.ALL_VALUE)
-    public ResponseEntity<Void> event(@RequestBody(required = false) String body) {
+    public ResponseEntity<Void> event(@RequestBody(required = false) String body,
+                                      jakarta.servlet.http.HttpServletRequest request) {
         if (body != null && !body.isBlank()) {
             try {
                 LiveEventDto dto = objectMapper.readValue(body, LiveEventDto.class);
+                // Устройство/браузър и IP се вземат от HTTP хедърите на сървъра,
+                // а не от тялото — по-надеждно и не изисква tracker промяна за UA.
+                dto.setUserAgent(request.getHeader("User-Agent"));
+                dto.setClientIp(clientIp(request));
                 liveService.handleEvent(dto);
             } catch (Exception ex) {
                 log.debug("Live: невалидно тяло на събитие: {}", ex.getMessage());
             }
         }
         return ResponseEntity.noContent().build();
+    }
+
+    /** Реалният IP на клиента зад reverse proxy (X-Forwarded-For), с fallback към remote addr. */
+    private String clientIp(jakarta.servlet.http.HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            int comma = xff.indexOf(',');
+            return (comma > 0 ? xff.substring(0, comma) : xff).trim();
+        }
+        return request.getRemoteAddr();
     }
 
     /** Снапшот на живото състояние (за първоначално зареждане/polling fallback). */

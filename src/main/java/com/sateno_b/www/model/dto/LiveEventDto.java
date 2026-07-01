@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * Входящо събитие от tracker-а на сайта (браузър beacon или PHP hook).
- * type: visitor | product_view | cart_update | checkout_start | checkout_data | order_complete | leave
+ * type: visitor | product_view | category_view | cart_update | checkout_start | checkout_data | order_complete | leave
  */
 @Data
 public class LiveEventDto {
@@ -23,6 +23,23 @@ public class LiveEventDto {
     private String sku;
     private String productName;
     private String productImage;
+
+    // категория (за category_view)
+    private Long categoryId;
+    private String categoryName;
+
+    // източник на трафик (tracker-ът ги праща при първото събитие в сесията)
+    private String referrer;
+    private String utmSource;
+    private String utmMedium;
+    private String utmCampaign;
+
+    // стъпка във фунията на касата: data | shipping | payment (по избор)
+    private String checkoutStep;
+
+    // попълват се от СЪРВЪРА (LiveController) от HTTP хедърите — НЕ идват от тялото
+    private String userAgent;   // за парсване на устройство/браузър
+    private String clientIp;    // за по-късна geo резолюция (не се излага към Claude)
 
     // количка / каса
     private BigDecimal cartValue;

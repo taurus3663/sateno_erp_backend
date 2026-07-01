@@ -44,6 +44,7 @@ public class LiveTrackingService {
     private final SiteRepository siteRepository;
     private final LiveProductStatRepository statRepository;
     private final LiveAbandonedCheckoutRepository abandonedRepository;
+    private final LiveHistoryService historyService;                // трайна история (отделна транзакция)
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
 
@@ -193,6 +194,11 @@ public class LiveTrackingService {
             }
             default -> { /* непознат тип — игнор */ }
         }
+
+        // Трайна история по сесия/клиент (за дизайна „Поведение на клиента").
+        // Отделна транзакция — не влияе на „живото" състояние/статистиките горе.
+        historyService.persist(site.getId(), e);
+
         dirty = true;
         pushThrottled();
     }
