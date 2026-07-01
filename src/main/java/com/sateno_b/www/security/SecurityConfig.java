@@ -44,6 +44,9 @@ public class SecurityConfig {
                                 "/erp/email/cancel/**",
                                 "/erp/discount/**",
                                 "/ads/google/callback"
+                                // ЗАБЕЛЕЖКА: /erp/ai/** вече изисква логнат ERP потребител
+                                // (AI Sales Assistant, Lead Score, Prompt Manager, идентичност).
+                                // Само публичните канали остават permitAll (напр. /erp/live/event от сайта).
                         ).permitAll()
                         .anyRequest().authenticated());
 

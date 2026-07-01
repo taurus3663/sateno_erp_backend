@@ -20,4 +20,7 @@ public interface LiveAbandonedCheckoutRepository extends JpaRepository<LiveAband
 
     /** Изтрива напуснатите каси за дадена сесия — при завършена поръчка. */
     void deleteBySiteIdAndSessionToken(Long siteId, String sessionToken);
+
+    /** Изоставени каси по сесийните токени на клиента (за дашборда „Поведение на клиента"). */
+    List<LiveAbandonedCheckoutEntity> findBySessionTokenInOrderByAbandonedAtDesc(List<String> sessionTokens);
 }
