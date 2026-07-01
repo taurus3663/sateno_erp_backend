@@ -1004,6 +1004,9 @@ public class WpOrderService {
 
 
     public double checkCustomShippingField(CheckCourierRequest request) {
+        if (request.getOrderId() == null) {
+            return 0.0;
+        }
         Optional<WpOrderEntity> orderEntity = wpOrderRepository.findById(request.getOrderId());
         AtomicReference<Double> totalPrice = new AtomicReference<>(0D);
         request.getItems().forEach(item -> {
@@ -1256,8 +1259,27 @@ public class WpOrderService {
 //                log.error(e.getMessage());
 //            }
 
+            if (wpOrderDto.getOrderLine() != null && !wpOrderDto.getOrderLine().isEmpty()) {
+                List<OrderLineItem> lines = wpOrderDto.getOrderLine().stream().map(e -> {
+                    OrderLineItem line = modelMapper.map(e, OrderLineItem.class);
+                    line.setPrice(e.getPrice() != null ? e.getPrice() : BigDecimal.ZERO);
+                    line.setTotalPrice(e.getTotalPrice() != null ? e.getTotalPrice() : BigDecimal.ZERO);
+                    return line;
+                }).toList();
+                newOrder.setOrderLine(new ArrayList<>(lines));
+
+                BigDecimal revenueTotal = lines.stream()
+                        .map(Shared::computeEffectiveLineTotal)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal codTotal = lines.stream()
+                        .map(line -> line.getTotalPrice() != null ? line.getTotalPrice() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                newOrder.setTotalPrice(revenueTotal);
+                newOrder.setTotalPriceFCoutier(codTotal);
+            }
+
             wpOrderRepository.save(newOrder);
-            modelMapper.map(newOrder, wpOrderDto);
+            wpOrderDto.setId(newOrder.getId());
             return wpOrderDto;
         }
         return null;

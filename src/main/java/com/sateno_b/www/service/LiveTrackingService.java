@@ -284,8 +284,10 @@ public class LiveTrackingService {
                 .findByAbandonedAtGreaterThanEqualOrderByAbandonedAtDesc(startOfToday())
                 .stream()
                 .map(a -> new LiveSnapshotDto.AbandonedView(
+                        a.getId(), a.getSiteId(),
                         a.getName(), a.getEmail(), a.getPhone(), a.getCartValue(), a.getCurrency(),
-                        a.getAbandonedAt() != null ? DateTimeFormatter.ofPattern("HH:mm").withZone(ZONE).format(a.getAbandonedAt()) : ""))
+                        a.getAbandonedAt() != null ? DateTimeFormatter.ofPattern("HH:mm").withZone(ZONE).format(a.getAbandonedAt()) : "",
+                        parseAbandonedItems(a.getProductsJson())))
                 .toList();
 
         List<LiveSnapshotDto.ActivityView> activity = new ArrayList<>(recentActivity);
@@ -457,6 +459,27 @@ public class LiveTrackingService {
 
     private Instant startOfToday() {
         return LocalDate.now(ZONE).atStartOfDay(ZONE).toInstant();
+    }
+
+    private List<LiveSnapshotDto.AbandonedView.AbandonedItem> parseAbandonedItems(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            List<LiveEventDto.Item> raw = objectMapper.readValue(json,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, LiveEventDto.Item.class));
+            return raw.stream()
+                    .filter(it -> it.getProductId() != null)
+                    .map(it -> new LiveSnapshotDto.AbandonedView.AbandonedItem(
+                            it.getProductId(),
+                            it.getSku(),
+                            it.getName(),
+                            it.getImage(),
+                            it.getQty(),
+                            it.getPrice() != null ? it.getPrice().doubleValue() : null))
+                    .toList();
+        } catch (Exception ex) {
+            log.warn("Live: грешка при парсиране на productsJson: {}", ex.getMessage());
+            return List.of();
+        }
     }
 
     private String money(BigDecimal v, String currency) {

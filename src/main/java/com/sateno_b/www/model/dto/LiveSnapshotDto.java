@@ -54,12 +54,27 @@ public class LiveSnapshotDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class AbandonedView {
+        private Long id;
+        private Long siteId;
         private String name;
         private String email;
         private String phone;
         private BigDecimal value;
         private String currency;
         private String leftAt;
+        private List<AbandonedItem> items;
+
+        @Data
+        @NoArgsConstructor
+        @AllArgsConstructor
+        public static class AbandonedItem {
+            private Long productId;
+            private String sku;
+            private String name;
+            private String image;
+            private Integer qty;
+            private Double price;
+        }
     }
 
     @Data
