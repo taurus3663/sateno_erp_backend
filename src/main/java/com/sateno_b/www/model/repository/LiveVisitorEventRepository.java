@@ -31,6 +31,9 @@ public interface LiveVisitorEventRepository extends JpaRepository<LiveVisitorEve
 
     long countByCustomerId(Long customerId);
 
+    /** Брой събития от даден тип от момента (за KPI „поръчки днес" — от базата, оцелява рестарт). */
+    long countByEventTypeAndOccurredAtGreaterThanEqual(String eventType, Instant from);
+
     /** Задържане: изтриване на анонимни (несвързани) събития, по-стари от cutoff. */
     @Modifying
     @Query("DELETE FROM LiveVisitorEventEntity e WHERE e.customerId IS NULL AND e.occurredAt < :cutoff")

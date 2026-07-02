@@ -18,6 +18,11 @@ public interface LiveSessionRepository extends JpaRepository<LiveSessionEntity, 
     /** Съществуваща сесия за уникален посетител (сайт + сесиен токен). */
     Optional<LiveSessionEntity> findBySiteIdAndSessionToken(Long siteId, String sessionToken);
 
+    /** Брой уникални клиенти (по сесиен токен) с активност от даден момент — за KPI „днес".
+     *  Смята се от базата, за да НЕ се нулира при рестарт/деплой. */
+    @Query("SELECT count(distinct s.sessionToken) FROM LiveSessionEntity s WHERE s.lastSeen >= :from")
+    long countUniqueVisitorsSince(@Param("from") Instant from);
+
     /** Всички сесии на клиент (след като слоят за идентичност ги свърже). */
     List<LiveSessionEntity> findByCustomerIdOrderByLastSeenDesc(Long customerId);
 
@@ -29,20 +34,32 @@ public interface LiveSessionRepository extends JpaRepository<LiveSessionEntity, 
      * никога не е стигнало до каса и няма поръчка.
      * Базира се на наличие на количка (productsJson), а НЕ на брояча addToCarts — реалният
      * тракер праща cart_update без productId на най-горно ниво, затова addToCarts може да е 0.
+     * `leftAt IS NOT NULL` = клиентът е напуснал сайта → влиза тук; докато е активен се вижда
+     * само в „Активни колички".
      */
     @Query("SELECT s FROM LiveSessionEntity s WHERE s.checkoutStarts = 0 " +
-            "AND s.orders = 0 AND s.productsJson IS NOT NULL " +
-            "AND s.lastSeen BETWEEN :from AND :to ORDER BY s.lastSeen DESC")
+            "AND s.orders = 0 AND s.productsJson IS NOT NULL AND s.leftAt IS NOT NULL " +
+            "AND s.lastSeen BETWEEN :from AND :to ORDER BY s.leftAt DESC")
     List<LiveSessionEntity> findCartsWithoutCheckout(@Param("from") Instant from, @Param("to") Instant to);
 
     /**
      * „Каса без данни" за период: стигнало е до каса, но без въведени контакти и без поръчка.
      * (Касите С данни се пазят отделно в live_abandoned_checkout — не се дублират тук.)
+     * `leftAt IS NOT NULL` = клиентът е напуснал (виж по-горе).
      */
     @Query("SELECT s FROM LiveSessionEntity s WHERE s.checkoutStarts > 0 AND s.orders = 0 " +
             "AND s.name IS NULL AND s.phone IS NULL AND s.email IS NULL AND s.productsJson IS NOT NULL " +
-            "AND s.lastSeen BETWEEN :from AND :to ORDER BY s.lastSeen DESC")
+            "AND s.leftAt IS NOT NULL AND s.lastSeen BETWEEN :from AND :to ORDER BY s.leftAt DESC")
     List<LiveSessionEntity> findCheckoutsWithoutData(@Param("from") Instant from, @Param("to") Instant to);
+
+    /**
+     * Резервно маркиране „напуснал" (ако явният leave сигнал се е изпуснал) — вдига leftAt
+     * само ако още не е вдигнат. Извиква се от cleanup() за сесии без активност > праг.
+     */
+    @Modifying
+    @Query("UPDATE LiveSessionEntity s SET s.leftAt = :now WHERE s.siteId = :siteId " +
+            "AND s.sessionToken = :token AND s.leftAt IS NULL")
+    void markLeft(@Param("siteId") Long siteId, @Param("token") String token, @Param("now") Instant now);
 
     // --- слой за идентичност ---
 

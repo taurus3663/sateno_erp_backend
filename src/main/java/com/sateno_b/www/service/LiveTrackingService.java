@@ -8,6 +8,8 @@ import com.sateno_b.www.model.entity.LiveProductStatEntity;
 import com.sateno_b.www.model.entity.SiteEntity;
 import com.sateno_b.www.model.repository.LiveAbandonedCheckoutRepository;
 import com.sateno_b.www.model.repository.LiveProductStatRepository;
+import com.sateno_b.www.model.repository.LiveSessionRepository;
+import com.sateno_b.www.model.repository.LiveVisitorEventRepository;
 import com.sateno_b.www.model.repository.SiteRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -44,6 +46,8 @@ public class LiveTrackingService {
     private final SiteRepository siteRepository;
     private final LiveProductStatRepository statRepository;
     private final LiveAbandonedCheckoutRepository abandonedRepository;
+    private final LiveSessionRepository sessionRepository;          // за резервно маркиране „напуснал" + KPI брой
+    private final LiveVisitorEventRepository visitorEventRepository; // за KPI „поръчки днес" от базата
     private final LiveHistoryService historyService;                // трайна история (отделна транзакция)
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
@@ -57,16 +61,20 @@ public class LiveTrackingService {
     private static final long VISITOR_TTL_SEC = 35;
     // Колко време количка/каса остава „активна" без активност.
     private static final long CART_TTL_SEC = 15 * 60;
+    // Резерва: ако явният „leave" сигнал се изпусне (мобилни), маркираме сесията „напусната"
+    // след толкова секунди без активност (по точното в-паметта присъствие, не по стар таймер).
+    private static final long LEFT_FALLBACK_SEC = 60;
 
     private final Map<String, LiveSession> sessions = new ConcurrentHashMap<>();
     private final Deque<LiveSnapshotDto.ActivityView> recentActivity = new ConcurrentLinkedDeque<>();
     private final AtomicInteger displaySeq = new AtomicInteger(0);
 
-    // Дневни агрегати за KPI картата (в паметта; нулиране при смяна на деня).
-    // Забележка: при рестарт на backend-а започват наново за деня.
-    private final java.util.Set<String> todayVisitors = ConcurrentHashMap.newKeySet();
-    private final AtomicInteger todayOrders = new AtomicInteger(0);
-    private volatile LocalDate statsDay = LocalDate.now(ZONE);
+    // Дневни KPI (уникални клиенти днес + поръчки днес) — смятат се от БАЗАТА (кеш с кратък TTL),
+    // за да НЕ се нулират при рестарт/деплой. „Активни в момента" си остава от паметта.
+    private volatile int visitorsTodayCache = 0;
+    private volatile int ordersTodayCache = 0;
+    private volatile long countsComputedAt = 0;
+    private static final long COUNTS_TTL_MS = 15_000;
     private volatile boolean dirty = true;
     private volatile long lastPushAt = 0;
     private static final long MIN_PUSH_INTERVAL_MS = 300;
@@ -88,6 +96,7 @@ public class LiveTrackingService {
         String name, phone, email;
         boolean checkoutCounted; // да не броим checkoutStarts повече от веднъж
         boolean abandonedPersisted; // да запишем „напусната каса" само веднъж на сесия
+        boolean leftFlagged; // резервно маркиране „напуснал" в базата вече е направено (без дублиране)
         final Set<Long> addedProductIds = new HashSet<>(); // продукти, вече броени като „добавяне в количка" (веднъж на продукт на сесия)
     }
 
@@ -110,10 +119,7 @@ public class LiveTrackingService {
         s.sessionToken = e.getSession();
         if (e.getCurrency() != null) s.currency = e.getCurrency();
         s.lastSeen = Instant.now();
-
-        // Дневни агрегати: уникален посетител за деня.
-        rollStatsDayIfNeeded();
-        todayVisitors.add(e.getSession());
+        s.leftFlagged = false; // има активност → нулираме резервния маркер (клиентът е тук)
 
         switch (e.getType()) {
             case "visitor" -> {
@@ -179,7 +185,6 @@ public class LiveTrackingService {
                 if (e.getEmail() != null) s.email = e.getEmail();
             }
             case "order_complete" -> {
-                todayOrders.incrementAndGet();
                 incrementOrdersForItems(site.getId(), s, e);
                 addActivity("order", "Поръчка завършена",
                         (e.getOrderId() != null ? "#" + e.getOrderId() + " – " : "") + money(s.cartValue, s.currency));
@@ -223,6 +228,19 @@ public class LiveTrackingService {
                 persistAbandonedOnce(s);
                 it.remove();
                 changed = true;
+                continue;
+            }
+            // Резерва при изпуснат „leave" сигнал: маркираме сесията „напуснал" след
+            // LEFT_FALLBACK_SEC без активност — само ако има количка/каса (тя влиза в двата списъка).
+            if (!s.leftFlagged && idleSec > LEFT_FALLBACK_SEC
+                    && (s.stage == Stage.CART || s.stage == Stage.CHECKOUT)
+                    && s.siteId != null && s.sessionToken != null) {
+                try {
+                    sessionRepository.markLeft(s.siteId, s.sessionToken, now);
+                    s.leftFlagged = true;
+                } catch (Exception ex) {
+                    log.warn("Live: грешка при резервно маркиране 'напуснал' за {}: {}", s.sessionToken, ex.getMessage());
+                }
             }
         }
         if (changed) dirty = true;
@@ -261,7 +279,7 @@ public class LiveTrackingService {
     //  Снапшот за таблото
     // ---------------------------------------------------------------------
     public LiveSnapshotDto buildSnapshot() {
-        rollStatsDayIfNeeded();
+        refreshTodayCountsIfStale();
         Instant now = Instant.now();
         int visitors = 0;
         List<LiveSnapshotDto.CartView> carts = new ArrayList<>();
@@ -297,20 +315,25 @@ public class LiveTrackingService {
 
         List<LiveSnapshotDto.ActivityView> activity = new ArrayList<>(recentActivity);
 
-        return new LiveSnapshotDto(visitors, todayVisitors.size(), todayOrders.get(), carts, checkouts, abandoned, activity);
+        return new LiveSnapshotDto(visitors, visitorsTodayCache, ordersTodayCache, carts, checkouts, abandoned, activity);
     }
 
-    /** Нулира дневните агрегати при смяна на календарния ден (часова зона Europe/Sofia). */
-    private void rollStatsDayIfNeeded() {
-        LocalDate today = LocalDate.now(ZONE);
-        if (!today.equals(statsDay)) {
-            synchronized (this) {
-                if (!today.equals(statsDay)) {
-                    todayVisitors.clear();
-                    todayOrders.set(0);
-                    statsDay = today;
-                }
-            }
+    /**
+     * Опреснява дневните KPI от базата (уникални клиенти + поръчки за днес), но не по-често
+     * от COUNTS_TTL_MS. Смятат се от Postgres → НЕ се нулират при рестарт/деплой; смяната на
+     * деня се получава естествено (границата е „началото на днешния ден").
+     */
+    private void refreshTodayCountsIfStale() {
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - countsComputedAt < COUNTS_TTL_MS) return;
+        countsComputedAt = nowMs;
+        try {
+            Instant start = startOfToday();
+            visitorsTodayCache = (int) sessionRepository.countUniqueVisitorsSince(start);
+            ordersTodayCache = (int) visitorEventRepository
+                    .countByEventTypeAndOccurredAtGreaterThanEqual("order_complete", start);
+        } catch (Exception ex) {
+            log.warn("Live: грешка при смятане на дневните KPI: {}", ex.getMessage());
         }
     }
 

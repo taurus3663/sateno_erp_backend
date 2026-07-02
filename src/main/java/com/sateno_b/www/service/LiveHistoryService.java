@@ -85,6 +85,10 @@ public class LiveHistoryService {
         ses.setPhone(mergeField(ses.getPhone(), e.getPhone()));
         ses.setEmail(mergeField(ses.getEmail(), e.getEmail()));
 
+        // Всяко събитие (освен явното „leave") означава, че клиентът е активен → нулираме флага.
+        // „leave" го вдига (виж switch долу). Резервно маркиране има и в cleanup() на LiveTrackingService.
+        ses.setLeftAt("leave".equals(type) ? now : null);
+
         switch (type) {
             case "visitor" -> ses.setPageviews(ses.getPageviews() + 1);
             case "product_view" -> ses.setProductViews(ses.getProductViews() + 1);
