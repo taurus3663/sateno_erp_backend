@@ -1077,16 +1077,26 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
         senderAddress.put("city", senderCity);
         senderAddress.put("street", config.getAddress());
 
+        ZoneId sofia = ZoneId.of("Europe/Sofia");
+        LocalDate today = LocalDate.now(sofia);
+        java.time.LocalTime nowTime = java.time.LocalTime.now(sofia);
+        // fromTime = сегашен час + 30 мин, закръглен нагоре до следващия половин час
+        java.time.LocalTime from = nowTime.plusMinutes(30).withSecond(0).withNano(0);
+        from = from.withMinute(from.getMinute() >= 30 ? 30 : 0);
+        if (from.isBefore(java.time.LocalTime.of(9, 0))) from = java.time.LocalTime.of(9, 0);
+        java.time.LocalTime to = from.plusHours(3);
+        if (to.isAfter(java.time.LocalTime.of(18, 0))) to = java.time.LocalTime.of(18, 0);
+
         Map<String, Object> courier = new HashMap<>();
         courier.put("senderClient", senderClient);
         courier.put("senderAddress", senderAddress);
-        courier.put("pickupDate", LocalDate.now(ZoneId.of("Europe/Sofia")).toString());
-        courier.put("fromTime", "09:00");
-        courier.put("toTime", "18:00");
-        courier.put("shipmentType", "PACK");
+        courier.put("pickupDate", today.toString());
+        courier.put("fromTime", from.toString());
+        courier.put("toTime", to.toString());
 
         Map<String, Object> body = new HashMap<>();
         body.put("courier", courier);
+        body.put("shipmentType", "PACK");
 
         postToEcont("services/Shipments/ShipmentService.requestCourier.json",
                 body, settings.getUsername(), settings.getPassword());
