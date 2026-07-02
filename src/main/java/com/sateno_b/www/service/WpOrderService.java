@@ -11,6 +11,8 @@ import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.CourierParser;
 import com.sateno_b.www.shared.Shared;
 import com.sateno_b.www.model.dto.OrderLineItemDto;
+import com.sateno_b.www.model.dto.WoOrderLineItemImageDto;
+import com.sateno_b.www.model.repository.WpProductImageRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.Expression;
@@ -67,6 +69,7 @@ public class WpOrderService {
     private final EmailService emailService;
     private final OrderAutomationService orderAutomationService;
     private final WpProductRepository wpProductRepository;
+    private final WpProductImageRepository wpProductImageRepository;
     private final WpProductHistoryRepository wpProductHistoryRepository;
     private final WpProductAsyncService wpProductAsyncService;
     private final EcontService econtService;
@@ -706,14 +709,28 @@ public class WpOrderService {
                 customerJoin = root.join("customer", JoinType.LEFT); // Използваме LEFT JOIN за всеки случай
             }
 
-// Филтър по име/фамилия
+// Филтър по име/фамилия/телефон
             if (customer != null && !customer.isEmpty() && customerJoin != null) {
                 String pattern = "%" + customer.toLowerCase() + "%";
-                predicates.add(cb.or(
-                        cb.like(cb.lower(customerJoin.get("firstName")), pattern),
-                        cb.like(cb.lower(customerJoin.get("lastName")), pattern),
-                        cb.like(customerJoin.get("phone"), pattern) // Можеш да търсиш тел. и в общото поле за клиент
-                ));
+                List<Predicate> or = new ArrayList<>();
+                or.add(cb.like(cb.lower(customerJoin.get("firstName")), pattern));
+                or.add(cb.like(cb.lower(customerJoin.get("lastName")), pattern));
+
+                // Телефон: сравняваме само по ЦИФРИ, за да работи и с +359 / 00359 / интервали.
+                // Нормализираме въведеното до „националния" номер (без код на държавата и без водеща 0),
+                // а съхранения телефон също чистим до цифри (regexp_replace) → търсим „съдържа".
+                String digits = customer.replaceAll("[^0-9]", "");
+                if (digits.startsWith("00359")) digits = digits.substring(5);
+                else if (digits.startsWith("359")) digits = digits.substring(3);
+                if (digits.startsWith("0")) digits = digits.substring(1);
+                if (!digits.isEmpty()) {
+                    Expression<String> phoneDigits = cb.function("regexp_replace", String.class,
+                            customerJoin.get("phone"), cb.literal("[^0-9]"), cb.literal(""), cb.literal("g"));
+                    or.add(cb.like(phoneDigits, "%" + digits + "%"));
+                } else {
+                    or.add(cb.like(customerJoin.get("phone"), pattern));
+                }
+                predicates.add(cb.or(or.toArray(new Predicate[0])));
             }
 
 // Филтър по телефон (специфичното поле за телефон)
@@ -891,6 +908,7 @@ public class WpOrderService {
             return dto;
         });
 
+        enrichLineImages(wpOrderDtos.getContent()); // текущи локални снимки на продуктите (по SKU)
         return wpOrderDtos;
 
     }
@@ -934,9 +952,47 @@ public class WpOrderService {
             dto.setSavedCourierBilling(entity.getSavedCourierBilling());
             dto.setCourierHistory(entity.getCourierHistory());
             enrichOrderDto(dto, entity);
+            enrichLineImages(java.util.List.of(dto)); // текущи локални снимки на продуктите (по SKU)
             return dto;
         }
         return null;
+    }
+
+    /**
+     * Обогатява снимките на редовете с ТЕКУЩАТА локална снимка на продукта (по SKU),
+     * за да не се чупят при сменени/прекачени снимки в сайта (уловеният WooCommerce URL остарява).
+     * Прави ЕДНА пакетна заявка за всички SKU-та (без N+1). Ако продуктът няма локална снимка,
+     * оставя досегашния src. Локалните пътища (/media/...) се долепят до ERP адреса от фронтенда.
+     */
+    private void enrichLineImages(List<WpOrderDto> dtos) {
+        if (dtos == null || dtos.isEmpty()) return;
+        List<OrderLineItemDto> allLines = new ArrayList<>();
+        for (WpOrderDto d : dtos) {
+            if (d.getOrderLine() != null) allLines.addAll(d.getOrderLine());
+            if (d.getOrderLineOtherOrders() != null) allLines.addAll(d.getOrderLineOtherOrders());
+        }
+        Set<String> skus = allLines.stream()
+                .map(OrderLineItemDto::getSku)
+                .filter(s -> s != null && !s.isBlank())
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+        if (skus.isEmpty()) return;
+
+        Map<String, String> skuToLocal = wpProductImageRepository.findPrimaryLocalSrcBySkus(skus).stream()
+                .collect(Collectors.toMap(
+                        r -> ((String) r[0]).toLowerCase(),
+                        r -> (String) r[1],
+                        (a, b) -> a));
+        if (skuToLocal.isEmpty()) return;
+
+        for (OrderLineItemDto line : allLines) {
+            if (line.getSku() == null) continue;
+            String local = skuToLocal.get(line.getSku().toLowerCase());
+            if (local != null && !local.isBlank()) {
+                if (line.getImage() == null) line.setImage(new WoOrderLineItemImageDto());
+                line.getImage().setSrc(local);
+            }
+        }
     }
 
     public OrderStatusStatsDto statusStats() {

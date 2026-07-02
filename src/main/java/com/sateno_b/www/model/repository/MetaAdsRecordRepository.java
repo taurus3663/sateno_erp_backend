@@ -27,6 +27,11 @@ public interface MetaAdsRecordRepository extends JpaRepository<MetaAdsRecordEnti
             MetaAdsEntity ad, Instant recordedAt, MetaAdsCampaignName campaignName
     );
 
+    /** За upsert при пресинхронизация — намира съществуващия запис, за да се обнови (финализиране). */
+    Optional<MetaAdsRecordEntity> findByAdAndRecordedAtAndCampaignName(
+            MetaAdsEntity ad, Instant recordedAt, MetaAdsCampaignName campaignName
+    );
+
     // В MetaAdsRecordRepository.java
     @Query("SELECT DISTINCT r.campaignName FROM MetaAdsRecordEntity r WHERE r.ad = :ad")
     List<MetaAdsCampaignName> findDistinctCampaignsByAd(@Param("ad") MetaAdsEntity ad);
