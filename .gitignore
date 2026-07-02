@@ -34,3 +34,5 @@ build/
 
 /logs/
 logs/
+app.log
+app-error.log
