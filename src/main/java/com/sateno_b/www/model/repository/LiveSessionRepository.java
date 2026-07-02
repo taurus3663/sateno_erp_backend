@@ -25,10 +25,12 @@ public interface LiveSessionRepository extends JpaRepository<LiveSessionEntity, 
     List<LiveSessionEntity> findBySiteIdAndLastSeenGreaterThanEqualOrderByLastSeenDesc(Long siteId, Instant from);
 
     /**
-     * „Количка без каса" за период: имало е добавяне в количка, но никога не е стигнало до каса
-     * и няма поръчка. Показва само сесии със запазена снимка на количката.
+     * „Количка без каса" за период: имало е количка (запазена снимка с продукти), но
+     * никога не е стигнало до каса и няма поръчка.
+     * Базира се на наличие на количка (productsJson), а НЕ на брояча addToCarts — реалният
+     * тракер праща cart_update без productId на най-горно ниво, затова addToCarts може да е 0.
      */
-    @Query("SELECT s FROM LiveSessionEntity s WHERE s.addToCarts > 0 AND s.checkoutStarts = 0 " +
+    @Query("SELECT s FROM LiveSessionEntity s WHERE s.checkoutStarts = 0 " +
             "AND s.orders = 0 AND s.productsJson IS NOT NULL " +
             "AND s.lastSeen BETWEEN :from AND :to ORDER BY s.lastSeen DESC")
     List<LiveSessionEntity> findCartsWithoutCheckout(@Param("from") Instant from, @Param("to") Instant to);

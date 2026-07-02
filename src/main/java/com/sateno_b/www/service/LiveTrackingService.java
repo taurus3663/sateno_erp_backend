@@ -88,6 +88,7 @@ public class LiveTrackingService {
         String name, phone, email;
         boolean checkoutCounted; // да не броим checkoutStarts повече от веднъж
         boolean abandonedPersisted; // да запишем „напусната каса" само веднъж на сесия
+        final Set<Long> addedProductIds = new HashSet<>(); // продукти, вече броени като „добавяне в количка" (веднъж на продукт на сесия)
     }
 
     // ---------------------------------------------------------------------
@@ -142,9 +143,9 @@ public class LiveTrackingService {
                 s.cartStatus = Boolean.TRUE.equals(e.getOnCart()) ? "Разглежда количката" : null;
                 s.cartValue = e.getCartValue();
                 if (e.getItems() != null) s.items = e.getItems();
-                if (e.getProductId() != null || e.getSku() != null) {
-                    incrementStat(site.getId(), e, "add_to_cart");
-                }
+                // Реалният тракер праща цялата количка в items[] (без productId отгоре).
+                // Броим „добавяне в количка" по продукт — веднъж на продукт на сесия.
+                incrementAddToCartForNewItems(site.getId(), s, e.getItems());
                 addActivity("cart", "Добавен продукт в количка", e.getProductName());
             }
             case "cart_clear" -> {
@@ -349,6 +350,26 @@ public class LiveTrackingService {
             statRepository.save(row);
         } catch (Exception ex) {
             log.warn("Live: грешка при статистика за продукт {}: {}", pid, ex.getMessage());
+        }
+    }
+
+    /**
+     * Увеличава дневната статистика „добавяне в количка" за всеки НОВ продукт в количката —
+     * веднъж на продукт на сесия (за да не се трупа при всяко cart_update при навигация).
+     */
+    private void incrementAddToCartForNewItems(Long siteId, LiveSession s, List<LiveEventDto.Item> items) {
+        if (items == null) return;
+        for (LiveEventDto.Item it : items) {
+            Long pid = it.getProductId();
+            if (pid == null) continue;
+            if (s.addedProductIds.add(pid)) { // add() връща true само първия път за продукта
+                LiveEventDto e = new LiveEventDto();
+                e.setProductId(pid);
+                e.setSku(it.getSku());
+                e.setProductName(it.getName());
+                e.setProductImage(it.getImage());
+                incrementStat(siteId, e, "add_to_cart");
+            }
         }
     }
 
