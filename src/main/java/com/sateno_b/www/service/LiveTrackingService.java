@@ -235,6 +235,9 @@ public class LiveTrackingService {
             if (!s.leftFlagged && idleSec > LEFT_FALLBACK_SEC
                     && (s.stage == Stage.CART || s.stage == Stage.CHECKOUT)
                     && s.siteId != null && s.sessionToken != null) {
+                // Ако е каса с въведени данни → запиши „напусната каса" СЕГА (не чакай 15 мин).
+                // За количка/каса-без-данни е no-op (persistAbandonedOnce иска stage=CHECKOUT + hasData).
+                persistAbandonedOnce(s);
                 try {
                     sessionRepository.markLeft(s.siteId, s.sessionToken, now);
                     s.leftFlagged = true;
