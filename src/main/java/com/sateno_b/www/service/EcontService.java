@@ -1064,6 +1064,12 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
 
         var config = settings.getConfig();
 
+        java.time.format.DateTimeFormatter dtFmt =
+                java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        java.time.ZonedDateTime now  = java.time.ZonedDateTime.now(ZoneId.of("Europe/Sofia"));
+        String timeFrom = now.plusHours(1).withMinute(0).withSecond(0).withNano(0).format(dtFmt);
+        String timeTo   = now.plusHours(2).withMinute(0).withSecond(0).withNano(0).format(dtFmt);
+
         Map<String, Object> senderClient = new HashMap<>();
         senderClient.put("name", config.getAgentName());
         senderClient.put("phones", List.of(config.getPhoneNumber()));
@@ -1075,29 +1081,18 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
 
         Map<String, Object> senderAddress = new HashMap<>();
         senderAddress.put("city", senderCity);
-        senderAddress.put("street", config.getAddress());
-
-        ZoneId sofia = ZoneId.of("Europe/Sofia");
-        LocalDate today = LocalDate.now(sofia);
-        java.time.LocalTime nowTime = java.time.LocalTime.now(sofia);
-        // fromTime = сегашен час + 30 мин, закръглен нагоре до следващия половин час
-        java.time.LocalTime from = nowTime.plusMinutes(30).withSecond(0).withNano(0);
-        from = from.withMinute(from.getMinute() >= 30 ? 30 : 0);
-        if (from.isBefore(java.time.LocalTime.of(9, 0))) from = java.time.LocalTime.of(9, 0);
-        java.time.LocalTime to = from.plusHours(3);
-        if (to.isAfter(java.time.LocalTime.of(18, 0))) to = java.time.LocalTime.of(18, 0);
-
-        Map<String, Object> courier = new HashMap<>();
-        courier.put("senderClient", senderClient);
-        courier.put("senderAddress", senderAddress);
-        courier.put("pickupDate", today.toString());
-        courier.put("fromTime", from.toString());
-        courier.put("toTime", to.toString());
+        senderAddress.put("fullAddress", config.getAddress());
 
         Map<String, Object> body = new HashMap<>();
-        body.put("courier", courier);
+        body.put("requestTimeFrom", timeFrom);
+        body.put("requestTimeTo", timeTo);
+        body.put("senderClient", senderClient);
+        body.put("senderAddress", senderAddress);
         body.put("shipmentType", "PACK");
+        body.put("shipmentPackCount", "1");
+        body.put("shipmentWeight", "1");
 
+        log.info("Econt requestCourier body: {}", body);
         postToEcont("services/Shipments/ShipmentService.requestCourier.json",
                 body, settings.getUsername(), settings.getPassword());
         return true;
