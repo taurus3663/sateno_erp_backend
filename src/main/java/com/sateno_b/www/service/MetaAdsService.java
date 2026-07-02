@@ -143,12 +143,10 @@ public class MetaAdsService {
     // ===================================================
     // НОВ АКАУНТ / RESYNC — backfill ден по ден (1 API call на ден, всички часове)
     // ===================================================
-    public void triggerBackfillForNewAccount(MetaAdsEntity account) {
-        LocalDate today = LocalDate.now(META_ZONE);
-        LocalDate from = today.minusYears(3);
-        log.info("[{}] Стартиран backfill от {} до {}", account.getName(), from, today.minusDays(1));
-
-        for (LocalDate date = from; date.isBefore(today); date = date.plusDays(1)) {
+    /** Backfill/пресинхронизация ден по ден за период [from, to] (upsert — обновява финализираните стойности). */
+    public void backfillRange(MetaAdsEntity account, LocalDate from, LocalDate to) {
+        log.info("[{}] Backfill/resync от {} до {}", account.getName(), from, to);
+        for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
             try {
                 Map<String, Object> response = getInsightsForDate(account, date.toString());
                 List<Map<String, Object>> dataList = (List<Map<String, Object>>) response.get("data");
@@ -159,13 +157,39 @@ public class MetaAdsService {
                         saveRecord(account, row, recordedAt);
                     }
                 }
-                log.info("[{}] Запълнен ден: {}", account.getName(), date);
                 TimeUnit.MILLISECONDS.sleep(300);
             } catch (Exception e) {
                 log.error("[{}] Грешка за {}: {}", account.getName(), date, e.getMessage());
             }
         }
-        log.info("[{}] Backfill завършен", account.getName());
+        log.info("[{}] Backfill/resync завършен ({} → {})", account.getName(), from, to);
+    }
+
+    /** Нов акаунт — начален backfill за 1 година назад (правило: точна история). */
+    public void triggerBackfillForNewAccount(MetaAdsEntity account) {
+        LocalDate today = LocalDate.now(META_ZONE);
+        backfillRange(account, today.minusYears(1), today.minusDays(1));
+    }
+
+    /**
+     * Дневна ПРЕСИНХРОНИЗАЦИЯ на последните 7 дни за всички активни акаунти.
+     * Meta финализира разхода по-късно; пре-теглянето с upsert коригира завършените дни.
+     */
+    public void resyncRecentDays() {
+        LocalDate today = LocalDate.now(META_ZONE);
+        for (MetaAdsEntity account : metaAdsRepository.findAllByActiveTrue()) {
+            try { backfillRange(account, today.minusDays(7), today); }
+            catch (Exception e) { log.error("[{}] Грешка при resync: {}", account.getName(), e.getMessage()); }
+        }
+    }
+
+    /** Еднократен пълен backfill за 1 година за ВСИЧКИ активни акаунти — коригира заниженатa история. */
+    public void forceBackfillAllAccounts() {
+        LocalDate today = LocalDate.now(META_ZONE);
+        for (MetaAdsEntity account : metaAdsRepository.findAllByActiveTrue()) {
+            try { backfillRange(account, today.minusYears(1), today.minusDays(1)); }
+            catch (Exception e) { log.error("[{}] Грешка при backfill: {}", account.getName(), e.getMessage()); }
+        }
     }
 
     // ===================================================
@@ -190,10 +214,10 @@ public class MetaAdsService {
         }
     }
 
-    // "Чистач" на пропуски (на всеки 30 минути)
+    // Дневна пресинхронизация в 23:00 — пре-тегля последните 7 дни (финализиране), а не само липсващи часове.
     @Scheduled(cron = "0 0 23 * * *")
     public void runRecoverySync() {
-        syncMissingHours();
+        resyncRecentDays();
     }
 
     // ===================================================
@@ -250,12 +274,11 @@ public class MetaAdsService {
                     return metaAdsCampaignNameRepository.save(cn);
                 });
 
-        if (metaAdsRecordRepository.existsByAdAndRecordedAtAndCampaignName(
-                account, recordedAt, campaignName)) {
-            return;
-        }
-
-        MetaAdsRecordEntity record = new MetaAdsRecordEntity();
+        // Upsert: ако записът вече съществува → обновяваме го (за да хванем финализираните
+        // от Meta стойности при пресинхронизация), иначе създаваме нов.
+        MetaAdsRecordEntity record = metaAdsRecordRepository
+                .findByAdAndRecordedAtAndCampaignName(account, recordedAt, campaignName)
+                .orElseGet(MetaAdsRecordEntity::new);
         record.setAd(account);
         record.setCampaignName(campaignName);
         record.setRecordedAt(recordedAt);

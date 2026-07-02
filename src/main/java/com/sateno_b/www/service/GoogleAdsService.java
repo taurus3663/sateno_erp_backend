@@ -269,8 +269,9 @@ public void triggerBackfillForNewAccount(GoogleAdsEntity account) {
     triggerForceBackfill(account);
 }
 
-public void triggerForceBackfill(GoogleAdsEntity account) {
-    log.info("[Google backfill] Стартиран за акаунт {}", account.getLoginCustomerId());
+/** Backfill/пресинхронизация за период [from, to] (upsert — обновява финализираните стойности). */
+public void backfillRange(GoogleAdsEntity account, LocalDate from, LocalDate to) {
+    log.info("[Google backfill] Стартиран за акаунт {} ({} → {})", account.getLoginCustomerId(), from, to);
 
     Instant currentHourStart = Instant.now().truncatedTo(ChronoUnit.HOURS);
 
@@ -299,7 +300,7 @@ public void triggerForceBackfill(GoogleAdsEntity account) {
             "metrics.average_cpc, " +
             "metrics.average_cpm " +
             "FROM campaign " +
-            "WHERE segments.date BETWEEN '" + LocalDate.now().minusYears(2) + "' AND '" + LocalDate.now() + "'";
+            "WHERE segments.date BETWEEN '" + from + "' AND '" + to + "'";
 
     try (GoogleAdsServiceClient googleAdsServiceClient =
                  googleAdsClient.getLatestVersion().createGoogleAdsServiceClient()) {
@@ -363,6 +364,28 @@ public void triggerForceBackfill(GoogleAdsEntity account) {
         }
     }
 }
+
+    /** Нов акаунт / ръчен пълен backfill за 1 година назад. */
+    public void triggerForceBackfill(GoogleAdsEntity account) {
+        backfillRange(account, LocalDate.now().minusYears(1), LocalDate.now());
+    }
+
+    /** Дневна ПРЕСИНХРОНИЗАЦИЯ на последните 7 дни за всички акаунти (Google финализира по-късно). */
+    public void resyncRecentDays() {
+        for (GoogleAdsEntity account : googleAdsRepository.findAll()) {
+            try { backfillRange(account, LocalDate.now().minusDays(7), LocalDate.now()); }
+            catch (Exception e) { log.error("[Google] Грешка при resync за {}: {}", account.getLoginCustomerId(), e.getMessage()); }
+        }
+    }
+
+    /** Еднократен пълен backfill за 1 година за ВСИЧКИ акаунти — коригира заниженатa история. */
+    public void forceBackfillAllAccounts() {
+        for (GoogleAdsEntity account : googleAdsRepository.findAll()) {
+            try { backfillRange(account, LocalDate.now().minusYears(1), LocalDate.now()); }
+            catch (Exception e) { log.error("[Google] Грешка при backfill за {}: {}", account.getLoginCustomerId(), e.getMessage()); }
+        }
+    }
+
     @Scheduled(cron = "0 5 * * * *")
     public void syncPreviousHour() {
 
@@ -468,7 +491,7 @@ public void triggerForceBackfill(GoogleAdsEntity account) {
 
 @Scheduled(cron = "0 0 23 * * *")
 public void runRecoverySync() {
-    syncMissingHours();
+    resyncRecentDays();
 }
 
     @Transactional

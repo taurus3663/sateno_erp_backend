@@ -317,17 +317,30 @@ public class AdsController {
         return zonedDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
     }
 
+    /** Пресинхронизация на последните 7 дни (финализиране). Async — да не блокира заявката. */
     @PostMapping("/meta/resync")
     public ResponseEntity<String> resyncMeta() {
-        metaAdsService.syncMissingHours();
-        return ResponseEntity.ok("Meta resync завършен");
+        new Thread(() -> metaAdsService.resyncRecentDays(), "meta-resync").start();
+        return ResponseEntity.ok("Meta пресинхронизация (последни 7 дни) стартирана");
     }
 
     @PostMapping("/google/resync")
     public ResponseEntity<String> resyncGoogle() {
-        googleAdsRecordRepository.deleteAll();
-        googleAdsService.syncMissingHours();
-        return ResponseEntity.ok("Google resync завършен");
+        new Thread(() -> googleAdsService.resyncRecentDays(), "google-resync").start();
+        return ResponseEntity.ok("Google пресинхронизация (последни 7 дни) стартирана");
+    }
+
+    /** ЕДНОКРАТЕН пълен backfill за 1 година — коригира заниженатa история. Async (дълъг). */
+    @PostMapping("/meta/backfill")
+    public ResponseEntity<String> backfillMeta() {
+        new Thread(() -> metaAdsService.forceBackfillAllAccounts(), "meta-backfill").start();
+        return ResponseEntity.ok("Meta backfill (1 година) стартиран във фонов режим");
+    }
+
+    @PostMapping("/google/backfill")
+    public ResponseEntity<String> backfillGoogle() {
+        new Thread(() -> googleAdsService.forceBackfillAllAccounts(), "google-backfill").start();
+        return ResponseEntity.ok("Google backfill (1 година) стартиран във фонов режим");
     }
 
 }
