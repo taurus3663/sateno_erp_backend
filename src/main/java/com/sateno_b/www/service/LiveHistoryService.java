@@ -89,7 +89,11 @@ public class LiveHistoryService {
             case "visitor" -> ses.setPageviews(ses.getPageviews() + 1);
             case "product_view" -> ses.setProductViews(ses.getProductViews() + 1);
             case "cart_update" -> {
-                if (e.getProductId() != null || e.getSku() != null) ses.setAddToCarts(ses.getAddToCarts() + 1);
+                // Реалният тракер праща cart_update с items[] (без productId отгоре),
+                // затова броим и когато има продукти в количката.
+                boolean hasCart = e.getProductId() != null || e.getSku() != null
+                        || (e.getItems() != null && !e.getItems().isEmpty());
+                if (hasCart) ses.setAddToCarts(ses.getAddToCarts() + 1);
                 updateCartSnapshot(ses, e);
             }
             case "checkout_start" -> {
