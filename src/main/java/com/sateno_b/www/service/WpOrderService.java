@@ -11,6 +11,8 @@ import com.sateno_b.www.shared.AuthTool;
 import com.sateno_b.www.shared.CourierParser;
 import com.sateno_b.www.shared.Shared;
 import com.sateno_b.www.model.dto.OrderLineItemDto;
+import com.sateno_b.www.model.dto.WoOrderLineItemImageDto;
+import com.sateno_b.www.model.repository.WpProductImageRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.Expression;
@@ -67,6 +69,7 @@ public class WpOrderService {
     private final EmailService emailService;
     private final OrderAutomationService orderAutomationService;
     private final WpProductRepository wpProductRepository;
+    private final WpProductImageRepository wpProductImageRepository;
     private final WpProductHistoryRepository wpProductHistoryRepository;
     private final WpProductAsyncService wpProductAsyncService;
     private final EcontService econtService;
@@ -905,6 +908,7 @@ public class WpOrderService {
             return dto;
         });
 
+        enrichLineImages(wpOrderDtos.getContent()); // текущи локални снимки на продуктите (по SKU)
         return wpOrderDtos;
 
     }
@@ -948,9 +952,47 @@ public class WpOrderService {
             dto.setSavedCourierBilling(entity.getSavedCourierBilling());
             dto.setCourierHistory(entity.getCourierHistory());
             enrichOrderDto(dto, entity);
+            enrichLineImages(java.util.List.of(dto)); // текущи локални снимки на продуктите (по SKU)
             return dto;
         }
         return null;
+    }
+
+    /**
+     * Обогатява снимките на редовете с ТЕКУЩАТА локална снимка на продукта (по SKU),
+     * за да не се чупят при сменени/прекачени снимки в сайта (уловеният WooCommerce URL остарява).
+     * Прави ЕДНА пакетна заявка за всички SKU-та (без N+1). Ако продуктът няма локална снимка,
+     * оставя досегашния src. Локалните пътища (/media/...) се долепят до ERP адреса от фронтенда.
+     */
+    private void enrichLineImages(List<WpOrderDto> dtos) {
+        if (dtos == null || dtos.isEmpty()) return;
+        List<OrderLineItemDto> allLines = new ArrayList<>();
+        for (WpOrderDto d : dtos) {
+            if (d.getOrderLine() != null) allLines.addAll(d.getOrderLine());
+            if (d.getOrderLineOtherOrders() != null) allLines.addAll(d.getOrderLineOtherOrders());
+        }
+        Set<String> skus = allLines.stream()
+                .map(OrderLineItemDto::getSku)
+                .filter(s -> s != null && !s.isBlank())
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+        if (skus.isEmpty()) return;
+
+        Map<String, String> skuToLocal = wpProductImageRepository.findPrimaryLocalSrcBySkus(skus).stream()
+                .collect(Collectors.toMap(
+                        r -> ((String) r[0]).toLowerCase(),
+                        r -> (String) r[1],
+                        (a, b) -> a));
+        if (skuToLocal.isEmpty()) return;
+
+        for (OrderLineItemDto line : allLines) {
+            if (line.getSku() == null) continue;
+            String local = skuToLocal.get(line.getSku().toLowerCase());
+            if (local != null && !local.isBlank()) {
+                if (line.getImage() == null) line.setImage(new WoOrderLineItemImageDto());
+                line.getImage().setSrc(local);
+            }
+        }
     }
 
     public OrderStatusStatsDto statusStats() {
