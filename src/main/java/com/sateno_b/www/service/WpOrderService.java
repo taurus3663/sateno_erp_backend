@@ -706,14 +706,28 @@ public class WpOrderService {
                 customerJoin = root.join("customer", JoinType.LEFT); // Използваме LEFT JOIN за всеки случай
             }
 
-// Филтър по име/фамилия
+// Филтър по име/фамилия/телефон
             if (customer != null && !customer.isEmpty() && customerJoin != null) {
                 String pattern = "%" + customer.toLowerCase() + "%";
-                predicates.add(cb.or(
-                        cb.like(cb.lower(customerJoin.get("firstName")), pattern),
-                        cb.like(cb.lower(customerJoin.get("lastName")), pattern),
-                        cb.like(customerJoin.get("phone"), pattern) // Можеш да търсиш тел. и в общото поле за клиент
-                ));
+                List<Predicate> or = new ArrayList<>();
+                or.add(cb.like(cb.lower(customerJoin.get("firstName")), pattern));
+                or.add(cb.like(cb.lower(customerJoin.get("lastName")), pattern));
+
+                // Телефон: сравняваме само по ЦИФРИ, за да работи и с +359 / 00359 / интервали.
+                // Нормализираме въведеното до „националния" номер (без код на държавата и без водеща 0),
+                // а съхранения телефон също чистим до цифри (regexp_replace) → търсим „съдържа".
+                String digits = customer.replaceAll("[^0-9]", "");
+                if (digits.startsWith("00359")) digits = digits.substring(5);
+                else if (digits.startsWith("359")) digits = digits.substring(3);
+                if (digits.startsWith("0")) digits = digits.substring(1);
+                if (!digits.isEmpty()) {
+                    Expression<String> phoneDigits = cb.function("regexp_replace", String.class,
+                            customerJoin.get("phone"), cb.literal("[^0-9]"), cb.literal(""), cb.literal("g"));
+                    or.add(cb.like(phoneDigits, "%" + digits + "%"));
+                } else {
+                    or.add(cb.like(customerJoin.get("phone"), pattern));
+                }
+                predicates.add(cb.or(or.toArray(new Predicate[0])));
             }
 
 // Филтър по телефон (специфичното поле за телефон)
