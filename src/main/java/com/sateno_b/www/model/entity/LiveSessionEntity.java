@@ -3,6 +3,7 @@ package com.sateno_b.www.model.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
@@ -90,4 +91,18 @@ public class LiveSessionEntity extends BaseEntity {
     private String phone;
     @Column
     private String email;
+
+    // --- снимка на количката към последната активност (за списъците
+    //     „количка без каса" и „каса без данни" + история по дата) ---
+    /** Продукти в количката (JSON масив, същият формат като live_abandoned_checkout.products_json). */
+    @Column(name = "products_json", columnDefinition = "TEXT")
+    private String productsJson;
+
+    /** Стойност на количката към последната активност. */
+    @Column(name = "cart_value")
+    private BigDecimal cartValue;
+
+    /** Валута на количката (напр. EUR/BGN/RON). */
+    @Column
+    private String currency;
 }

@@ -1,10 +1,13 @@
 package com.sateno_b.www.controller;
 
+import com.sateno_b.www.model.dto.LiveBasketView;
 import com.sateno_b.www.model.dto.LiveEventDto;
 import com.sateno_b.www.model.dto.LiveSnapshotDto;
 import com.sateno_b.www.model.entity.LiveAbandonedCheckoutEntity;
+import com.sateno_b.www.model.entity.LiveSessionEntity;
 import com.sateno_b.www.model.repository.LiveAbandonedCheckoutRepository;
 import com.sateno_b.www.model.repository.LiveProductStatRepository;
+import com.sateno_b.www.model.repository.LiveSessionRepository;
 import com.sateno_b.www.service.LiveTrackingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,10 +36,12 @@ import java.util.List;
 public class LiveController {
 
     private static final ZoneId ZONE = ZoneId.of("Europe/Sofia");
+    private static final DateTimeFormatter HM = DateTimeFormatter.ofPattern("dd.MM HH:mm").withZone(ZONE);
 
     private final LiveTrackingService liveService;
     private final LiveProductStatRepository statRepository;
     private final LiveAbandonedCheckoutRepository abandonedRepository;
+    private final LiveSessionRepository sessionRepository;
     private final ObjectMapper objectMapper;
 
     /**
@@ -112,19 +118,72 @@ public class LiveController {
         return out;
     }
 
-    /** Напуснати каси (lead-ове) за период. По подразбиране — днес. */
+    /**
+     * Напуснати каси (lead-ове) за период — готов вид с продукти/снимки (както живия снапшот).
+     * По подразбиране — днес.
+     */
     @GetMapping("/abandoned")
-    public List<LiveAbandonedCheckoutEntity> abandoned(
+    public List<LiveSnapshotDto.AbandonedView> abandoned(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        List<LiveAbandonedCheckoutEntity> rows;
         if (from == null && to == null) {
             Instant start = LocalDate.now(ZONE).atStartOfDay(ZONE).toInstant();
-            return abandonedRepository.findByAbandonedAtGreaterThanEqualOrderByAbandonedAtDesc(start);
+            rows = abandonedRepository.findByAbandonedAtGreaterThanEqualOrderByAbandonedAtDesc(start);
+        } else {
+            Instant[] range = dayRange(from, to);
+            rows = abandonedRepository.findByAbandonedAtBetweenOrderByAbandonedAtDesc(range[0], range[1]);
         }
+        return rows.stream()
+                .map(a -> liveService.toAbandonedView(a, LiveTrackingService.historyTimeFormat()))
+                .toList();
+    }
+
+    /**
+     * „Продукти в количка (без каса)" за период — сесии, добавили в количка,
+     * но нестигнали до каса. По подразбиране — днес. Групирано по кошница/сесия.
+     */
+    @GetMapping("/carts-no-checkout")
+    public List<LiveBasketView> cartsNoCheckout(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        Instant[] range = dayRange(from, to);
+        return toBasketViews(sessionRepository.findCartsWithoutCheckout(range[0], range[1]));
+    }
+
+    /**
+     * „Каси без въведени данни" за период — сесии, стигнали до каса, но без контакти
+     * и без поръчка. По подразбиране — днес. Групирано по кошница/сесия.
+     */
+    @GetMapping("/checkouts-no-data")
+    public List<LiveBasketView> checkoutsNoData(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        Instant[] range = dayRange(from, to);
+        return toBasketViews(sessionRepository.findCheckoutsWithoutData(range[0], range[1]));
+    }
+
+    /** Диапазон [начало, край) по дни; по подразбиране — днес. */
+    private Instant[] dayRange(LocalDate from, LocalDate to) {
         LocalDate today = LocalDate.now(ZONE);
         Instant f = (from != null ? from : today).atStartOfDay(ZONE).toInstant();
         Instant t = (to != null ? to : today).plusDays(1).atStartOfDay(ZONE).toInstant();
-        return abandonedRepository.findByAbandonedAtBetweenOrderByAbandonedAtDesc(f, t);
+        return new Instant[]{f, t};
+    }
+
+    /** Преобразува сесии в кошници за таблото (с продукти/снимки от снимката на количката). */
+    private List<LiveBasketView> toBasketViews(List<LiveSessionEntity> sessions) {
+        List<LiveBasketView> out = new ArrayList<>();
+        for (LiveSessionEntity s : sessions) {
+            List<LiveSnapshotDto.AbandonedView.AbandonedItem> items = liveService.parseItems(s.getProductsJson());
+            int count = items.stream().mapToInt(i -> i.getQty() != null ? i.getQty() : 1).sum();
+            out.add(new LiveBasketView(
+                    s.getId(), s.getSiteId(), s.getDevice(),
+                    s.getCartValue(), s.getCurrency(), count,
+                    s.getLastSeen() != null ? HM.format(s.getLastSeen()) : "",
+                    items));
+        }
+        return out;
     }
 
     /**

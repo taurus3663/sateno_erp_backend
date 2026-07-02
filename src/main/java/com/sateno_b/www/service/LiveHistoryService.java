@@ -1,5 +1,6 @@
 package com.sateno_b.www.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sateno_b.www.model.dto.LiveEventDto;
 import com.sateno_b.www.model.entity.LiveSessionEntity;
 import com.sateno_b.www.model.entity.LiveVisitorEventEntity;
@@ -33,6 +34,7 @@ public class LiveHistoryService {
     private final LiveSessionRepository sessionRepository;
     private final LiveVisitorEventRepository visitorEventRepository;
     private final IdentityResolutionService identityResolutionService;
+    private final ObjectMapper objectMapper;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void persist(Long siteId, LiveEventDto e) {
@@ -88,8 +90,13 @@ public class LiveHistoryService {
             case "product_view" -> ses.setProductViews(ses.getProductViews() + 1);
             case "cart_update" -> {
                 if (e.getProductId() != null || e.getSku() != null) ses.setAddToCarts(ses.getAddToCarts() + 1);
+                updateCartSnapshot(ses, e);
             }
-            case "checkout_start" -> ses.setCheckoutStarts(ses.getCheckoutStarts() + 1);
+            case "checkout_start" -> {
+                ses.setCheckoutStarts(ses.getCheckoutStarts() + 1);
+                updateCartSnapshot(ses, e);
+            }
+            case "cart_clear" -> clearCartSnapshot(ses);
             case "order_complete" -> ses.setOrders(ses.getOrders() + 1);
             default -> { /* други типове — само обновяват lastSeen/контакти */ }
         }
@@ -112,6 +119,27 @@ public class LiveHistoryService {
         ev.setCheckoutStep(e.getCheckoutStep());
         ev.setOccurredAt(Instant.now());
         visitorEventRepository.save(ev);
+    }
+
+    /**
+     * Обновява снимката на количката за сесията (продукти + стойност + валута),
+     * за да можем после да покажем „количка без каса" / „каса без данни" с продукти и снимки.
+     * Пази последното известно съдържание — не се трие при преминаване към каса.
+     */
+    private void updateCartSnapshot(LiveSessionEntity ses, LiveEventDto e) {
+        if (e.getItems() != null && !e.getItems().isEmpty()) {
+            try {
+                ses.setProductsJson(objectMapper.writeValueAsString(e.getItems()));
+            } catch (Exception ignore) { /* без снимка, ако сериализацията се провали */ }
+        }
+        if (e.getCartValue() != null) ses.setCartValue(e.getCartValue());
+        if (e.getCurrency() != null) ses.setCurrency(e.getCurrency());
+    }
+
+    /** Количката е изпразнена → махаме снимката, за да не се брои като „количка без каса". */
+    private void clearCartSnapshot(LiveSessionEntity ses) {
+        ses.setProductsJson(null);
+        ses.setCartValue(null);
     }
 
     private String mergeField(String existing, String incoming) {

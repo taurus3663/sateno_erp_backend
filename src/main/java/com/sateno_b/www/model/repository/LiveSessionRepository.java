@@ -24,6 +24,24 @@ public interface LiveSessionRepository extends JpaRepository<LiveSessionEntity, 
     /** Скорошни сесии за сайт (за списъци/табло). */
     List<LiveSessionEntity> findBySiteIdAndLastSeenGreaterThanEqualOrderByLastSeenDesc(Long siteId, Instant from);
 
+    /**
+     * „Количка без каса" за период: имало е добавяне в количка, но никога не е стигнало до каса
+     * и няма поръчка. Показва само сесии със запазена снимка на количката.
+     */
+    @Query("SELECT s FROM LiveSessionEntity s WHERE s.addToCarts > 0 AND s.checkoutStarts = 0 " +
+            "AND s.orders = 0 AND s.productsJson IS NOT NULL " +
+            "AND s.lastSeen BETWEEN :from AND :to ORDER BY s.lastSeen DESC")
+    List<LiveSessionEntity> findCartsWithoutCheckout(@Param("from") Instant from, @Param("to") Instant to);
+
+    /**
+     * „Каса без данни" за период: стигнало е до каса, но без въведени контакти и без поръчка.
+     * (Касите С данни се пазят отделно в live_abandoned_checkout — не се дублират тук.)
+     */
+    @Query("SELECT s FROM LiveSessionEntity s WHERE s.checkoutStarts > 0 AND s.orders = 0 " +
+            "AND s.name IS NULL AND s.phone IS NULL AND s.email IS NULL AND s.productsJson IS NOT NULL " +
+            "AND s.lastSeen BETWEEN :from AND :to ORDER BY s.lastSeen DESC")
+    List<LiveSessionEntity> findCheckoutsWithoutData(@Param("from") Instant from, @Param("to") Instant to);
+
     // --- слой за идентичност ---
 
     /** Несвързани сесии, които имат контакт (за нощен backfill на свързването). */

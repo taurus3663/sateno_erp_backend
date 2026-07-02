@@ -50,6 +50,8 @@ public class LiveTrackingService {
 
     private static final ZoneId ZONE = ZoneId.of("Europe/Sofia");
     private static final DateTimeFormatter HMS = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZONE);
+    private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm").withZone(ZONE);
+    private static final DateTimeFormatter DATE_HHMM = DateTimeFormatter.ofPattern("dd.MM HH:mm").withZone(ZONE);
 
     // Колко време сесията се счита за „жив посетител" (без ново събитие/heartbeat).
     private static final long VISITOR_TTL_SEC = 35;
@@ -289,11 +291,7 @@ public class LiveTrackingService {
         List<LiveSnapshotDto.AbandonedView> abandoned = abandonedRepository
                 .findByAbandonedAtGreaterThanEqualAndDismissedFalseOrderByAbandonedAtDesc(startOfToday())
                 .stream()
-                .map(a -> new LiveSnapshotDto.AbandonedView(
-                        a.getId(), a.getSiteId(),
-                        a.getName(), a.getEmail(), a.getPhone(), a.getCartValue(), a.getCurrency(),
-                        a.getAbandonedAt() != null ? DateTimeFormatter.ofPattern("HH:mm").withZone(ZONE).format(a.getAbandonedAt()) : "",
-                        parseAbandonedItems(a.getProductsJson())))
+                .map(a -> toAbandonedView(a, HHMM))
                 .toList();
 
         List<LiveSnapshotDto.ActivityView> activity = new ArrayList<>(recentActivity);
@@ -465,6 +463,32 @@ public class LiveTrackingService {
 
     private Instant startOfToday() {
         return LocalDate.now(ZONE).atStartOfDay(ZONE).toInstant();
+    }
+
+    /**
+     * Разчита JSON снимка на продукти (products_json) в списък от продукти за таблото.
+     * Публичен — преизползва се и от LiveController за списъците „количка без каса" / „каса без данни".
+     */
+    public List<LiveSnapshotDto.AbandonedView.AbandonedItem> parseItems(String json) {
+        return parseAbandonedItems(json);
+    }
+
+    /**
+     * Преобразува запис „напусната каса" в готов вид за таблото (с продукти и снимки).
+     * Публичен — общ за живия снапшот и за историята по дата (GET /live/abandoned).
+     * @param timeFmt форматът за часа (HH:mm за днес, dd.MM HH:mm за историята).
+     */
+    public LiveSnapshotDto.AbandonedView toAbandonedView(LiveAbandonedCheckoutEntity a, DateTimeFormatter timeFmt) {
+        return new LiveSnapshotDto.AbandonedView(
+                a.getId(), a.getSiteId(),
+                a.getName(), a.getEmail(), a.getPhone(), a.getCartValue(), a.getCurrency(),
+                a.getAbandonedAt() != null ? timeFmt.format(a.getAbandonedAt()) : "",
+                parseAbandonedItems(a.getProductsJson()));
+    }
+
+    /** Форматът за час в историята (с дата), достъпен за контролера. */
+    public static DateTimeFormatter historyTimeFormat() {
+        return DATE_HHMM;
     }
 
     private List<LiveSnapshotDto.AbandonedView.AbandonedItem> parseAbandonedItems(String json) {
