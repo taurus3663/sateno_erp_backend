@@ -36,3 +36,5 @@ build/
 logs/
 app.log
 app-error.log
+app-*.log
+app-error-*.log
