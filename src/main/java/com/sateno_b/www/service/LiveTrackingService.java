@@ -63,7 +63,7 @@ public class LiveTrackingService {
     private static final long CART_TTL_SEC = 15 * 60;
     // Резерва: ако явният „leave" сигнал се изпусне (мобилни), маркираме сесията „напусната"
     // след толкова секунди без активност (по точното в-паметта присъствие, не по стар таймер).
-    private static final long LEFT_FALLBACK_SEC = 60;
+    private static final long LEFT_FALLBACK_SEC = 30;
 
     private final Map<String, LiveSession> sessions = new ConcurrentHashMap<>();
     private final Deque<LiveSnapshotDto.ActivityView> recentActivity = new ConcurrentLinkedDeque<>();
@@ -238,6 +238,7 @@ public class LiveTrackingService {
                 try {
                     sessionRepository.markLeft(s.siteId, s.sessionToken, now);
                     s.leftFlagged = true;
+                    changed = true; // бутни снапшот → таблото опреснява списъците веднага
                 } catch (Exception ex) {
                     log.warn("Live: грешка при резервно маркиране 'напуснал' за {}: {}", s.sessionToken, ex.getMessage());
                 }
@@ -316,6 +317,21 @@ public class LiveTrackingService {
         List<LiveSnapshotDto.ActivityView> activity = new ArrayList<>(recentActivity);
 
         return new LiveSnapshotDto(visitors, visitorsTodayCache, ordersTodayCache, carts, checkouts, abandoned, activity);
+    }
+
+    /**
+     * Токени на сесиите, които СЕГА присъстват на сайта (виждат се в „Активни колички/каси").
+     * Ползва се, за да НЕ ги показваме едновременно в „количка без каса"/„каса без данни" —
+     * освен ако вече са пратили явен „leave" (тогава leftAt е вдигнат и ги показваме веднага).
+     */
+    public java.util.Set<String> presentSessionTokens() {
+        long nowSec = Instant.now().getEpochSecond();
+        java.util.Set<String> out = new java.util.HashSet<>();
+        for (LiveSession s : sessions.values()) {
+            if (s.sessionToken == null) continue;
+            if (nowSec - s.lastSeen.getEpochSecond() <= VISITOR_TTL_SEC) out.add(s.sessionToken);
+        }
+        return out;
     }
 
     /**

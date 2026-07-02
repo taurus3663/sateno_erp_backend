@@ -38,6 +38,10 @@ public class LiveController {
     private static final ZoneId ZONE = ZoneId.of("Europe/Sofia");
     private static final DateTimeFormatter HM = DateTimeFormatter.ofPattern("dd.MM HH:mm").withZone(ZONE);
 
+    // Праг „напуснал сайта": ако няма записан leftAt, но последната активност е по-стара от
+    // толкова секунди → смятаме го за напуснал (покрива изпуснат сигнал и стари/предеплойни сесии).
+    private static final long LEFT_GRACE_SEC = 90;
+
     private final LiveTrackingService liveService;
     private final LiveProductStatRepository statRepository;
     private final LiveAbandonedCheckoutRepository abandonedRepository;
@@ -148,7 +152,8 @@ public class LiveController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         Instant[] range = dayRange(from, to);
-        return toBasketViews(sessionRepository.findCartsWithoutCheckout(range[0], range[1]));
+        Instant cutoff = Instant.now().minusSeconds(LEFT_GRACE_SEC);
+        return toBasketViews(dropPresent(sessionRepository.findCartsWithoutCheckout(range[0], range[1], cutoff)));
     }
 
     /**
@@ -160,7 +165,8 @@ public class LiveController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         Instant[] range = dayRange(from, to);
-        return toBasketViews(sessionRepository.findCheckoutsWithoutData(range[0], range[1]));
+        Instant cutoff = Instant.now().minusSeconds(LEFT_GRACE_SEC);
+        return toBasketViews(dropPresent(sessionRepository.findCheckoutsWithoutData(range[0], range[1], cutoff)));
     }
 
     /** Диапазон [начало, край) по дни; по подразбиране — днес. */
@@ -169,6 +175,18 @@ public class LiveController {
         Instant f = (from != null ? from : today).atStartOfDay(ZONE).toInstant();
         Instant t = (to != null ? to : today).plusDays(1).atStartOfDay(ZONE).toInstant();
         return new Instant[]{f, t};
+    }
+
+    /**
+     * Изхвърля сесиите, които СЕГА присъстват на сайта (в „Активни колички/каси") и още не са
+     * пратили явен „leave" — за да не са едновременно на две места. Ако вече имат leftAt
+     * (явно напуснали) → остават (показваме ги веднага, дори да са току-що напуснали).
+     */
+    private List<LiveSessionEntity> dropPresent(List<LiveSessionEntity> rows) {
+        var present = liveService.presentSessionTokens();
+        return rows.stream()
+                .filter(s -> s.getLeftAt() != null || !present.contains(s.getSessionToken()))
+                .toList();
     }
 
     /** Преобразува сесии в кошници за таблото (с продукти/снимки от снимката на количката). */

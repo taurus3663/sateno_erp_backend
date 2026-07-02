@@ -38,9 +38,11 @@ public interface LiveSessionRepository extends JpaRepository<LiveSessionEntity, 
      * само в „Активни колички".
      */
     @Query("SELECT s FROM LiveSessionEntity s WHERE s.checkoutStarts = 0 " +
-            "AND s.orders = 0 AND s.productsJson IS NOT NULL AND s.leftAt IS NOT NULL " +
-            "AND s.lastSeen BETWEEN :from AND :to ORDER BY s.leftAt DESC")
-    List<LiveSessionEntity> findCartsWithoutCheckout(@Param("from") Instant from, @Param("to") Instant to);
+            "AND s.orders = 0 AND s.productsJson IS NOT NULL " +
+            "AND (s.leftAt IS NOT NULL OR s.lastSeen < :cutoff) " +
+            "AND s.lastSeen BETWEEN :from AND :to ORDER BY s.lastSeen DESC")
+    List<LiveSessionEntity> findCartsWithoutCheckout(@Param("from") Instant from, @Param("to") Instant to,
+                                                     @Param("cutoff") Instant cutoff);
 
     /**
      * „Каса без данни" за период: стигнало е до каса, но без въведени контакти и без поръчка.
@@ -49,8 +51,10 @@ public interface LiveSessionRepository extends JpaRepository<LiveSessionEntity, 
      */
     @Query("SELECT s FROM LiveSessionEntity s WHERE s.checkoutStarts > 0 AND s.orders = 0 " +
             "AND s.name IS NULL AND s.phone IS NULL AND s.email IS NULL AND s.productsJson IS NOT NULL " +
-            "AND s.leftAt IS NOT NULL AND s.lastSeen BETWEEN :from AND :to ORDER BY s.leftAt DESC")
-    List<LiveSessionEntity> findCheckoutsWithoutData(@Param("from") Instant from, @Param("to") Instant to);
+            "AND (s.leftAt IS NOT NULL OR s.lastSeen < :cutoff) " +
+            "AND s.lastSeen BETWEEN :from AND :to ORDER BY s.lastSeen DESC")
+    List<LiveSessionEntity> findCheckoutsWithoutData(@Param("from") Instant from, @Param("to") Instant to,
+                                                     @Param("cutoff") Instant cutoff);
 
     /**
      * Резервно маркиране „напуснал" (ако явният leave сигнал се е изпуснал) — вдига leftAt
