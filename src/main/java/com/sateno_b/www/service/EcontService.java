@@ -1083,6 +1083,7 @@ public double calculatePriceDefault(double weight, CourierShipmentType type) {
         courier.put("pickupDate", LocalDate.now(ZoneId.of("Europe/Sofia")).toString());
         courier.put("fromTime", "09:00");
         courier.put("toTime", "18:00");
+        courier.put("shipmentType", "PACK");
 
         Map<String, Object> body = new HashMap<>();
         body.put("courier", courier);
